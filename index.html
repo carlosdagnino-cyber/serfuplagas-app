@@ -503,6 +503,7 @@ header {
 }
 .plan-hour-row:hover { background:rgba(79,142,247,.04); }
 .plan-hour-row.drag-over { background:rgba(79,142,247,.18); outline:2px dashed rgba(79,142,247,.5); outline-offset:-2px; }
+.plan-hour-row.client-selected:hover { background:rgba(79,142,247,.18); cursor:cell; }
 .plan-hour-label {
   width:40px; flex-shrink:0; font-size:9px; font-family:var(--mono);
   color:var(--text3); padding:4px 4px 0 4px; text-align:right;
@@ -813,8 +814,9 @@ header {
         <!-- Panel derecho: mini-calendario -->
         <div class="plan-sidebar">
           <div class="plan-filters">
-            <span style="font-size:11px;color:var(--text2);align-self:center">Arrastra un pin aquí</span>
+            <span style="font-size:11px;color:var(--text2)">Haz clic en un pin del mapa para seleccionarlo</span>
           </div>
+          <div id="planSelected" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:rgba(79,142,247,0.15);border-bottom:1px solid var(--border);font-size:12px;color:var(--accent)"></div>
           <div class="plan-mini-cal" id="planMiniCal"></div>
         </div>
         <!-- Mapa izquierda -->
@@ -2724,7 +2726,7 @@ window.renderPlanMap=function(){
           strokeWeight:2
         },
         title:client.name,
-        draggable:true, // ← draggable para arrastrar al calendario
+        draggable:false,
         zIndex:50
       });
 
@@ -2757,19 +2759,37 @@ window.renderPlanMap=function(){
       marker.addListener('click',()=>iw.open(planMap,marker));
 
       // Drag start — guardar cliente
-      marker.addListener('dragstart',()=>{
+      // CLIC en pin → seleccionar cliente para programar
+      marker.addListener('click',()=>{
+        // Cerrar infowindow si había uno abierto
+        if(window._planActiveIW) window._planActiveIW.close();
+
+        if(planDraggingClient && planDraggingClient.id===client.id){
+          // Segundo clic en el mismo → deseleccionar
+          planDraggingClient=null;
+          marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+          document.getElementById('planSelected').style.display='none';
+          return;
+        }
+        // Deseleccionar el anterior si había
+        if(window._planSelectedMarker){
+          const prevHc=HORARIO_COLORS[getClientHorario(window._planSelectedClient)]||HORARIO_COLORS.none;
+          window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:prevHc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+        }
+        // Seleccionar este
         planDraggingClient=client;
-        // Activar zona de drop en el mini-calendario
-        document.querySelectorAll('.plan-hour-row').forEach(r=>r.classList.add('droppable'));
-        showToast(`Arrastrando: ${client.name} → suelta en el calendario`);
-      });
-      marker.addListener('dragend',(e)=>{
-        // Si no se soltó en una celda válida, devolver al lugar
-        planDraggingClient=null;
-        document.querySelectorAll('.plan-hour-row').forEach(r=>{
-          r.classList.remove('droppable');
-          r.classList.remove('drag-over');
-        });
+        window._planSelectedMarker=marker;
+        window._planSelectedClient=client;
+        marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:18,fillColor:hc.bg,fillOpacity:1,strokeColor:'#facc15',strokeWeight:3});
+        // Mostrar banner
+        const banner=document.getElementById('planSelected');
+        if(banner){
+          banner.style.display='flex';
+          banner.innerHTML=`<span>📌 <b>${client.name}</b> seleccionado — haz clic en una celda del calendario para programar</span>
+            <button onclick="clearPlanSelection()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;padding:0 4px">✕</button>`;
+        }
+        // Scroll al mini-cal
+        document.getElementById('planMiniCal')?.scrollIntoView({behavior:'smooth',block:'start'});
       });
 
       planMarkers.push(marker);
@@ -2828,9 +2848,8 @@ window.renderPlanMiniCal=function(){
       const svcsHere=services.filter(s=>s.date===dk&&s.startH===h);
       const slotId=`pslot_${dk}_${h}`;
       calHtml+=`<div class="plan-hour-row" id="${slotId}" data-date="${dk}" data-hour="${h}"
-        ondragover="event.preventDefault();this.classList.add('drag-over')"
-        ondragleave="this.classList.remove('drag-over')"
-        ondrop="onPlanDrop(event,'${dk}',${h})">
+        onclick="onPlanCellClick('${dk}',${h})"
+        style="cursor:${planDraggingClient?'cell':'default'}">
         <div class="plan-hour-label">${String(h).padStart(2,'0')}</div>
         <div class="plan-hour-slots">
           ${svcsHere.map(s=>{
@@ -2844,14 +2863,27 @@ window.renderPlanMiniCal=function(){
     });
   });
   el.innerHTML=calHtml;
+  // Si hay cliente seleccionado, marcar celdas como clicables
+  if(planDraggingClient){
+    document.querySelectorAll('.plan-hour-row').forEach(r=>{
+      r.classList.add('client-selected');
+      r.style.cursor='cell';
+    });
+  }
 };
 
-// Drop en celda del mini-calendario
-window.onPlanDrop=function(e,date,hour){
-  e.preventDefault();
-  document.querySelectorAll('.plan-hour-row').forEach(r=>r.classList.remove('drag-over','droppable'));
+// Clic en celda del mini-calendario cuando hay cliente seleccionado
+window.onPlanCellClick=function(date,hour){
   const client=planDraggingClient;
-  if(!client){ showToast('Arrastra un pin del mapa','error'); return; }
+  if(!client){ return; } // sin cliente seleccionado, no hacer nada
+  // Limpiar selección visual
+  if(window._planSelectedMarker){
+    const prevHc=HORARIO_COLORS[getClientHorario(client)]||HORARIO_COLORS.none;
+    window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:prevHc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+    window._planSelectedMarker=null;
+    window._planSelectedClient=null;
+  }
+  document.getElementById('planSelected').style.display='none';
   planDraggingClient=null;
 
   // Inferir datos del cliente
@@ -2879,6 +2911,18 @@ window.onPlanDrop=function(e,date,hour){
 };
 
 // Controles de navegación
+window.clearPlanSelection=function(){
+  planDraggingClient=null;
+  if(window._planSelectedMarker){
+    const c=window._planSelectedClient;
+    const hc=HORARIO_COLORS[getClientHorario(c)]||HORARIO_COLORS.none;
+    window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+    window._planSelectedMarker=null;
+    window._planSelectedClient=null;
+  }
+  document.getElementById('planSelected').style.display='none';
+  renderPlanMiniCal();
+};
 window.togglePlanView=function(){
   planView=planView==='week'?'day':'week';
   document.getElementById('planViewToggle').textContent=planView==='week'?'Semana':'Día';
