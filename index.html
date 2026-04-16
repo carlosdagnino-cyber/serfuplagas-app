@@ -536,6 +536,17 @@ header {
   .plan-layout { flex-direction:column; }
   .plan-sidebar { width:100%; max-height:45vh; border-right:none; border-bottom:1px solid var(--border); }
 }
+/* ══ NOTIFICACIONES ══ */
+#notifBell { position:relative; cursor:pointer; padding:4px 8px; border-radius:6px; font-size:18px; line-height:1; background:none; border:none; color:var(--text); }
+#notifBell:hover { background:var(--bg3); }
+#notifBadge { position:absolute; top:0; right:0; background:#ef4444; color:#fff; font-size:9px; font-weight:700; border-radius:50%; width:16px; height:16px; display:none; align-items:center; justify-content:center; }
+.notif-panel { position:absolute; top:calc(100% + 8px); right:0; width:320px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 8px 32px rgba(0,0,0,.3); z-index:200; overflow:hidden; }
+.notif-header { padding:10px 14px; border-bottom:1px solid var(--border); font-weight:600; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+.notif-item { padding:10px 14px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.notif-item:hover { background:var(--bg3); }
+.notif-item:last-child { border-bottom:none; }
+.notif-item.urgent { border-left:3px solid #ef4444; }
+.notif-item.warning { border-left:3px solid #f59e0b; }
 .toast {
   position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(20px);
   background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius);
@@ -628,6 +639,10 @@ header {
       <div class="sync-pill s-ok" id="syncPill">
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
+      </div>
+      <div style="position:relative">
+        <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
+        <div id="notifPanel" class="notif-panel" style="display:none"></div>
       </div>
       <div class="user-btn" id="userBtn" onclick="toggleUserMenu()">
         <div class="user-avatar" id="userAvatarBtn">C</div>
@@ -948,10 +963,12 @@ function hasPerm(perm){ if(!currentUser)return false; const roles=currentUser.ro
 function tenantRef(path){ return ref(db,`tenants/${currentTenantId}/${path}`); }
 function initials(name){ return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
 
-function addHistory(action,detail){
+// Íconos por tipo de acción
+const HIST_ICONS={'Servicio creado':'➕','Servicio editado':'✏️','Servicio eliminado':'🗑️','Estado cambiado':'🔄','Servicio movido':'↕️','Servicio completado':'✅','Cliente agregado':'👤','Cliente editado':'👤','Cliente eliminado':'🗑️','Técnico editado':'👷','Técnico agregado':'👷','Recurrencia generada':'🔁','Recurrencia eliminada':'🔁','Importación':'📥','Rutas optimizadas':'⚡','Colores actualizados':'🎨'};
+function addHistory(action,detail,extra={}){
   history.unshift({id:uid(),ts:new Date().toISOString(),
     display:new Date().toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),
-    action, detail, user:currentUser?.name||'—'});
+    action, detail, user:currentUser?.name||'—', ...extra});
 }
 
 function showToast(msg,type=''){
@@ -1109,7 +1126,15 @@ function showApp(){
     if(t==='history'&&!hasPerm('view_history')) tab.style.display='none';
   });
   // Técnico puro → vista móvil
-  const isMobileTech=window.innerWidth<=640&&!hasPerm('edit_calendar')&&hasPerm('view_calendar');
+  const isTech=!hasPerm('edit_calendar')&&hasPerm('view_calendar');
+  // Técnico: ocultar pestañas no permitidas
+  if(isTech){
+    document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
+      const t=tab.dataset.tab;
+      if(!['calendar','routes'].includes(t)) tab.style.display='none';
+    });
+  }
+  const isMobileTech=window.innerWidth<=640&&isTech;
   if(isMobileTech) showMobileTechView();
 }
 
@@ -1146,6 +1171,8 @@ function renderAll(){
   // Mapa key
   const ki=document.getElementById('mapsKeyInput');
   if(ki) ki.value=mapsKey;
+  // Notificaciones
+  updateNotifBadge();
   const ks=document.getElementById('mapsKeyStatus');
   if(ks) ks.textContent=mapsKey?'✓ API Key configurada':'Sin API Key — las rutas se mostrarán sin mapa';
   if(mapsKey) document.getElementById('noMapsWarning').style.display='none';
@@ -1207,7 +1234,7 @@ window.cycleStatus=function(e,svcId){
   const next=cycle[(ci+1)%cycle.length];
   services[idx]={...services[idx],status:next,updatedAt:Date.now()};
   addHistory('Estado cambiado',`${services[idx].client}: ${cur} → ${next}`);
-  saveData();
+  saveData(); updateNotifBadge();
 };
 
 // Colores del botón de estado (compactos para el bloque)
@@ -1590,7 +1617,16 @@ window.saveSvc=function(){
   if(editingId){
     const idx=services.findIndex(s=>s.id===editingId);
     if(idx>=0) services[idx]={...services[idx],client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,updatedAt:Date.now()};
-    addHistory('Servicio editado',`${client} [${status}] — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
+    const oldSvc=services[idx-1]||services.find(s=>s.id===editingId);
+    const changes=[];
+    const prevSvc=services.find(s=>s.id===editingId);
+    if(prevSvc){
+      if(prevSvc.status!==status) changes.push(`estado: ${prevSvc.status}→${status}`);
+      if(prevSvc.techId!==techId) changes.push(`técnico: ${getTech(prevSvc.techId).name}→${tech.name}`);
+      if(prevSvc.date!==date) changes.push(`fecha: ${prevSvc.date}→${date}`);
+      if(prevSvc.startH!==sH||prevSvc.startM!==(sM||0)) changes.push(`hora: ${fmtTime(prevSvc.startH,prevSvc.startM||0)}→${fmtTime(sH,sM)}`);
+    }
+    addHistory('Servicio editado',`${client} — ${changes.length?changes.join(', '):`${date} ${fmtTime(sH,sM)}`}`,{svcId:editingId});
     showToast('Servicio actualizado','success');
   } else {
     const _cli2=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
@@ -1651,7 +1687,7 @@ function renderMobileTechView(){
   const today=fmtKey(new Date());
   document.getElementById('mobileDateLabel').textContent=new Date().toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
   const myTech=technicians.find(t=>t.name.toLowerCase().includes((currentUser?.name||'').split(' ')[0].toLowerCase()));
-  const mySvcs=services.filter(s=>s.date===today&&(!myTech||s.techId===myTech.id))
+  const mySvcs=services.filter(s=>s.date===today&&(!myTech||(s.techIds||[s.techId]).includes(myTech.id)))
     .sort((a,b)=>a.startH*60+(a.startM||0)-(b.startH*60+(b.startM||0)));
   const el=document.getElementById('mobileServiceList');
   if(!mySvcs.length){
@@ -1768,6 +1804,27 @@ window.openEditClientModal=function(id){
       </div>
     </div>
     <div class="form-group"><label>Comentarios / Notas internas</label><textarea id="fc_notes" rows="2">${c.notes||''}</textarea></div>
+    ${(()=>{
+      const cSvcs=services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date));
+      if(!cSvcs.length) return '';
+      const total=cSvcs.length, last=cSvcs[0], completed=cSvcs.filter(s=>s.status==='Completado').length;
+      return`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:4px">
+        <div style="font-weight:600;font-size:12px;margin-bottom:8px;color:var(--text2)">📋 Historial de servicios</div>
+        <div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <span style="font-size:11px;background:var(--bg4);padding:3px 8px;border-radius:10px">${total} servicios</span>
+          <span style="font-size:11px;background:var(--bg4);padding:3px 8px;border-radius:10px">${completed} completados</span>
+          <span style="font-size:11px;background:var(--bg4);padding:3px 8px;border-radius:10px">Último: ${last.date}</span>
+        </div>
+        <div style="max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
+          ${cSvcs.slice(0,10).map(s=>{const sc=getSC(s.status||'Programado');return`<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 6px;border-radius:4px;background:var(--bg4)">
+            <span style="color:var(--text3);font-family:var(--mono);flex-shrink:0">${s.date}</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.type}</span>
+            <span style="padding:1px 6px;border-radius:8px;background:${sc.bg};color:${sc.tx};font-size:10px;flex-shrink:0">${s.status}</span>
+          </div>`;}).join('')}
+          ${cSvcs.length>10?`<div style="font-size:10px;color:var(--text3);text-align:center;padding:4px">…y ${cSvcs.length-10} más</div>`:''}
+        </div>
+      </div>`;
+    })()}
     <div class="modal-footer">
       <button class="btn btn-danger" onclick="deleteClient('${id}')">Eliminar</button>
       <button class="btn" onclick="closeModal()">Cancelar</button>
@@ -2604,14 +2661,17 @@ window.openMapsSetup=function(){ switchTab('settings'); closeModal(); };
 function renderHistory(){
   const el=document.getElementById('historyList');if(!el)return;
   if(!history.length){el.innerHTML='<p style="color:var(--text2);font-size:13px">Sin cambios registrados.</p>';return;}
-  el.innerHTML=history.map(h=>`
-    <div class="hist-item">
-      <div>
-        <div class="hist-action">${h.action}</div>
-        <div class="hist-detail">${h.detail}${h.user?' · '+h.user:''}</div>
+  el.innerHTML=history.map(h=>{
+    const icon=HIST_ICONS[h.action]||'📝';
+    return`<div class="hist-item" style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:16px;flex-shrink:0;margin-top:1px">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${h.action}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;word-break:break-word">${h.detail}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">${h.user} · ${h.display}</div>
       </div>
-      <div class="hist-ts">${h.display}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 window.clearHistory=function(){
   if(!confirm('¿Limpiar historial?'))return;
@@ -2885,6 +2945,88 @@ window.planNext=function(){planOffset++;window.renderPlanMiniCal();};
 window.planPrev=function(){planOffset--;window.renderPlanMiniCal();};
 window.planToday=function(){planOffset=0;window.renderPlanMiniCal();};
 
+/* ═══ NOTIFICACIONES ═══ */
+function getNotifications(){
+  const today=fmtKey(new Date());
+  const now=new Date();
+  const notifs=[];
+  services.forEach(svc=>{
+    if(svc.date<today) return; // pasados ignorar
+    const svcDate=new Date(svc.date+'T12:00');
+    const diffMs=svcDate-now;
+    const diffHrs=diffMs/(1000*60*60);
+    const diffDays=diffMs/(1000*60*60*24);
+    const status=svc.status||'Programado';
+    const needsConfirm=status==='Programado'||status==='Pend. confirmación';
+    if(!needsConfirm) return;
+    // Servicio programado con menos de 48hrs de anticipación → urgente
+    if(diffHrs>0&&diffHrs<=48){
+      notifs.push({id:svc.id,type:'urgent',icon:'🚨',
+        title:`${svc.client}`,
+        msg:`${svc.date} ${svc.timeMode==='defined'?fmtTime(svc.startH,svc.startM||0):svc.timeMode?.toUpperCase()||''} — sin confirmar (menos de 48h)`,
+        svcId:svc.id});
+    // Servicio en 3 días sin confirmar
+    } else if(diffDays>0&&diffDays<=3){
+      notifs.push({id:svc.id,type:'warning',icon:'⚠️',
+        title:`${svc.client}`,
+        msg:`${svc.date} — pendiente de confirmación (3 días)`,
+        svcId:svc.id});
+    }
+  });
+  return notifs.sort((a,b)=>a.type==='urgent'?-1:1);
+}
+
+function updateNotifBadge(){
+  const notifs=getNotifications();
+  const badge=document.getElementById('notifBadge');
+  if(!badge) return;
+  if(notifs.length){
+    badge.style.display='inline-block';
+    badge.textContent=notifs.length>9?'9+':notifs.length;
+  } else {
+    badge.style.display='none';
+  }
+}
+
+window.toggleNotifPanel=function(){
+  const panel=document.getElementById('notifPanel');
+  if(!panel) return;
+  if(panel.style.display==='none'){
+    renderNotifPanel();
+    panel.style.display='block';
+    // Cerrar al click fuera
+    setTimeout(()=>document.addEventListener('click',closeNotifOutside,{once:true}),100);
+  } else {
+    panel.style.display='none';
+  }
+};
+function closeNotifOutside(e){
+  const panel=document.getElementById('notifPanel');
+  const bell=document.getElementById('notifBell');
+  if(panel&&!panel.contains(e.target)&&!bell.contains(e.target))
+    panel.style.display='none';
+}
+function renderNotifPanel(){
+  const panel=document.getElementById('notifPanel');if(!panel)return;
+  const notifs=getNotifications();
+  if(!notifs.length){
+    panel.innerHTML=`<div class="notif-header">🔔 Notificaciones</div>
+      <div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">Sin alertas pendientes ✓</div>`;
+    return;
+  }
+  panel.innerHTML=`<div class="notif-header">🔔 ${notifs.length} alerta${notifs.length!==1?'s':''} <button onclick="document.getElementById('notifPanel').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">✕</button></div>`+
+    notifs.map(n=>`<div class="notif-item ${n.type}" onclick="openEditSvcModal('${n.svcId}');document.getElementById('notifPanel').style.display='none'">
+      <div style="font-size:13px;font-weight:600">${n.icon} ${n.title}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">${n.msg}</div>
+    </div>`).join('');
+}
+
+// Revisar notificaciones cada 5 minutos
+function startNotifChecker(){
+  updateNotifBadge();
+  setInterval(updateNotifBadge, 5*60*1000);
+}
+
 /* ═══ SERVICIOS VINCULADOS ═══ */
 window.openLinkedModal=function(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c)return;
@@ -3091,6 +3233,7 @@ window.deleteRecurrence=function(clientId){
 };
 
 boot();
+startNotifChecker();
 
 </script>
 </body>
