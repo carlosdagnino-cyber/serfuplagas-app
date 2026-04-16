@@ -1109,13 +1109,18 @@ window.renderCalendar=function(){
         <div class="sb-time">${fmtTime(svc.startH,svc.startM||0)}–${fmtTime(svc.endH,svc.endM||0)}</div>
         <div class="sb-status">${svc.status||'Pendiente'}</div>`;
 
-      let moved=false;
+      let mouseDownX=0, mouseDownY=0, isDragging=false;
+      block.addEventListener('mousedown', e=>{mouseDownX=e.clientX; mouseDownY=e.clientY; isDragging=false;});
       if(canEdit){
-        block.addEventListener('dragstart',e=>{moved=false;onDragStart(e,svc.id,sc);});
+        block.addEventListener('dragstart',e=>{isDragging=true; onDragStart(e,svc.id,sc);});
         block.addEventListener('dragend',  onDragEnd);
       }
-      block.addEventListener('mousemove',()=>{moved=true;});
-      block.addEventListener('click',    e=>{e.stopPropagation();if(!moved)openEditSvcModal(svc.id);});
+      block.addEventListener('click', e=>{
+        e.stopPropagation();
+        const dx=Math.abs(e.clientX-mouseDownX), dy=Math.abs(e.clientY-mouseDownY);
+        if(!isDragging && dx<5 && dy<5) openEditSvcModal(svc.id);
+        isDragging=false;
+      });
       cell.appendChild(block);
     });
   });
