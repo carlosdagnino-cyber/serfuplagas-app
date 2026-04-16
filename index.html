@@ -924,6 +924,24 @@ function getWeekDays(off=0){
   return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
 }
 function getTech(id){ return technicians.find(t=>t.id===id)||{name:'Sin asignar',colorIdx:0,initials:'?'}; }
+// Multi-técnico: obtener array de técnicos de un servicio
+function getSvcTechs(svc){ 
+  const ids=svc.techIds||[svc.techId].filter(Boolean);
+  return ids.map(id=>getTech(id)).filter(t=>t.id);
+}
+function getSvcTechNames(svc){ return getSvcTechs(svc).map(t=>t.name).join(' + ')||'Sin asignar'; }
+function getSvcTechInitials(svc){ return getSvcTechs(svc).map(t=>t.initials||t.name.slice(0,2)).join('+'); }
+// Para colores del bloque, usar el primer técnico
+function getSvcMainTech(svc){ return getSvcTechs(svc)[0]||getTech(svc.techId)||{name:'Sin asignar',colorIdx:0,initials:'?'}; }
+// Selector multi-técnico
+function techMultiOpts(selectedIds=[]){
+  return technicians.map(t=>`<label style="display:flex;align-items:center;gap:6px;padding:5px 0;cursor:pointer;font-size:13px">
+    <input type="checkbox" value="${t.id}" ${selectedIds.includes(t.id)?'checked':''} class="f_tech_cb" style="width:14px;height:14px;accent-color:var(--accent)">
+    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getPalette(t.colorIdx||0).bd};flex-shrink:0"></span>
+    ${t.name}
+  </label>`).join('');
+}
+function getSelectedTechIds(){ return [...document.querySelectorAll('.f_tech_cb:checked')].map(cb=>cb.value); }
 function getPalette(idx){ return TECH_PALETTE[idx%TECH_PALETTE.length]; }
 function getSC(status){ return statusColors[status]||statusColors['Pendiente']; }
 function hasPerm(perm){ if(!currentUser)return false; const roles=currentUser.roles||[]; return roles.some(r=>ROLES_DEF[r]?.perms.includes(perm)); }
@@ -1262,7 +1280,7 @@ window.renderCalendar=function(){
 
   const dayKeys=days.map(fmtKey);
   const canEdit=hasPerm('edit_calendar');
-  const filtered=filter?services.filter(s=>s.techId===filter):services;
+  const filtered=filter?services.filter(s=>(s.techIds||[s.techId]).includes(filter)):services;
 
   dayKeys.forEach((dk,di)=>{
     const daySvcs=filtered.filter(s=>s.date===dk);
@@ -1272,7 +1290,7 @@ window.renderCalendar=function(){
       const cell=document.getElementById(`dc_${di}_${svc.startH}`);
       if(!cell)return;
       const sc=getSC(svc.status||'Pendiente');
-      const tech=getTech(svc.techId);
+      const tech=getSvcMainTech(svc); // primer técnico para color
       const topPx=((svc.startM||0)/60)*56;
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
       // Para franja horaria sin hora exacta, altura fija compacta
@@ -1401,7 +1419,10 @@ window.openNewSvcModal=function(date='',hour=8){
     </div>
     <div class="form-row">
       <div class="form-group"><label>Tipo de servicio</label><select id="f_type">${typeOpts()}</select></div>
-      <div class="form-group"><label>Técnico</label><select id="f_tech">${techOpts()}</select></div>
+      <div class="form-group"><label>Técnico(s)</label>
+        <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+          ${techMultiOpts([])}
+        </div></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Estado</label><select id="f_status">${statusOpts()}</select></div>
@@ -1545,7 +1566,7 @@ window.saveSvc=function(){
   const client=document.getElementById('f_client').value.trim();
   if(!client){showToast('Ingresa el nombre del cliente','error');return;}
   const type   =document.getElementById('f_type').value;
-  const techId =document.getElementById('f_tech').value;
+  const techIds=getSelectedTechIds(); const techId=techIds[0]||technicians[0]?.id||'';
   const status =document.getElementById('f_status').value;
   const date   =document.getElementById('f_date').value;
   const timeDef=document.getElementById('f_timedef')?.checked;
@@ -1568,13 +1589,36 @@ window.saveSvc=function(){
 
   if(editingId){
     const idx=services.findIndex(s=>s.id===editingId);
-    if(idx>=0) services[idx]={...services[idx],client,type,techId,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,updatedAt:Date.now()};
+    if(idx>=0) services[idx]={...services[idx],client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,updatedAt:Date.now()};
     addHistory('Servicio editado',`${client} [${status}] — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
     showToast('Servicio actualizado','success');
   } else {
-    services.push({id:uid(),client,type,techId,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,createdAt:Date.now()});
+    const _cli2=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
+    services.push({id:uid(),client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
     addHistory('Servicio creado',`${client} (${type}) — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
     showToast('Servicio creado','success');
+  }
+  // Crear servicios vinculados automáticamente (solo al crear, no al editar)
+  if(!editingId){
+    const cli=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
+    if(cli?.linkedGroup){
+      const group=clients.filter(c=>c.linkedGroup===cli.linkedGroup&&c.id!==cli.id);
+      let nextH=eH,nextM=eM;
+      group.forEach(linkedClient=>{
+        const dur=(eH-sH)*60+(eM-sM)||60;
+        const startTot=nextH*60+nextM;
+        const endTot=Math.min(23*60,startTot+dur);
+        services.push({
+          id:uid(),client:linkedClient.name,type,techId,techIds,status,date,
+          startH:Math.floor(startTot/60),startM:startTot%60,
+          endH:Math.floor(endTot/60),endM:endTot%60,
+          address:linkedClient.address||'',phone:linkedClient.phone||'',
+          notes:'',timeMode:franja,linkedGroupId:cli.linkedGroup,createdAt:Date.now()
+        });
+        nextH=Math.floor(endTot/60);nextM=endTot%60;
+      });
+      if(group.length) showToast(`✓ ${group.length} servicio(s) vinculado(s) creados`,'success');
+    }
   }
   closeModal(); saveData();
 };
@@ -1665,12 +1709,13 @@ window.renderClients=function(){
     <div class="card card-row">
       <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''} ${c.emailTemplate?'<span style="color:#0078d4;font-size:10px">✉ plantilla</span>':''} ${c.recurrence?'<span style="color:#a855f7;font-size:10px">🔁 recurrente</span>':''}</div>
+        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''} ${c.emailTemplate?'<span style="color:#0078d4;font-size:10px">✉ plantilla</span>':''} ${c.recurrence?'<span style="color:#a855f7;font-size:10px">🔁 recurrente</span>':''} ${c.linkedGroup?'<span style="color:#10b981;font-size:10px">🔗 vinculado</span>':''}</div>
         <div class="info-secondary">${[c.whatsappName?'👤 '+c.whatsappName:null,c.phone,c.email,c.address].filter(Boolean).join(' · ')||'Sin datos'}</div>
       </div>
       <div class="card-actions">
         <button class="btn btn-sm" style="background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)" onclick="openEmailTemplateModal('${c.id}')">✉ Plantilla</button>
         <button class="btn btn-sm" style="background:rgba(168,85,247,.15);color:#a855f7;border-color:rgba(168,85,247,.3)" onclick="openRecurrenceModal('${c.id}')">🔁 Recurrencia</button>
+        <button class="btn btn-sm" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)" onclick="openLinkedModal('${c.id}')">🔗 Vincular</button>
         ${canEdit?`<button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
         <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>`:''}
       </div>
@@ -2166,7 +2211,7 @@ window.removeExtraStop=function(techId,idx){
 window.optimizeRoutes=async function(){
   const date=document.getElementById('routeDate').value||fmtKey(new Date());
   const techFilter=document.getElementById('routeTech').value;
-  const daySvcs=services.filter(s=>s.date===date&&(techFilter==='all'||s.techId===techFilter))
+  const daySvcs=services.filter(s=>s.date===date&&(techFilter==='all'||(s.techIds||[s.techId]).includes(techFilter)))
     .sort((a,b)=>a.startH*60+(a.startM||0)-(b.startH*60+(b.startM||0)));
   if(!daySvcs.length){showToast('No hay servicios para este día','error');return;}
 
@@ -2220,7 +2265,7 @@ window.generateRoutes=function(){
   const techFilter=document.getElementById('routeTech').value;
   if(window._lastRouteDate&&window._lastRouteDate!==date)extraStops={};
   window._lastRouteDate=date;
-  const daySvcs=services.filter(s=>s.date===date&&(techFilter==='all'||s.techId===techFilter))
+  const daySvcs=services.filter(s=>s.date===date&&(techFilter==='all'||(s.techIds||[s.techId]).includes(techFilter)))
     .sort((a,b)=>((a.routeOrder??99)*10+a.startH*60+(a.startM||0))-((b.routeOrder??99)*10+b.startH*60+(b.startM||0)));
   if(!daySvcs.length){
     document.getElementById('routesSidebar').innerHTML=`<div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">Sin servicios para esta fecha.</div>`;
@@ -2228,9 +2273,16 @@ window.generateRoutes=function(){
   }
   const byTech={};
   daySvcs.forEach(s=>{
-    const t=getTech(s.techId);
-    if(!byTech[s.techId])byTech[s.techId]={tech:t,svcs:[]};
-    byTech[s.techId].svcs.push(s);
+    const ids=s.techIds||[s.techId].filter(Boolean);
+    ids.forEach(tid=>{
+      const t=getTech(tid);
+      if(!byTech[tid])byTech[tid]={tech:t,svcs:[]};
+      byTech[tid].svcs.push(s);
+    });
+    if(!ids.length){ // sin técnico asignado
+      if(!byTech['__none__'])byTech['__none__']={tech:{name:'Sin asignar',colorIdx:5,initials:'?'},svcs:[]};
+      byTech['__none__'].svcs.push(s);
+    }
   });
   let sidebarHtml='';
   Object.values(byTech).forEach((group,gi)=>{
@@ -2631,6 +2683,49 @@ async function boot(){
   // Intentar setup inicial (se ignora si ya existe)
   await firstTimeSetup();
 }
+
+/* ═══ SERVICIOS VINCULADOS ═══ */
+window.openLinkedModal=function(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  const currentGroup=c.linkedGroup||'';
+  // Clientes en el mismo grupo actual
+  const inGroup=currentGroup?clients.filter(x=>x.linkedGroup===currentGroup&&x.id!==clientId):[];
+  showModal(`<h3>🔗 Servicios vinculados — ${c.name}</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+      Al programar un servicio para este cliente, se crearán automáticamente servicios para los clientes vinculados en horarios contiguos.
+    </p>
+    ${currentGroup?`<div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:var(--radius);padding:8px 12px;margin-bottom:12px;font-size:12px">
+      Grupo actual: <b>${currentGroup}</b> — vinculado con: ${inGroup.map(x=>x.name).join(', ')||'ninguno'}
+    </div>`:''}
+    <div class="form-group"><label>Grupo de vinculación</label>
+      <p style="font-size:11px;color:var(--text2);margin-bottom:6px">Usa el mismo nombre en todos los clientes que quieras vincular (ej: "Jardines Norte")</p>
+      <input id="lk_group" placeholder="Nombre del grupo" value="${currentGroup}">
+    </div>
+    <div class="form-group"><label>Orden en el grupo</label>
+      <p style="font-size:11px;color:var(--text2);margin-bottom:6px">Los servicios se crean en orden ascendente. El primero que programes inicia la cadena.</p>
+      <input type="number" id="lk_order" value="${c.linkedOrder||1}" min="1" max="20" style="width:80px">
+    </div>
+    <div class="modal-footer">
+      ${currentGroup?`<button class="btn btn-danger" onclick="removeLinked('${clientId}')">Quitar del grupo</button>`:''}
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveLinked('${clientId}')">Guardar</button>
+    </div>`);
+};
+window.saveLinked=function(clientId){
+  const group=document.getElementById('lk_group').value.trim();
+  const order=parseInt(document.getElementById('lk_order').value)||1;
+  if(!group){showToast('Ingresa un nombre de grupo','error');return;}
+  const idx=clients.findIndex(x=>x.id===clientId);
+  if(idx>=0) clients[idx]={...clients[idx],linkedGroup:group,linkedOrder:order};
+  saveData();closeModal();renderClients();
+  showToast(`Cliente vinculado al grupo "${group}"`,'success');
+};
+window.removeLinked=function(clientId){
+  const idx=clients.findIndex(x=>x.id===clientId);
+  if(idx>=0){const{linkedGroup,linkedOrder,...rest}=clients[idx];clients[idx]=rest;}
+  saveData();closeModal();renderClients();
+  showToast('Cliente desvinculado','success');
+};
 
 /* ═══════════════════════════════════════════════════════
    MÓDULO RECURRENCIAS
