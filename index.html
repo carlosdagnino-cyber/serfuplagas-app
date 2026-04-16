@@ -1558,7 +1558,7 @@ window.renderClients=function(){
       <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
         <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''}</div>
-        <div class="info-secondary">${[c.address,c.phone,c.email].filter(Boolean).join(' · ')||'Sin datos'}</div>
+        <div class="info-secondary">${[c.whatsappName?'👤 '+c.whatsappName:null,c.phone,c.email,c.address].filter(Boolean).join(' · ')||'Sin datos'}</div>
       </div>
       ${canEdit?`<div class="card-actions">
         <button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
@@ -1569,11 +1569,12 @@ window.renderClients=function(){
 
 window.openAddClientModal=function(){
   showModal(`<h3>Agregar cliente</h3>
-    <div class="form-group"><label>Nombre</label><input id="fc_name" placeholder="Nombre del cliente"></div>
+    <div class="form-group"><label>Nombre del cliente / empresa</label><input id="fc_name" placeholder="Nombre del cliente"></div>
     <div class="form-row">
-      <div class="form-group"><label>Dirección</label><input id="fc_address" placeholder="Dirección"></div>
+      <div class="form-group"><label>Nombre contacto WhatsApp</label><input id="fc_wname" placeholder="Persona de contacto"></div>
       <div class="form-group"><label>Teléfono / WhatsApp</label><input id="fc_phone" placeholder="+56 9 …"></div>
     </div>
+    <div class="form-group"><label>Dirección</label><input id="fc_address" placeholder="Dirección"></div>
     <div class="form-row">
       <div class="form-group"><label>Correo electrónico</label><input id="fc_email" placeholder="correo@ejemplo.cl"></div>
       <div class="form-group"><label>Canal de contacto preferido</label>
@@ -1594,11 +1595,12 @@ window.openAddClientModal=function(){
 window.openEditClientModal=function(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
   showModal(`<h3>Editar cliente</h3>
-    <div class="form-group"><label>Nombre</label><input id="fc_name" value="${c.name}"></div>
+    <div class="form-group"><label>Nombre del cliente / empresa</label><input id="fc_name" value="${c.name}"></div>
     <div class="form-row">
-      <div class="form-group"><label>Dirección</label><input id="fc_address" value="${c.address||''}"></div>
+      <div class="form-group"><label>Nombre contacto WhatsApp</label><input id="fc_wname" value="${c.whatsappName||''}"></div>
       <div class="form-group"><label>Teléfono / WhatsApp</label><input id="fc_phone" value="${c.phone||''}"></div>
     </div>
+    <div class="form-group"><label>Dirección</label><input id="fc_address" value="${c.address||''}"></div>
     <div class="form-row">
       <div class="form-group"><label>Correo electrónico</label><input id="fc_email" value="${c.email||''}"></div>
       <div class="form-group"><label>Canal de contacto preferido</label>
@@ -1622,16 +1624,17 @@ window.saveClient=function(id){
   if(!name){showToast('Ingresa el nombre','error');return;}
   const address=document.getElementById('fc_address').value.trim();
   const phone  =document.getElementById('fc_phone').value.trim();
+  const whatsappName=document.getElementById('fc_wname')?.value.trim()||'';
   const email  =document.getElementById('fc_email')?.value.trim()||'';
   const contactChannel=document.getElementById('fc_contact')?.value||'';
   const notes  =document.getElementById('fc_notes').value.trim();
   if(id){
     const idx=clients.findIndex(c=>c.id===id);
-    if(idx>=0) clients[idx]={...clients[idx],name,address,phone,email,contactChannel,notes};
+    if(idx>=0) clients[idx]={...clients[idx],name,address,phone,whatsappName,email,contactChannel,notes};
     addHistory('Cliente editado',name);
     showToast('Cliente actualizado','success');
   } else {
-    clients.push({id:uid(),name,address,phone,email,contactChannel,notes,createdAt:Date.now()});
+    clients.push({id:uid(),name,address,phone,whatsappName,email,contactChannel,notes,createdAt:Date.now()});
     addHistory('Cliente agregado',name);
     showToast('Cliente agregado','success');
   }
