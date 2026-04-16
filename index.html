@@ -1826,9 +1826,6 @@ window.optimizeRoutes=async function(){
   generateRoutes();
 };
 
-// Estado de paradas extra por técnico (en memoria)
-let extraStops={};
-
 window.addExtraStop=function(techId){
   const addr=prompt('Dirección de la parada extra\n(ej: Av. Principal 123, La Granja):');
   if(!addr||!addr.trim())return;
