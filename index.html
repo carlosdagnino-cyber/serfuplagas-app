@@ -1008,6 +1008,26 @@ const DEFAULT_PRODUCTOS = [
 const PLAGAS_LIST = ['Ratón doméstico','Rata noruega','Rata negra','Cucaracha alemana','Cucaracha americana','Cucaracha oriental','Hormiga carpintera','Hormiga argentina','Hormiga faraón','Mosca doméstica','Mosca de fruta','Mosquito','Pulga','Garrapata','Piojo','Polilla','Polilla de ropa','Gorgojo','Termita','Murciélago','Paloma','Otro'];
 const TIPO_TRAMPA = ['Trampa de golpe','Trampa de pegamento','Trampa jaula','Estación de cebo','Trampa luminosa','Feromona','Otro'];
 
+/* ── HELPERS CERTIFICADOS (definidos temprano para uso en renderCalendar) ── */
+function getProductos(){ return productos.length ? productos : DEFAULT_PRODUCTOS; }
+function getCert(svcId){ return certificados.find(c=>c.svcId===svcId); }
+function certStatus(svcId){
+  const c=getCert(svcId);
+  if(!c) return 'sin_inicio';
+  if(c.checkIn&&!c.checkOut) return 'en_curso';
+  if(c.checkOut&&!c.validado) return 'pendiente_revision';
+  if(c.validado) return 'validado';
+  return 'sin_inicio';
+}
+function getCertNotifications(){
+  return certificados
+    .filter(c=>c.checkOut&&!c.validado)
+    .map(c=>({id:c.id,type:'urgent',icon:'📋',
+      title:c.clientName,
+      msg:`Check-out ${c.checkOutDisplay} — pendiente revisión`,
+      svcId:c.svcId,isCert:true}));
+}
+
 let statusColors={
   'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
   'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
@@ -3437,7 +3457,9 @@ function getNotifications(){
         svcId:svc.id});
     }
   });
-  return notifs.sort((a,b)=>a.type==='urgent'?-1:1);
+  // Agregar notificaciones de certificados pendientes
+  const certNotifs = typeof getCertNotifications === 'function' ? getCertNotifications() : [];
+  return [...certNotifs, ...notifs].sort((a,b)=>a.type==='urgent'?-1:1);
 }
 
 function updateNotifBadge(){
@@ -3725,17 +3747,7 @@ window.switchRouteTab = function(btnEl, panelId, color){
 /* ── ESTADO GLOBAL CERTIFICADOS ────────────────────────────────────────── */
 // productos y certificados ya declarados en el estado global del módulo principal
 
-/* ── HELPERS ───────────────────────────────────────────────────────────── */
-function getProductos(){ return productos.length ? productos : DEFAULT_PRODUCTOS; }
-function getCert(svcId){ return certificados.find(c=>c.svcId===svcId); }
-function certStatus(svcId){
-  const c=getCert(svcId);
-  if(!c) return 'sin_inicio';
-  if(c.checkIn && !c.checkOut) return 'en_curso';
-  if(c.checkOut && !c.validado) return 'pendiente_revision';
-  if(c.validado) return 'validado';
-  return 'sin_inicio';
-}
+/* getProductos, getCert, certStatus — movidas al estado global */
 
 /* ══════════════════════════════════════════════════════════════════════════
    CHECK-IN
@@ -4685,20 +4697,7 @@ window.deleteProducto = function(pid){
   openCatalogoProductos();
 };
 
-/* ══════════════════════════════════════════════════════════════════════════
-   NOTIFICACIONES — integrar check-out en sistema existente
-══════════════════════════════════════════════════════════════════════════ */
-function getCertNotifications(){
-  return certificados
-    .filter(c=>c.checkOut&&!c.validado)
-    .map(c=>({
-      id:c.id, type:'urgent', icon:'📋',
-      title:`${c.clientName}`,
-      msg:`Check-out ${c.checkOutDisplay} — pendiente revisión y validación`,
-      svcId:c.svcId,
-      isCert:true,
-    }));
-}
+/* getCertNotifications — movida al estado global */
 
 window.renderCerts = function(){
   const el=document.getElementById('certsList'); if(!el) return;
@@ -4734,8 +4733,7 @@ window.renderCerts = function(){
     </div></div>`;
   }).join('');
 };
-const _origGetNotif=getNotifications;
-function getNotifications(){ return[...getCertNotifications(),..._origGetNotif()]; }
+/* getNotifications parchada inline — ver función original */
 
 boot();
 startNotifChecker();
