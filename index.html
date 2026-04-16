@@ -241,27 +241,26 @@ header {
 
 /* ── SERVICE BLOCKS ── */
 .svc-block {
-  position:absolute; border-radius:6px; padding:3px 5px;
+  position:absolute; border-radius:6px; padding:3px 6px;
   border-left:3px solid; cursor:grab; z-index:5;
   overflow:hidden; transition:filter .1s; user-select:none;
+  display:flex; align-items:center; gap:4px;
 }
 .svc-block:hover { filter:brightness(1.15); z-index:10; }
 .svc-block.dragging { opacity:.2; cursor:grabbing; }
+.sb-left { flex:1; min-width:0; overflow:hidden; }
 .sb-client { font-size:10px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sb-meta   { font-size:9px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sb-time   { font-size:9px; font-family:var(--mono); opacity:.6; }
-.sb-status { font-size:8px; opacity:.8; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
-.sb-actions { display:flex; gap:3px; margin-top:3px; }
+.sb-time   { font-size:9px; font-family:var(--mono); opacity:.7; white-space:nowrap; }
+.sb-actions { display:flex; gap:3px; align-items:center; flex-shrink:0; }
 .sb-btn-status {
   font-size:8px; font-weight:700; padding:1px 5px; border-radius:4px;
-  border:none; cursor:pointer; letter-spacing:.03em; text-transform:uppercase;
+  border:none; cursor:pointer; letter-spacing:.02em; text-transform:uppercase;
   white-space:nowrap; transition:all .15s; line-height:1.6;
 }
 .sb-btn-contact {
   width:18px; height:18px; border-radius:4px; border:none; cursor:pointer;
   display:flex; align-items:center; justify-content:center;
-  background:rgba(255,255,255,0.15); transition:all .15s; flex-shrink:0;
-  padding:0;
+  background:rgba(255,255,255,0.15); transition:all .15s; flex-shrink:0; padding:0;
 }
 .sb-btn-contact:hover { background:rgba(255,255,255,0.3); }
 .sb-btn-status:hover { filter:brightness(1.2); }
@@ -1068,17 +1067,9 @@ function renderFilterSelect(){
 }
 
 function calcLayout(daySvcs){
-  const sorted=[...daySvcs].sort((a,b)=>a.startH*60+(a.startM||0)-(b.startH*60+(b.startM||0)));
-  const cols=[],res={};
-  sorted.forEach(svc=>{
-    const s=svc.startH*60+(svc.startM||0),e=svc.endH*60+(svc.endM||0);
-    let c=-1;
-    for(let i=0;i<cols.length;i++){ if(cols[i]<=s){c=i;cols[i]=e;break;} }
-    if(c===-1){c=cols.length;cols.push(e);}
-    res[svc.id]={col:c};
-  });
-  const total=cols.length;
-  Object.keys(res).forEach(id=>{ res[id].total=total; });
+  // Siempre apilado vertical — 1 columna, ancho 100%
+  const res={};
+  daySvcs.forEach(svc=>{ res[svc.id]={col:0,total:1}; });
   return res;
 }
 
@@ -1181,11 +1172,13 @@ window.renderCalendar=function(){
       const tech=getTech(svc.techId);
       const topPx=((svc.startM||0)/60)*56;
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
-      const hpx=Math.max(mins/60*56,22);
+      // Para franja horaria sin hora exacta, altura fija compacta
+      const hpx = svc.timeMode==='defined'
+        ? Math.max(mins/60*56, 28)
+        : 28; // altura fija para AM/PM/Todo el día
       const {col,total}=layout[svc.id]||{col:0,total:1};
-      const pct=100/total;
-      const w=total>1?`calc(${pct}% - 4px)`:'calc(100% - 6px)';
-      const left=total>1?`calc(${col*pct}% + 2px)`:'3px';
+      const w='calc(100% - 6px)';
+      const left='3px';
 
       const block=document.createElement('div');
       block.className='svc-block';
@@ -1202,8 +1195,10 @@ window.renderCalendar=function(){
         ? fmtTime(svc.startH,svc.startM||0)
         : (svc.timeMode==='am' ? 'AM' : svc.timeMode==='pm' ? 'PM' : svc.timeMode==='dia' ? 'Todo el día' : '');
       block.innerHTML=`
-        <div class="sb-client">${svc.client}</div>
-        ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
+        <div class="sb-left">
+          <div class="sb-client">${svc.client}</div>
+          ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
+        </div>
         <div class="sb-actions">
           <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
             onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
@@ -1259,7 +1254,12 @@ function onDrop(e){
   if(newDate===svc.date&&nsH===svc.startH&&nsM===(svc.startM||0)){dragSvcId=null;return;}
   const old=`${svc.date} ${fmtTime(svc.startH,svc.startM||0)}`;
   const idx=services.findIndex(s=>s.id===dragSvcId);
-  services[idx]={...svc,date:newDate,startH:nsH,startM:nsM,endH:neH,endM:neM};
+  if(svc.timeMode && svc.timeMode!=='defined'){
+    // Franja horaria: solo cambiar fecha y celda visual, mantener timeMode
+    services[idx]={...svc,date:newDate,startH:nsH,startM:nsM,endH:nsH+1,endM:nsM};
+  } else {
+    services[idx]={...svc,date:newDate,startH:nsH,startM:nsM,endH:neH,endM:neM};
+  }
   addHistory('Servicio movido',`${svc.client}: de ${old} → ${newDate} ${fmtTime(nsH,nsM)}`);
   dragSvcId=null; saveData();
 }
