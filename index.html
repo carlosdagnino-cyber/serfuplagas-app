@@ -935,11 +935,14 @@ header {
         </div>
         <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
           <select id="certFilterStatus" class="btn btn-sm" onchange="renderCerts()">
-            <option value="">Todos</option>
+            <option value="all">Todos los servicios</option>
+            <option value="">Solo con actividad</option>
+            <option value="sin_inicio">Sin iniciar</option>
             <option value="en_curso">En curso</option>
             <option value="pendiente_revision">Pend. revisión</option>
             <option value="validado">Validados</option>
           </select>
+          <input type="date" id="certFilterFecha" class="btn btn-sm" style="cursor:text" onchange="renderCerts()" title="Filtrar por fecha">
           <input type="month" id="certFilterMes" class="btn btn-sm" style="cursor:text" onchange="renderCerts()">
         </div>
         <div id="certsList"></div>
@@ -4158,9 +4161,33 @@ window.doCheckOut = function(svcId){
    VISTA ADMIN — REVISIÓN Y VALIDACIÓN
 ══════════════════════════════════════════════════════════════════════════ */
 window.openRevisionAdmin = function(svcId){
-  const cert=getCert(svcId);
   const svc=services.find(s=>s.id===svcId);
-  if(!cert||!svc){ showToast('Sin datos de terreno','error'); return; }
+  if(!svc){ showToast('Servicio no encontrado','error'); return; }
+  // Si no hay cert todavía, ofrecer iniciar el flujo o ver datos del servicio
+  let cert=getCert(svcId);
+  if(!cert){
+    // Admin puede ver el servicio aunque no haya check-in
+    showModal(`
+      <h3>📋 ${svc.client}</h3>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+          <div><span style="color:var(--text2)">Fecha:</span> <strong>${svc.date}</strong></div>
+          <div><span style="color:var(--text2)">Tipo:</span> <strong>${svc.type}</strong></div>
+          <div><span style="color:var(--text2)">Técnico:</span> <strong>${getTech(svc.techId).name||'—'}</strong></div>
+          <div><span style="color:var(--text2)">Estado:</span> <strong>${svc.status}</strong></div>
+        </div>
+        ${svc.address?`<div style="margin-top:8px;font-size:12px;color:var(--text2)">📍 ${svc.address}</div>`:''}
+        ${svc.notes?`<div style="margin-top:6px;font-size:12px;background:var(--warning-dim);padding:6px 10px;border-radius:6px;color:var(--warning)">⚠️ ${svc.notes}</div>`:''}
+      </div>
+      <div style="background:var(--accent-dim);border:1px solid rgba(79,142,247,.3);border-radius:var(--radius);padding:10px;font-size:12px;color:var(--text2);margin-bottom:12px">
+        ℹ️ El técnico aún no ha iniciado este servicio (sin check-in).
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cerrar</button>
+        <button class="btn btn-primary" onclick="closeModal();abrirFlujoTecnico('${svcId}')">▶ Iniciar como técnico</button>
+      </div>`);
+    return;
+  }
   const prods=getProductos();
   const cats=[...new Set(prods.map(p=>p.categoria))];
 
@@ -4704,10 +4731,15 @@ window.renderCerts = function(){
   const isAdmin=hasPerm('edit_calendar');
   // Admin ve todo; técnico ve solo los suyos
   const myTech=!isAdmin?technicians.find(t=>t.name.toLowerCase().includes((currentUser?.name||'').split(' ')[0].toLowerCase())):null;
+  const filterFecha=document.getElementById('certFilterFecha')?.value||'';
   let items=services.filter(s=>{
     if(filterMes&&!s.date.startsWith(filterMes)) return false;
+    if(filterFecha&&s.date!==filterFecha) return false;
     const cs=certStatus(s.id);
-    if(filterStatus&&cs!==filterStatus) return false;
+    // 'all' = todos; '' = solo con actividad; otro = estado específico
+    if(filterStatus==='all') { /* sin filtro de estado */ }
+    else if(filterStatus==='') { /* solo con actividad — excluir sin_inicio por defecto no, mostrar todo */ }
+    else if(cs!==filterStatus) return false;
     // Técnico: solo ve los suyos; admin: ve todos
     if(myTech&&!(s.techIds||[s.techId]).includes(myTech.id)) return false;
     return true;
@@ -4745,12 +4777,11 @@ window.renderCerts = function(){
             `<button class="btn btn-sm btn-primary" onclick="abrirFlujoTecnico('${s.id}')">📍 Iniciar</button>`:
            cs==='en_curso'?
             `<button class="btn btn-sm" style="background:var(--success-dim);color:var(--success)" onclick="abrirFlujoTecnico('${s.id}')">📋 Continuar</button>`:
-           cs==='pendiente_revision'&&isAdmin?
+           cs==='pendiente_revision'?
             `<button class="btn btn-sm btn-primary" onclick="openRevisionAdmin('${s.id}')">🔍 Revisar</button>`:
            cs==='validado'?
             `<button class="btn btn-sm" onclick="generarPDFs('${s.id}')">📄 PDFs</button>`:''}
-          ${isAdmin&&cs==='pendiente_revision'?`<button class="btn btn-sm" onclick="openRevisionAdmin('${s.id}')">Ver</button>`:''}
-          ${isAdmin&&cs==='sin_inicio'?`<button class="btn btn-sm" onclick="abrirFlujoTecnico('${s.id}')">Iniciar</button>`:''}
+          ${isAdmin?`<button class="btn btn-sm" onclick="openRevisionAdmin('${s.id}')" title="Ver detalle">👁</button>`:''}
         </div>
       </div>
     </div>`;
