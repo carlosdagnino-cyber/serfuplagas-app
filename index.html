@@ -1273,7 +1273,7 @@ function showApp(){
   if(isTech){
     document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
       const t=tab.dataset.tab;
-      if(!['calendar','routes'].includes(t)) tab.style.display='none';
+      if(!['calendar','routes','certs'].includes(t)) tab.style.display='none';
     });
   }
   const isMobileTech=window.innerWidth<=640&&isTech;
@@ -1538,7 +1538,7 @@ window.renderCalendar=function(){
           ${svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
             title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
           ${(()=>{ const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase()); return (_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo de confirmación" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:''; })()}
-          ${(()=>{ const _cs=certStatus(svc.id); return _cs==='pendiente_revision'?`<button class="sb-btn-contact" style="background:#f59e0b" title="Pend. revisión" onclick="event.stopPropagation();switchTab('certs')">📋</button>`:_cs==='en_curso'?`<button class="sb-btn-contact" style="background:#22c55e" title="En curso" onclick="event.stopPropagation();openFormularioTerreno('${svc.id}')">📍</button>`:_cs==='validado'?`<button class="sb-btn-contact" style="background:#a855f7" title="Ver certificado" onclick="event.stopPropagation();openRevisionAdmin('${svc.id}')">📄</button>`:''; })()}
+          ${(()=>{ const _cs=certStatus(svc.id); return _cs==='pendiente_revision'?`<button class="sb-btn-contact" style="background:#f59e0b" title="Pend. revisión" onclick="event.stopPropagation();switchTab('certs')">📋</button>`:_cs==='en_curso'?`<button class="sb-btn-contact" style="background:#22c55e" title="En curso" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">📍</button>`:_cs==='sin_inicio'?`<button class="sb-btn-contact" style="background:var(--accent)" title="Iniciar servicio" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">▶</button>`:_cs==='validado'?`<button class="sb-btn-contact" style="background:#a855f7" title="Ver certificado" onclick="event.stopPropagation();openRevisionAdmin('${svc.id}')">📄</button>`:''; })()}
           <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
             onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
         </div>`;
@@ -1901,13 +1901,11 @@ function renderMobileTechView(){
       </div>
       <div class="tech-svc-actions">
         ${mapsUrl?`<a href="${mapsUrl}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;text-decoration:none">🧭 Navegar</a>`:''}
-        ${s.status==='Completado'||s.status==='Pend. revisión'
+        ${s.status==='Pend. revisión'||s.status==='Completado'
           ? `<button class="btn btn-sm" style="flex:1;opacity:.6" disabled>✓ ${s.status}</button>`
-          : certStatus(s.id)==='sin_inicio'
-            ? `<button class="btn btn-primary btn-sm" onclick="doCheckIn('${s.id}')" style="flex:1">📍 Check-in</button>`
-            : certStatus(s.id)==='en_curso'
-              ? `<button class="btn btn-sm" style="flex:1;background:var(--success-dim);color:var(--success);border-color:rgba(34,197,94,.3)" onclick="openFormularioTerreno('${s.id}')">📋 Continuar</button>`
-              : `<button class="btn btn-sm" style="flex:1;opacity:.6" disabled>✓ Completado</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="abrirFlujoTecnico('${s.id}')" style="flex:1">
+              ${certStatus(s.id)==='sin_inicio'?'📍 Iniciar servicio':'📋 Continuar servicio'}
+            </button>`
         }
       </div>
     </div>`;
@@ -4703,37 +4701,721 @@ window.renderCerts = function(){
   const el=document.getElementById('certsList'); if(!el) return;
   const filterStatus=document.getElementById('certFilterStatus')?.value||'';
   const filterMes=document.getElementById('certFilterMes')?.value||'';
-  const items=services.filter(s=>{
+  const isAdmin=hasPerm('edit_calendar');
+  // Admin ve todo; técnico ve solo los suyos
+  const myTech=!isAdmin?technicians.find(t=>t.name.toLowerCase().includes((currentUser?.name||'').split(' ')[0].toLowerCase())):null;
+  let items=services.filter(s=>{
     if(filterMes&&!s.date.startsWith(filterMes)) return false;
     const cs=certStatus(s.id);
     if(filterStatus&&cs!==filterStatus) return false;
-    if(!filterStatus) return cs!=='sin_inicio';
+    // Técnico: solo ve los suyos; admin: ve todos
+    if(myTech&&!(s.techIds||[s.techId]).includes(myTech.id)) return false;
     return true;
   }).sort((a,b)=>b.date.localeCompare(a.date));
-  if(!items.length){ el.innerHTML='<p style="color:var(--text2);font-size:13px">Sin certificados. Los servicios aparecen aquí después del check-in.</p>'; return; }
-  const SC={en_curso:{label:'En curso 📍',bg:'rgba(34,197,94,.12)',tx:'#22c55e'},pendiente_revision:{label:'Pend. revisión 🔔',bg:'var(--warning-dim)',tx:'var(--warning)'},validado:{label:'Validado ✓',bg:'rgba(168,85,247,.12)',tx:'#a855f7'}};
-  const isAdmin=hasPerm('edit_calendar');
+  if(!items.length){
+    el.innerHTML='<p style="color:var(--text2);font-size:13px">Sin servicios para los filtros seleccionados.</p>';
+    return;
+  }
+  const SC={
+    sin_inicio:       {label:'Sin iniciar',      bg:'var(--bg3)',                    tx:'var(--text3)'},
+    en_curso:         {label:'En curso 📍',       bg:'rgba(34,197,94,.12)',           tx:'#22c55e'},
+    pendiente_revision:{label:'Pend. revisión 🔔',bg:'var(--warning-dim)',            tx:'var(--warning)'},
+    validado:         {label:'Validado ✓',        bg:'rgba(168,85,247,.12)',          tx:'#a855f7'},
+  };
   el.innerHTML=items.map(s=>{
-    const cs=certStatus(s.id); const cert=getCert(s.id); const sc=SC[cs]||{label:cs,bg:'var(--bg3)',tx:'var(--text3)'};
-    return `<div class="card" style="margin-bottom:8px;padding:10px 14px"><div class="card-row">
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:600">${s.client}</span>
-          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${sc.bg};color:${sc.tx};font-weight:500">${sc.label}</span>
+    const cs=certStatus(s.id); const cert=getCert(s.id);
+    const sc=SC[cs]||SC.sin_inicio;
+    const prog=s.startH?`${String(s.startH).padStart(2,'0')}:${String(s.startM||0).padStart(2,'0')}`:'';
+    return `<div class="card" style="margin-bottom:8px;padding:10px 14px">
+      <div class="card-row">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:600">${s.client}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${sc.bg};color:${sc.tx};font-weight:500">${sc.label}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">
+            ${s.date}${prog?' · '+prog:''} · ${s.type}
+            ${cert?.checkInDisplay?' · Inicio: '+cert.checkInDisplay:''}
+          </div>
+          ${s.address?`<div style="font-size:11px;color:var(--text3);margin-top:1px">📍 ${s.address}</div>`:''}
+          ${cert?.receptor?`<div style="font-size:11px;color:var(--text3)">Receptor: ${cert.receptor}</div>`:''}
         </div>
-        <div style="font-size:11px;color:var(--text2);margin-top:3px">${s.date} · ${s.type}${cert?.checkInDisplay?' · '+cert.checkInDisplay:''}</div>
-        ${cert?.receptor?`<div style="font-size:11px;color:var(--text3)">Receptor: ${cert.receptor}</div>`:''}
+        <div class="card-actions" style="flex-direction:column;gap:4px;align-items:flex-end">
+          ${cs==='sin_inicio'?
+            `<button class="btn btn-sm btn-primary" onclick="abrirFlujoTecnico('${s.id}')">📍 Iniciar</button>`:
+           cs==='en_curso'?
+            `<button class="btn btn-sm" style="background:var(--success-dim);color:var(--success)" onclick="abrirFlujoTecnico('${s.id}')">📋 Continuar</button>`:
+           cs==='pendiente_revision'&&isAdmin?
+            `<button class="btn btn-sm btn-primary" onclick="openRevisionAdmin('${s.id}')">🔍 Revisar</button>`:
+           cs==='validado'?
+            `<button class="btn btn-sm" onclick="generarPDFs('${s.id}')">📄 PDFs</button>`:''}
+          ${isAdmin&&cs==='pendiente_revision'?`<button class="btn btn-sm" onclick="openRevisionAdmin('${s.id}')">Ver</button>`:''}
+          ${isAdmin&&cs==='sin_inicio'?`<button class="btn btn-sm" onclick="abrirFlujoTecnico('${s.id}')">Iniciar</button>`:''}
+        </div>
       </div>
-      <div class="card-actions">
-        ${cs==='en_curso'?`<button class="btn btn-sm" style="background:var(--success-dim);color:var(--success)" onclick="openFormularioTerreno('${s.id}')">📋 Formulario</button>`:''}
-        ${cs==='pendiente_revision'&&isAdmin?`<button class="btn btn-sm btn-primary" onclick="openRevisionAdmin('${s.id}')">🔍 Revisar</button>`:''}
-        ${cs==='validado'?`<button class="btn btn-sm" onclick="generarPDFs('${s.id}')">📄 PDFs</button>`:''}
-        ${isAdmin&&cs!=='sin_inicio'?`<button class="btn btn-sm" onclick="openRevisionAdmin('${s.id}')">Ver</button>`:''}
-      </div>
-    </div></div>`;
+    </div>`;
   }).join('');
 };
 /* getNotifications parchada inline — ver función original */
+
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FLUJO TÉCNICO — MODO SIMPLE
+   7 pasos: Llegué → Recepción → Diagnóstico → Qué hice → Qué apliqué → Recomendo → Finalizar
+══════════════════════════════════════════════════════════════════════════ */
+
+// Frases sugeridas
+const FRASES_OBS = [
+  'No se observó evidencia activa al momento de la visita',
+  'Se intervino solo interior por solicitud del cliente',
+  'No fue posible acceder a bodega',
+  'Se detectó materia orgánica acumulada en exterior',
+  'Se observó vulnerabilidad estructural en acceso posterior',
+  'Cliente informado verbalmente sobre el tratamiento',
+];
+const FRASES_REC = [
+  'Mantener exteriores libres de material en desuso',
+  'Mejorar orden y aseo en área de almacenamiento',
+  'Sellar puntos de ingreso detectados',
+  'Mantener alimentos en envases cerrados',
+  'Coordinar próxima revisión de seguimiento',
+  'Evitar limpiar con químicos sobre el área tratada durante el período indicado',
+];
+const SECTORES = ['Interior','Exterior','Interior y exterior','Cocina','Bodega','Baños','Área de carga','Perímetro','Otro'];
+const ESTADOS_FINALES = ['Completado','Completado parcial','Inspección realizada','No realizado','Sin acceso','Suspendido por cliente','Reprogramar'];
+const CAUSALES_NO_EJECUCION = ['Sin acceso','Encargado ausente','Área cerrada','Cliente reagenda','Condiciones inseguras','Otro'];
+const NIVEL_INFESTACION = ['Sin evidencia','Evidencia baja','Evidencia moderada','Evidencia alta'];
+const TIPO_VISITA = ['Preventiva','Correctiva','Inspección','Seguimiento','Emergencia'];
+
+/* ── Estado del flujo activo ───────────────────────────────────────────── */
+let _flujoSvcId = null;
+let _flujoPaso  = 1;
+
+window.abrirFlujoTecnico = function(svcId){
+  const svc = services.find(s=>s.id===svcId);
+  if(!svc){ showToast('Servicio no encontrado','error'); return; }
+  _flujoSvcId = svcId;
+  // Si ya tiene check-in, ir al paso correspondiente
+  const cs = certStatus(svcId);
+  if(cs === 'sin_inicio') _flujoPaso = 1;
+  else if(cs === 'en_curso'){
+    const cert = getCert(svcId);
+    // Determinar en qué paso quedó
+    if(!cert.receptor) _flujoPaso = 2;
+    else if(!cert.plagasEncontradas?.length && !cert.diagnosticoCompleto) _flujoPaso = 3;
+    else if(!cert.tratamiento) _flujoPaso = 4;
+    else if(!cert.productosUsados?.length && cert.tieneProductos !== false) _flujoPaso = 5;
+    else _flujoPaso = 6;
+  } else if(cs === 'pendiente_revision' || cs === 'validado'){
+    openRevisionAdmin(svcId); return;
+  }
+  renderFlujoPaso();
+};
+
+function renderFlujoPaso(){
+  const svc = services.find(s=>s.id===_flujoSvcId);
+  const cert = getCert(_flujoSvcId);
+  if(!svc) return;
+
+  const pasos = ['Llegué','Recepción','Diagnóstico','Tratamiento','Productos','Recomiendo','Finalizar'];
+  const pasosBar = pasos.map((p,i)=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;cursor:${i+1<=_flujoPaso?'pointer':'default'}"
+      onclick="${i+1<_flujoPaso?`irPaso(${i+1})`:''}">
+      <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:700;transition:all .2s;
+        background:${i+1<_flujoPaso?'var(--success)':i+1===_flujoPaso?'var(--accent)':'var(--bg4)'};
+        color:${i+1<=_flujoPaso?'#fff':'var(--text3)'}">
+        ${i+1<_flujoPaso?'✓':i+1}
+      </div>
+      <div style="font-size:9px;color:${i+1===_flujoPaso?'var(--accent)':'var(--text3)'};text-align:center;white-space:nowrap">${p}</div>
+    </div>
+    ${i<pasos.length-1?`<div style="height:2px;flex:1;margin-top:14px;background:${i+1<_flujoPaso?'var(--success)':'var(--bg4)'}"></div>`:''}`
+  ).join('');
+
+  let contenido = '';
+  switch(_flujoPaso){
+    case 1: contenido = _paso1_checkin(svc, cert); break;
+    case 2: contenido = _paso2_recepcion(svc, cert); break;
+    case 3: contenido = _paso3_diagnostico(svc, cert); break;
+    case 4: contenido = _paso4_tratamiento(svc, cert); break;
+    case 5: contenido = _paso5_productos(svc, cert); break;
+    case 6: contenido = _paso6_recomendaciones(svc, cert); break;
+    case 7: contenido = _paso7_resumen(svc, cert); break;
+    default: contenido = '<p>Paso no encontrado</p>';
+  }
+
+  showModal(`
+    <div style="margin:-1.5rem -1.5rem 1rem;padding:12px 1rem;background:var(--bg3);border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:14px;font-weight:700">${svc.client}</div>
+          <div style="font-size:11px;color:var(--text2)">${svc.date} · ${svc.type}${svc.address?' · '+svc.address:''}</div>
+        </div>
+        <button onclick="closeModal()" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:0">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">${pasosBar}</div>
+    </div>
+    ${contenido}
+  `);
+}
+
+window.irPaso = function(n){ _flujoPaso=n; renderFlujoPaso(); };
+window.siguientePaso = function(){ _flujoPaso++; renderFlujoPaso(); };
+window.anteriorPaso  = function(){ if(_flujoPaso>1){ _flujoPaso--; renderFlujoPaso(); } };
+
+/* ── NAV botones ────────────────────────────────────────────────────────── */
+function navBtns(showPrev=true, nextLabel='Siguiente →', nextFn='siguientePaso()'){
+  return `<div style="display:flex;gap:8px;margin-top:1rem">
+    ${showPrev?`<button class="btn" onclick="anteriorPaso()" style="flex:1">← Atrás</button>`:''}
+    <button class="btn btn-primary" onclick="${nextFn}" style="flex:2">${nextLabel}</button>
+  </div>`;
+}
+
+/* ══ PASO 1 — CHECK-IN ══════════════════════════════════════════════════ */
+function _paso1_checkin(svc, cert){
+  const ya = !!cert?.checkIn;
+  const prog = svc.startH ? `${String(svc.startH).padStart(2,'0')}:${String(svc.startM||0).padStart(2,'0')}` : '—';
+  if(ya){
+    return `<div style="text-align:center;padding:1rem 0">
+      <div style="font-size:40px;margin-bottom:8px">✅</div>
+      <div style="font-size:16px;font-weight:700;color:var(--success)">Check-in registrado</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:4px">${cert.checkInDisplay}</div>
+      ${cert.checkInGPS?`<div style="font-size:11px;color:var(--text3);margin-top:2px">📍 GPS: ${cert.checkInGPS}</div>`:''}
+    </div>
+    ${navBtns(false,'Continuar →')}`;
+  }
+  return `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Horario programado</div>
+      <div style="font-size:24px;font-weight:700;color:var(--accent)">${prog}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">${svc.address||'Sin dirección registrada'}</div>
+    </div>
+    ${svc.notes?`<div style="background:var(--warning-dim);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:10px;margin-bottom:12px;font-size:12px;color:var(--warning)">
+      ⚠️ <strong>Notas:</strong> ${svc.notes}
+    </div>`:''}
+    <div style="text-align:center;padding:8px 0 16px">
+      <button onclick="ejecutarCheckin('${svc.id}')"
+        style="padding:16px 32px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;max-width:300px">
+        📍 Iniciar servicio
+      </button>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Se registrará hora y GPS automáticamente</div>
+    </div>`;
+}
+
+window.ejecutarCheckin = function(svcId){
+  const svc = services.find(s=>s.id===svcId); if(!svc) return;
+  const now = new Date();
+  const cert = {
+    id:uid(), svcId, clientName:svc.client,
+    techId:svc.techId, techIds:svc.techIds||[svc.techId],
+    serviceDate:svc.date, serviceType:svc.type, address:svc.address||'',
+    checkIn:now.toISOString(),
+    checkInDisplay:now.toLocaleString('es-CL'),
+    checkInGPS:'', checkOut:null, validado:false,
+    receptor:'', cargoReceptor:'', telefonoReceptor:'', rutReceptor:'',
+    accesoOtorgado:true, sectoresHabilitados:'todos',
+    observacionInicial:'',
+    plagasEncontradas:[], nivelInfestacion:'', tipoVisita:'',
+    evidenciaSectores:'', condicionSanitaria:'',
+    tratamiento:'', metodologia:'',
+    productosUsados:[], tieneProductos:null,
+    sectoresTratados:[], sectoresTexto:'',
+    seguridad:{retiroPersonas:false,retiroAnimales:false,tiempoReingreso:'',tiempoVentilacion:'',senalizacion:false},
+    observaciones:'', recomendaciones:'',
+    fotos:[], audioNota:null, audioTranscripcion:'',
+    firmaReceptor:null, firmaTecnico:null,
+    sinPersona:false, soloConstancia:false,
+    estadoFinal:'', noEjecutadoCausal:'',
+    diagnosticoCompleto:false,
+    createdAt:Date.now(), updatedAt:Date.now(),
+  };
+  // Capturar GPS
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const ci=certificados.findIndex(c=>c.svcId===svcId);
+      if(ci>=0) certificados[ci].checkInGPS=`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+      saveData();
+    }, ()=>{});
+  }
+  certificados.push(cert);
+  const idx=services.findIndex(s=>s.id===svcId);
+  if(idx>=0) services[idx]={...services[idx],status:'En curso',checkIn:cert.checkIn};
+  addHistory('Check-in',`${svc.client} — ${cert.checkInDisplay}`);
+  saveData();
+  _flujoPaso=2;
+  renderFlujoPaso();
+};
+
+/* ══ PASO 2 — RECEPCIÓN ══════════════════════════════════════════════════ */
+function _paso2_recepcion(svc, cert){
+  if(!cert) return '<p style="color:var(--danger)">Error: sin check-in</p>';
+  return `
+    <div class="form-group">
+      <label>¿Quién recibe?</label>
+      <input id="f2_receptor" placeholder="Nombre completo" value="${cert.receptor||''}">
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label>Cargo / relación</label>
+        <input id="f2_cargo" placeholder="ej: Encargado, Administrador" value="${cert.cargoReceptor||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Teléfono contacto</label>
+        <input id="f2_tel" placeholder="+56 9…" value="${cert.telefonoReceptor||''}">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:4px">
+      <div class="form-group" style="margin:0">
+        <label>Acceso otorgado</label>
+        <select id="f2_acceso">
+          <option value="1" ${cert.accesoOtorgado!==false?'selected':''}>Sí</option>
+          <option value="0" ${cert.accesoOtorgado===false?'selected':''}>No</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Sectores habilitados</label>
+        <select id="f2_sectores">
+          <option value="todos" ${cert.sectoresHabilitados==='todos'?'selected':''}>Todos</option>
+          <option value="parcial" ${cert.sectoresHabilitados==='parcial'?'selected':''}>Parciales</option>
+          <option value="ninguno" ${cert.sectoresHabilitados==='ninguno'?'selected':''}>Ninguno</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:8px">
+      <label>Observación inicial (opcional)</label>
+      <textarea id="f2_obs" rows="2" placeholder="Condición del lugar al llegar…">${cert.observacionInicial||''}</textarea>
+    </div>
+    <div style="background:var(--danger-dim);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius);padding:10px;margin-top:8px">
+      <div style="font-size:12px;font-weight:600;color:var(--danger);margin-bottom:6px">¿No fue posible ejecutar el servicio?</div>
+      <button onclick="noEjecutado('${svc.id}')" class="btn btn-danger btn-sm" style="width:100%">No fue posible ejecutar</button>
+    </div>
+    ${navBtns(true,'Siguiente →','guardarPaso2()')}`;
+}
+
+window.guardarPaso2 = function(){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  certificados[ci].receptor        = document.getElementById('f2_receptor')?.value.trim()||'';
+  certificados[ci].cargoReceptor   = document.getElementById('f2_cargo')?.value.trim()||'';
+  certificados[ci].telefonoReceptor= document.getElementById('f2_tel')?.value.trim()||'';
+  certificados[ci].accesoOtorgado  = document.getElementById('f2_acceso')?.value==='1';
+  certificados[ci].sectoresHabilitados=document.getElementById('f2_sectores')?.value||'todos';
+  certificados[ci].observacionInicial=document.getElementById('f2_obs')?.value.trim()||'';
+  certificados[ci].updatedAt=Date.now();
+  saveData(); _flujoPaso=3; renderFlujoPaso();
+};
+
+window.noEjecutado = function(svcId){
+  const causales = CAUSALES_NO_EJECUCION;
+  showModal(`
+    <h3>⚠️ Servicio no ejecutado</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Selecciona la causal:</p>
+    ${causales.map(c=>`
+      <button onclick="cerrarNoEjecutado('${svcId}','${c}')"
+        class="btn" style="width:100%;margin-bottom:6px;justify-content:flex-start">
+        ${c}
+      </button>`).join('')}
+    <div class="form-group" style="margin-top:8px"><label>Detalle adicional (opcional)</label>
+      <textarea id="ne_detalle" rows="2" placeholder="Describe la situación…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="renderFlujoPaso()">← Volver</button>
+    </div>`);
+};
+
+window.cerrarNoEjecutado = function(svcId, causal){
+  const ci=certificados.findIndex(c=>c.svcId===svcId); if(ci<0) return;
+  const detalle=document.getElementById('ne_detalle')?.value.trim()||'';
+  certificados[ci].noEjecutadoCausal=causal+(detalle?' — '+detalle:'');
+  certificados[ci].estadoFinal='No realizado';
+  certificados[ci].checkOut=new Date().toISOString();
+  certificados[ci].checkOutDisplay=new Date().toLocaleString('es-CL');
+  certificados[ci].updatedAt=Date.now();
+  const idx=services.findIndex(s=>s.id===svcId);
+  if(idx>=0) services[idx]={...services[idx],status:'Pend. revisión'};
+  addHistory('Servicio no ejecutado',`${certificados[ci].clientName} — ${causal}`);
+  saveData(); closeModal();
+  showToast('Registrado — pendiente revisión del admin','success');
+  updateNotifBadge();
+};
+
+/* ══ PASO 3 — DIAGNÓSTICO ════════════════════════════════════════════════ */
+function _paso3_diagnostico(svc, cert){
+  const plagasCB = PLAGAS_LIST.map(p=>`
+    <label style="display:flex;align-items:center;gap:6px;padding:5px 0;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="f3_plaga" value="${p}"
+        ${cert?.plagasEncontradas?.includes(p)?'checked':''}
+        style="width:16px;height:16px;accent-color:var(--accent)">
+      ${p}
+    </label>`).join('');
+
+  return `
+    <div class="form-group">
+      <label>Nivel de infestación</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${NIVEL_INFESTACION.map(n=>`
+          <label style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:2px solid ${cert?.nivelInfestacion===n?'var(--accent)':'var(--border)'};border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;transition:border-color .15s">
+            <input type="radio" name="f3_nivel" value="${n}" ${cert?.nivelInfestacion===n?'checked':''}
+              style="width:14px;height:14px;accent-color:var(--accent)"> ${n}
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Tipo de visita</label>
+      <select id="f3_tipovisita">
+        <option value="">Seleccionar…</option>
+        ${TIPO_VISITA.map(t=>`<option value="${t}" ${cert?.tipoVisita===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Plagas encontradas</label>
+      <div style="max-height:200px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px">
+        ${plagasCB}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Condición sanitaria observada (opcional)</label>
+      <input id="f3_condicion" placeholder="ej: Regular, deficiente, buena" value="${cert?.condicionSanitaria||''}">
+    </div>
+    ${navBtns(true,'Siguiente →','guardarPaso3()')}`;
+}
+
+window.guardarPaso3 = function(){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  certificados[ci].nivelInfestacion  = document.querySelector('input[name="f3_nivel"]:checked')?.value||'';
+  certificados[ci].tipoVisita        = document.getElementById('f3_tipovisita')?.value||'';
+  certificados[ci].plagasEncontradas = [...document.querySelectorAll('.f3_plaga:checked')].map(cb=>cb.value);
+  certificados[ci].condicionSanitaria= document.getElementById('f3_condicion')?.value.trim()||'';
+  certificados[ci].diagnosticoCompleto=true;
+  certificados[ci].updatedAt=Date.now();
+  saveData(); _flujoPaso=4; renderFlujoPaso();
+};
+
+/* ══ PASO 4 — TRATAMIENTO ════════════════════════════════════════════════ */
+function _paso4_tratamiento(svc, cert){
+  const tratamientos=['Desinsectación','Desratización','Sanitización','Desinfección','Inspección','Evaluación','Control mecánico'];
+  const metodologias=['MIP (Manejo Integrado)','Aplicación química','Control físico/mecánico','Inspección visual','Otro'];
+  const sectCB = SECTORES.map(s=>`
+    <label style="display:flex;align-items:center;gap:6px;padding:5px 0;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="f4_sector" value="${s}"
+        ${cert?.sectoresTratados?.includes(s)?'checked':''}
+        style="width:16px;height:16px;accent-color:var(--accent)">
+      ${s}
+    </label>`).join('');
+  return `
+    <div class="form-group">
+      <label>Tratamiento realizado</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${tratamientos.map(t=>`
+          <label style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:2px solid ${cert?.tratamiento===t?'var(--accent)':'var(--border)'};border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px;transition:border-color .15s">
+            <input type="radio" name="f4_trat" value="${t}" ${cert?.tratamiento===t?'checked':''}
+              style="width:14px;height:14px;accent-color:var(--accent)"> ${t}
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Metodología</label>
+      <select id="f4_met">
+        <option value="">Seleccionar…</option>
+        ${metodologias.map(m=>`<option value="${m}" ${cert?.metodologia===m?'selected':''}>${m}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Sectores tratados</label>
+      <div style="max-height:160px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px">
+        ${sectCB}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Detalle sectores (libre)</label>
+      <input id="f4_sectores_txt" placeholder="ej: baño sector hombres, bodega insumos" value="${cert?.sectoresTexto||''}">
+    </div>
+    ${navBtns(true,'Siguiente →','guardarPaso4()')}`;
+}
+
+window.guardarPaso4 = function(){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  certificados[ci].tratamiento    = document.querySelector('input[name="f4_trat"]:checked')?.value||'';
+  certificados[ci].metodologia    = document.getElementById('f4_met')?.value||'';
+  certificados[ci].sectoresTratados=[...document.querySelectorAll('.f4_sector:checked')].map(cb=>cb.value);
+  certificados[ci].sectoresTexto  = document.getElementById('f4_sectores_txt')?.value.trim()||'';
+  certificados[ci].updatedAt=Date.now();
+  saveData(); _flujoPaso=5; renderFlujoPaso();
+};
+
+/* ══ PASO 5 — PRODUCTOS ══════════════════════════════════════════════════ */
+function _paso5_productos(svc, cert){
+  const prods = getProductos();
+  const cats  = [...new Set(prods.map(p=>p.categoria))];
+  const usados = cert?.productosUsados||[];
+
+  const resumen = usados.length ? `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">PRODUCTOS CARGADOS (${usados.length})</div>
+      ${usados.map((p,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="flex:1">${p.nombre}</span>
+          <span style="color:var(--accent)">${p.dosis} ${p.unidad}</span>
+          <button onclick="quitarProductoCert(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0">✕</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  const htmlProds = cats.map(cat=>`
+    <div style="margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${cat}</div>
+      ${prods.filter(p=>p.categoria===cat).map(p=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+          <input type="checkbox" class="f5_prod_cb" data-pid="${p.id}" data-nombre="${p.nombre}" data-unidad="${p.unidad}"
+            ${usados.find(u=>u.productoId===p.id)?'checked':''}
+            onchange="toggleF5Row('${p.id}')"
+            style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0">
+          <span style="flex:1;font-size:13px">${p.nombre}</span>
+          <div id="f5fields_${p.id}" style="display:${usados.find(u=>u.productoId===p.id)?'flex':'none'};gap:5px;align-items:center">
+            <input type="number" id="f5dosis_${p.id}" placeholder="Dosis"
+              value="${usados.find(u=>u.productoId===p.id)?.dosis||''}"
+              min="0" style="width:65px;padding:3px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
+            <span style="font-size:10px;color:var(--text2)">${p.unidad}</span>
+            <input type="number" id="f5area_${p.id}" placeholder="m²"
+              value="${usados.find(u=>u.productoId===p.id)?.area||''}"
+              min="0" style="width:55px;padding:3px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
+            <span style="font-size:10px;color:var(--text2)">m²</span>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+
+  return `
+    <div style="background:var(--accent-dim);border:1px solid rgba(79,142,247,.3);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:12px">
+      💡 Si la visita es solo inspección o control mecánico, puedes continuar sin agregar productos.
+    </div>
+    ${resumen}
+    <div style="max-height:320px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+      ${htmlProds}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" onclick="anteriorPaso()" style="flex:1">← Atrás</button>
+      <button class="btn btn-sm" onclick="guardarPaso5(false)" style="flex:1">Sin productos →</button>
+      <button class="btn btn-primary" onclick="guardarPaso5(true)" style="flex:2">Guardar y continuar →</button>
+    </div>`;
+}
+
+window.toggleF5Row = function(pid){
+  const checked=document.querySelector(`.f5_prod_cb[data-pid="${pid}"]`)?.checked;
+  const fields=document.getElementById(`f5fields_${pid}`);
+  if(fields) fields.style.display=checked?'flex':'none';
+};
+
+window.quitarProductoCert = function(idx){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  certificados[ci].productosUsados.splice(idx,1);
+  saveData(); renderFlujoPaso();
+};
+
+window.guardarPaso5 = function(conProductos){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  if(conProductos){
+    const prods=[];
+    document.querySelectorAll('.f5_prod_cb:checked').forEach(cb=>{
+      const pid=cb.dataset.pid;
+      const dosis=parseFloat(document.getElementById(`f5dosis_${pid}`)?.value)||0;
+      const area =parseFloat(document.getElementById(`f5area_${pid}`)?.value)||0;
+      prods.push({productoId:pid, nombre:cb.dataset.nombre, unidad:cb.dataset.unidad, dosis, area});
+    });
+    certificados[ci].productosUsados=prods;
+    certificados[ci].tieneProductos=prods.length>0;
+  } else {
+    certificados[ci].tieneProductos=false;
+  }
+  certificados[ci].updatedAt=Date.now();
+  saveData(); _flujoPaso=6; renderFlujoPaso();
+};
+
+/* ══ PASO 6 — OBSERVACIONES Y RECOMENDACIONES ═══════════════════════════ */
+function _paso6_recomendaciones(svc, cert){
+  const chipObs = FRASES_OBS.map(f=>`
+    <button onclick="agregarFrase('f6_obs','${f.replace(/'/g,"\\'")}',this)"
+      style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg4);color:var(--text2);font-size:11px;cursor:pointer;transition:all .15s;margin:2px">
+      ${f}
+    </button>`).join('');
+  const chipRec = FRASES_REC.map(f=>`
+    <button onclick="agregarFrase('f6_rec','${f.replace(/'/g,"\\'")}',this)"
+      style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--bg4);color:var(--text2);font-size:11px;cursor:pointer;transition:all .15s;margin:2px">
+      ${f}
+    </button>`).join('');
+
+  return `
+    <div class="form-group">
+      <label>Observaciones técnicas</label>
+      <div style="display:flex;flex-wrap:wrap;gap:0;margin-bottom:6px">${chipObs}</div>
+      <textarea id="f6_obs" rows="3" placeholder="Situación encontrada…">${cert?.observaciones||''}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Recomendaciones al cliente</label>
+      <div style="display:flex;flex-wrap:wrap;gap:0;margin-bottom:6px">${chipRec}</div>
+      <textarea id="f6_rec" rows="3" placeholder="Medidas a tomar…">${cert?.recomendaciones||''}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Fotos <span style="font-size:10px;color:var(--text3)">(máx 5)</span></label>
+      <div id="f6_fotos_wrap" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        ${(cert?.fotos||[]).map((f,i)=>`
+          <div style="position:relative;width:64px;height:64px;border-radius:6px;overflow:hidden">
+            <img src="${f}" style="width:100%;height:100%;object-fit:cover">
+            <button onclick="quitarFotoFlujo(${i})" style="position:absolute;top:1px;right:1px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+          </div>`).join('')}
+        ${(cert?.fotos||[]).length<5?`
+          <label style="width:64px;height:64px;border:2px dashed var(--border2);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--text3)">
+            📷<br>Foto
+            <input type="file" accept="image/*" multiple capture="environment" style="display:none" onchange="addFotoFlujo(this)">
+          </label>`:''}
+      </div>
+    </div>
+    ${navBtns(true,'Ver resumen →','guardarPaso6()')}`;
+}
+
+window.agregarFrase = function(fieldId, frase, btn){
+  const ta=document.getElementById(fieldId); if(!ta) return;
+  ta.value=(ta.value?ta.value+'\n':'')+frase;
+  btn.style.background='var(--accent-dim)';
+  btn.style.color='var(--accent)';
+  btn.style.borderColor='var(--accent)';
+};
+
+window.quitarFotoFlujo = function(idx){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  certificados[ci].fotos.splice(idx,1);
+  saveData(); renderFlujoPaso();
+};
+
+window.addFotoFlujo = function(input){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  const cert=certificados[ci];
+  [...input.files].forEach(file=>{
+    if(cert.fotos.length>=5) return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const MAX=800; let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        cert.fotos.push(canvas.toDataURL('image/jpeg',0.7));
+        saveData(); renderFlujoPaso();
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+window.guardarPaso6 = function(){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  certificados[ci].observaciones  =document.getElementById('f6_obs')?.value.trim()||'';
+  certificados[ci].recomendaciones=document.getElementById('f6_rec')?.value.trim()||'';
+  certificados[ci].updatedAt=Date.now();
+  saveData(); _flujoPaso=7; renderFlujoPaso();
+};
+
+/* ══ PASO 7 — RESUMEN Y CHECKOUT ═════════════════════════════════════════ */
+function _paso7_resumen(svc, cert){
+  if(!cert) return '';
+  const prods=cert.productosUsados||[];
+  const fotos=cert.fotos||[];
+  const row=(label,val)=>val?`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+    <span style="color:var(--text2);width:110px;flex-shrink:0">${label}</span>
+    <span style="font-weight:500">${val}</span>
+  </div>`:'';
+
+  return `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Resumen del servicio</div>
+      ${row('Cliente', cert.clientName)}
+      ${row('Fecha', cert.serviceDate)}
+      ${row('Check-in', cert.checkInDisplay)}
+      ${row('Receptor', cert.receptor+(cert.cargoReceptor?' · '+cert.cargoReceptor:''))}
+      ${row('Diagnóstico', cert.nivelInfestacion+(cert.plagasEncontradas?.length?' — '+cert.plagasEncontradas.join(', '):''))}
+      ${row('Tratamiento', cert.tratamiento+(cert.metodologia?' · '+cert.metodologia:''))}
+      ${row('Sectores', [...(cert.sectoresTratados||[]), cert.sectoresTexto||''].filter(Boolean).join(', '))}
+      ${row('Productos', prods.length?prods.map(p=>`${p.nombre} ${p.dosis}${p.unidad}`).join(', '):'Sin aplicación química')}
+      ${row('Fotos', fotos.length?`${fotos.length} adjunta${fotos.length>1?'s':''}`:'')}
+    </div>
+
+    <!-- FIRMA -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Conformidad</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" id="f7_sinpersona" ${cert.sinPersona?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+        Sin persona disponible para firma
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:8px;cursor:pointer">
+        <input type="checkbox" id="f7_solorespalda" ${cert.soloConstancia?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+        Solo respaldo operativo (sin conformidad comercial)
+      </label>
+      <div id="f7_firma_wrap" style="${cert.sinPersona||cert.soloConstancia?'display:none':''}">
+        <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Firma receptor</label>
+        <div style="position:relative;background:#fff;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden">
+          <canvas id="f7_canvas" width="460" height="100" style="width:100%;height:100px;touch-action:none;display:block;cursor:crosshair"></canvas>
+          <button onclick="clearCanvas('f7_canvas')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTADO FINAL -->
+    <div class="form-group">
+      <label>Estado final del servicio</label>
+      <select id="f7_estado">
+        ${ESTADOS_FINALES.map(e=>`<option value="${e}" ${cert.estadoFinal===e?'selected':''}>${e}</option>`).join('')}
+      </select>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" onclick="anteriorPaso()" style="flex:1">← Editar</button>
+      <button class="btn btn-primary" onclick="ejecutarCheckout()" style="flex:2;background:var(--success);border-color:var(--success)">✅ Finalizar servicio</button>
+    </div>`;
+}
+
+window.ejecutarCheckout = function(){
+  const ci=certificados.findIndex(c=>c.svcId===_flujoSvcId); if(ci<0) return;
+  const cert=certificados[ci];
+  // Validación mínima
+  if(!cert.tratamiento && !cert.noEjecutadoCausal){
+    showToast('Completa el diagnóstico y tratamiento antes de finalizar','error'); return;
+  }
+  // Guardar firma
+  const sinPersona=document.getElementById('f7_sinpersona')?.checked||false;
+  const soloConstancia=document.getElementById('f7_solorespalda')?.checked||false;
+  cert.sinPersona=sinPersona;
+  cert.soloConstancia=soloConstancia;
+  if(!sinPersona && !soloConstancia){
+    const canvas=document.getElementById('f7_canvas');
+    if(canvas){ const d=canvas.toDataURL(); if(d!=='data:,') cert.firmaReceptor=d; }
+  }
+  cert.estadoFinal=document.getElementById('f7_estado')?.value||'Completado';
+  // Check-out
+  const now=new Date();
+  cert.checkOut=now.toISOString();
+  cert.checkOutDisplay=now.toLocaleString('es-CL');
+  // GPS salida
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      cert.checkOutGPS=`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+      saveData();
+    },()=>{});
+  }
+  cert.updatedAt=Date.now();
+  // Actualizar servicio
+  const idx=services.findIndex(s=>s.id===_flujoSvcId);
+  if(idx>=0) services[idx]={...services[idx], status:'Pend. revisión', checkOut:cert.checkOut};
+  addHistory('Check-out',`${cert.clientName} — ${cert.checkOutDisplay} — ${cert.estadoFinal}`);
+  saveData(); closeModal();
+  showToast(`✅ Servicio finalizado — ${cert.estadoFinal}`,'success');
+  updateNotifBadge();
+  // Inicializar canvas firma si es visible
+  setTimeout(()=>initCanvas&&initCanvas('f7_canvas', cert.firmaReceptor), 150);
+};
+
+// Inicializar canvas firma al renderizar paso 7
+const _origRenderFlujoPaso = window.renderFlujoPaso;
+
 
 boot();
 startNotifChecker();
