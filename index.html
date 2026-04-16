@@ -2625,398 +2625,47 @@ async function boot(){
   await firstTimeSetup();
 }
 
-boot();
-
 /* ═══════════════════════════════════════════════════════
-   MÓDULO RECURRENCIAS — Motor de cálculo
+   MÓDULO RECURRENCIAS
 ═══════════════════════════════════════════════════════ */
-
-// Feriados Chile 2025 y 2026
-const FERIADOS_CL = new Set([
-  '2025-01-01','2025-04-18','2025-04-19','2025-05-01','2025-05-21',
-  '2025-06-20','2025-06-29','2025-07-16','2025-08-15','2025-09-18',
-  '2025-09-19','2025-10-12','2025-10-31','2025-11-01','2025-12-08','2025-12-25',
-  '2026-01-01','2026-04-03','2026-04-04','2026-05-01','2026-05-21',
-  '2026-06-21','2026-06-29','2026-07-16','2026-08-15','2026-09-18',
-  '2026-09-19','2026-10-12','2026-10-31','2026-11-01','2026-12-08','2026-12-25',
-]);
-function esFeriado(ds){ return FERIADOS_CL.has(ds); }
-function esDiaHabil(ds){ const d=new Date(ds+'T12:00'),dow=d.getDay(); return dow!==0&&dow!==6&&!esFeriado(ds); }
-function addDays(ds,n){ const d=new Date(ds+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
-function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
-
-function nthHabilDelMes(y,m,n){ let c=0; for(let d=1;d<=daysInMonth(y,m);d++){ const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; if(esDiaHabil(ds)){c++;if(c===n)return ds;} } return null; }
-function nthHabilDesdeFinMes(y,m,n){ let c=0; for(let d=daysInMonth(y,m);d>=1;d--){ const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; if(esDiaHabil(ds)){c++;if(c===n)return ds;} } return null; }
-function nthDowDelMes(y,m,dow,nth){ const JS=[1,2,3,4,5,6,0],target=JS[dow]; if(nth===-1){for(let d=daysInMonth(y,m);d>=1;d--){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(new Date(ds+'T12:00').getDay()===target)return ds;}return null;} let c=0; for(let d=1;d<=daysInMonth(y,m);d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(new Date(ds+'T12:00').getDay()===target){c++;if(c===nth)return ds;}} return null; }
-function diaNConMargen(y,m,dia,margen){ const total=daysInMonth(y,m),base=Math.min(dia,total),ds=`${y}-${String(m).padStart(2,'0')}-${String(base).padStart(2,'0')}`; if(esDiaHabil(ds))return ds; for(let i=1;i<=margen;i++)for(const delta of[i,-i]){const d2=addDays(ds,delta);if(parseInt(d2.slice(5,7))===m&&esDiaHabil(d2))return d2;} return ds; }
-
-function generarFechas(patron,desde,hasta){
-  const fechas=[],dStart=new Date(desde+'T12:00'),dEnd=new Date(hasta+'T12:00');
-  let y=dStart.getFullYear(),m=dStart.getMonth()+1;
-  const yEnd=dEnd.getFullYear(),mEnd=dEnd.getMonth()+1;
-  while(y<yEnd||(y===yEnd&&m<=mEnd)){
-    const cands=[];
-    const freq=patron.frecuencia||1;
-    const mIdx=(y*12+m-1)-(dStart.getFullYear()*12+dStart.getMonth());
-    if(mIdx%freq===0){
-      if(patron.tipo==='dia_n'){(patron.dias||[1]).forEach(d=>{const f=diaNConMargen(y,m,d,patron.margen||0);if(f)cands.push(f);});}
-      else if(patron.tipo==='nth_dow'){const f=nthDowDelMes(y,m,patron.dow,patron.nth);if(f)cands.push(f);}
-      else if(patron.tipo==='dia_habil'){const f=patron.desde_fin?nthHabilDesdeFinMes(y,m,patron.nhabil):nthHabilDelMes(y,m,patron.nhabil);if(f)cands.push(f);}
-      else if(patron.tipo==='rango_mes'){for(let d=patron.dmin||1;d<=Math.min(patron.dmax||7,daysInMonth(y,m));d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(esDiaHabil(ds)){cands.push(ds);break;}}}
+const FERIADOS_CL=new Set(['2025-01-01','2025-04-18','2025-04-19','2025-05-01','2025-05-21','2025-06-20','2025-06-29','2025-07-16','2025-08-15','2025-09-18','2025-09-19','2025-10-12','2025-10-31','2025-11-01','2025-12-08','2025-12-25','2026-01-01','2026-04-03','2026-04-04','2026-05-01','2026-05-21','2026-06-21','2026-06-29','2026-07-16','2026-08-15','2026-09-18','2026-09-19','2026-10-12','2026-10-31','2026-11-01','2026-12-08','2026-12-25']);
+function esFeriado(ds){return FERIADOS_CL.has(ds);}
+function esDiaHabil(ds){const d=new Date(ds+'T12:00'),w=d.getDay();return w!==0&&w!==6&&!esFeriado(ds);}
+function _addDays(ds,n){const d=new Date(ds+'T12:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function _dim(y,m){return new Date(y,m,0).getDate();}
+function _nthHabil(y,m,n,fromEnd){let c=0,max=_dim(y,m);const range=fromEnd?Array.from({length:max},(_,i)=>max-i):Array.from({length:max},(_,i)=>i+1);for(const d of range){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(esDiaHabil(ds)){c++;if(c===n)return ds;}}return null;}
+function _nthDow(y,m,dow,nth){const JS=[1,2,3,4,5,6,0],t=JS[dow],max=_dim(y,m);if(nth===-1){for(let d=max;d>=1;d--){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(new Date(ds+'T12:00').getDay()===t)return ds;}return null;}let c=0;for(let d=1;d<=max;d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(new Date(ds+'T12:00').getDay()===t){c++;if(c===nth)return ds;}}return null;}
+function _diaN(y,m,dia,margen){const max=_dim(y,m),base=Math.min(dia,max),ds=`${y}-${String(m).padStart(2,'0')}-${String(base).padStart(2,'0')}`;if(esDiaHabil(ds))return ds;for(let i=1;i<=margen;i++)for(const delta of[i,-i]){const d2=_addDays(ds,delta);if(parseInt(d2.slice(5,7))===m&&esDiaHabil(d2))return d2;}return ds;}
+function generarFechas(p,desde,hasta){
+  const res=[],dS=new Date(desde+'T12:00'),dE=new Date(hasta+'T12:00');
+  let y=dS.getFullYear(),m=dS.getMonth()+1;
+  const y0=y,m0=m-1;
+  while(new Date(`${y}-${String(m).padStart(2,'0')}-01T12:00`)<=dE){
+    const mIdx=(y-y0)*12+(m-1-m0);
+    if(mIdx%(p.frecuencia||1)===0){
+      let cands=[];
+      if(p.tipo==='dia_n')(p.dias||[1]).forEach(d=>{const f=_diaN(y,m,d,p.margen||0);if(f)cands.push(f);});
+      else if(p.tipo==='nth_dow'){const f=_nthDow(y,m,p.dow,p.nth);if(f)cands.push(f);}
+      else if(p.tipo==='dia_habil'){const f=_nthHabil(y,m,p.nhabil,p.desde_fin);if(f)cands.push(f);}
+      else if(p.tipo==='rango_mes'){for(let d=p.dmin||1;d<=Math.min(p.dmax||7,_dim(y,m));d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(esDiaHabil(ds)){cands.push(ds);break;}}}
+      cands.forEach(f=>{const fd=new Date(f+'T12:00');if(fd>=dS&&fd<=dE)res.push(f);});
     }
-    cands.forEach(f=>{const fd=new Date(f+'T12:00');if(fd>=dStart&&fd<=dEnd)fechas.push(f);});
     m++;if(m>12){m=1;y++;}
   }
-  return [...new Set(fechas)].sort();
+  return[...new Set(res)].sort();
 }
-
-/* ═══════════════════════════════════════════════════════
-   MÓDULO PLANIFICADOR — Mapa de clientes + mini-calendario
-═══════════════════════════════════════════════════════ */
-let planMap=null, planMarkers=[], planView='week', planOffset=0;
-let planDraggingClient=null; // cliente arrastrado desde el mapa
-
-// Colores por tipo de horario
-const HORARIO_COLORS={
-  am:      {bg:'#f97316',border:'#ea580c',label:'AM'},
-  pm:      {bg:'#3b82f6',border:'#2563eb',label:'PM'},
-  defined: {bg:'#22c55e',border:'#16a34a',label:'Fijo'},
-  dia:     {bg:'#a855f7',border:'#9333ea',label:'Día'},
-  none:    {bg:'#64748b',border:'#475569',label:'—'},
-};
-
-function getClientHorario(c){
-  if(c.defaultTimeMode && c.defaultTimeMode!=='') return c.defaultTimeMode;
-  // Inferir del último servicio
-  const lastSvc=services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0];
-  if(lastSvc?.timeMode) return lastSvc.timeMode;
-  return 'none';
-}
-
-// ── Inicializar mapa de planificación ──
-function initPlanMap(){
-  if(!window.google||!mapsKey) return;
-  if(planMap) return; // ya inicializado
-  const mapDiv=document.getElementById('plan-map');
-  mapDiv.innerHTML='';
-  planMap=new google.maps.Map(mapDiv,{
-    zoom:11,
-    center:{lat:-33.5928,lng:-70.7009},
-    mapTypeId:'roadmap',
-    mapTypeControl:false,
-    streetViewControl:false,
-    fullscreenControl:true,
-    zoomControl:true,
-    gestureHandling:'greedy',
-    styles:[]
-  });
-}
-
-window.renderPlanMap=function(){
-  if(!mapsKey){
-    document.getElementById('plan-map').innerHTML=`
-      <div class="map-placeholder">
-        <div style="font-size:32px">📌</div>
-        <div style="font-size:13px;font-weight:500">Configura la API Key de Google Maps en ⚙️ Personalización</div>
-      </div>`;
-    return;
-  }
-  if(!window.google){
-    const script=document.createElement('script');
-    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady`;
-    script.async=true;
-    window._planMapReady=()=>{ initPlanMap(); renderPlanMap(); };
-    document.head.appendChild(script);
-    return;
-  }
-  initPlanMap();
-  if(!planMap) return;
-
-  // Limpiar markers anteriores
-  planMarkers.forEach(m=>m.setMap(null));
-  planMarkers=[];
-
-  const geocoder=new google.maps.Geocoder();
-  const filterHorario=document.getElementById('planFilterHorario')?.value||'';
-  const filterTech=document.getElementById('planFilterTech')?.value||'';
-  const bounds=new google.maps.LatLngBounds();
-
-  // Actualizar select técnicos
-  const pt=document.getElementById('planFilterTech');
-  if(pt){
-    const cur=pt.value;
-    pt.innerHTML='<option value="">Todos los técnicos</option>'+
-      technicians.map(t=>`<option value="${t.id}"${t.id===cur?' selected':''}>${t.name}</option>`).join('');
-  }
-
-  // Filtrar clientes con dirección
-  let clientsToShow=clients.filter(c=>c.address);
-  if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
-  if(filterTech){
-    const names=services.filter(s=>s.techId===filterTech).map(s=>s.client.toLowerCase());
-    clientsToShow=clientsToShow.filter(c=>names.includes(c.name.toLowerCase()));
-  }
-
-  let geocoded=0;
-  clientsToShow.forEach(client=>{
-    const horario=getClientHorario(client);
-    const hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
-
-    geocoder.geocode({address:client.address+', Santiago, Chile'},(res,st)=>{
-      if(st!=='OK'||!res[0]) return;
-      const pos=res[0].geometry.location;
-      bounds.extend(pos);
-
-      const marker=new google.maps.Marker({
-        position:pos, map:planMap,
-        icon:{
-          path:google.maps.SymbolPath.CIRCLE,
-          scale:14,
-          fillColor:hc.bg,
-          fillOpacity:1,
-          strokeColor:'#fff',
-          strokeWeight:2
-        },
-        title:client.name,
-        draggable:false,
-        zIndex:50
-      });
-
-      // Etiqueta siempre visible
-      const overlay=new google.maps.OverlayView();
-      const lbl=document.createElement('div');
-      lbl.innerHTML=`<span style="font-weight:700;color:#202124">${client.name}</span><br><span style="font-size:10px;color:${hc.border}">${hc.label}</span>`;
-      lbl.style.cssText=`position:absolute;background:#fff;border-left:3px solid ${hc.border};border-radius:4px;padding:3px 7px;font-family:sans-serif;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-160%);pointer-events:none;z-index:999;`;
-      overlay.onAdd=function(){ this.getPanes().floatPane.appendChild(lbl); };
-      overlay.draw=function(){
-        const proj=this.getProjection();if(!proj)return;
-        const pt=proj.fromLatLngToDivPixel(pos);
-        if(pt){lbl.style.left=pt.x+'px';lbl.style.top=pt.y+'px';}
-      };
-      overlay.onRemove=function(){lbl.parentNode?.removeChild(lbl);};
-      overlay.setMap(planMap);
-
-      // InfoWindow al hacer clic
-      const iw=new google.maps.InfoWindow({content:`
-        <div style="font-family:sans-serif;padding:6px;min-width:200px">
-          <div style="font-weight:700;font-size:14px">${client.name}</div>
-          <div style="font-size:12px;color:#555;margin:3px 0">📍 ${client.address||''}</div>
-          <div style="font-size:12px;color:#555">📞 ${client.phone||'—'}</div>
-          <div style="font-size:12px;margin-top:4px">
-            <span style="background:${hc.bg};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${hc.label}</span>
-          </div>
-          <div style="margin-top:8px;font-size:11px;color:#888">Arrastra este pin al calendario →</div>
-        </div>`
-      });
-      marker.addListener('click',()=>iw.open(planMap,marker));
-
-      // Drag start — guardar cliente
-      // CLIC en pin → seleccionar cliente para programar
-      marker.addListener('click',()=>{
-        // Cerrar infowindow si había uno abierto
-        if(window._planActiveIW) window._planActiveIW.close();
-
-        if(planDraggingClient && planDraggingClient.id===client.id){
-          // Segundo clic en el mismo → deseleccionar
-          planDraggingClient=null;
-          marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
-          document.getElementById('planSelected').style.display='none';
-          return;
-        }
-        // Deseleccionar el anterior si había
-        if(window._planSelectedMarker){
-          const prevHc=HORARIO_COLORS[getClientHorario(window._planSelectedClient)]||HORARIO_COLORS.none;
-          window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:prevHc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
-        }
-        // Seleccionar este
-        planDraggingClient=client;
-        window._planSelectedMarker=marker;
-        window._planSelectedClient=client;
-        marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:18,fillColor:hc.bg,fillOpacity:1,strokeColor:'#facc15',strokeWeight:3});
-        // Mostrar banner
-        const banner=document.getElementById('planSelected');
-        if(banner){
-          banner.style.display='flex';
-          banner.innerHTML=`<span>📌 <b>${client.name}</b> seleccionado — haz clic en una celda del calendario para programar</span>
-            <button onclick="clearPlanSelection()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;padding:0 4px">✕</button>`;
-        }
-        // Scroll al mini-cal
-        document.getElementById('planMiniCal')?.scrollIntoView({behavior:'smooth',block:'start'});
-      });
-
-      planMarkers.push(marker);
-      geocoded++;
-      clearTimeout(window._planFitTimer);
-      window._planFitTimer=setTimeout(()=>{
-        if(!bounds.isEmpty()){ planMap.fitBounds(bounds,{padding:60}); }
-      },800);
-    });
-  });
-
-  if(clientsToShow.length===0){
-    document.getElementById('plan-map').innerHTML=`
-      <div class="map-placeholder">
-        <div style="font-size:32px">📌</div>
-        <div style="font-size:13px">Sin clientes con dirección${filterHorario?' para este horario':''}</div>
-      </div>`;
-  }
-};
-
-// ── Mini-calendario ──
-function getPlanDays(){
-  if(planView==='week'){
-    const now=new Date(), dow=now.getDay();
-    const mon=new Date(now); mon.setDate(now.getDate()-(dow===0?6:dow-1)+planOffset*7);
-    return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
-  } else {
-    // Vista diaria
-    const d=new Date(); d.setDate(d.getDate()+planOffset);
-    return [d];
-  }
-}
-
-window.renderPlanMiniCal=function(){
-  const days=getPlanDays();
-  const DOW=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const HOURS=Array.from({length:13},(_,i)=>i+7); // 7am-19pm
-  const el=document.getElementById('planMiniCal');if(!el)return;
-
-  // Label
-  const first=days[0], last=days[days.length-1];
-  const fmt=d=>d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
-  document.getElementById('planLabel').textContent=
-    planView==='week'?`${fmt(first)} – ${fmt(last)} ${last.getFullYear()}`:
-    first.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
-
-  let calHtml='';
-  days.forEach((day,di)=>{
-    const dk=day.toISOString().slice(0,10);
-    const dowLabel=DOW[day.getDay()===0?6:day.getDay()-1];
-    const isToday=dk===new Date().toISOString().slice(0,10);
-    calHtml+=`<div class="plan-day-header" style="${isToday?'color:var(--accent)':''}">
-      ${dowLabel} ${day.getDate()}/${day.getMonth()+1}
-    </div>`;
-    HOURS.forEach(h=>{
-      const svcsHere=services.filter(s=>s.date===dk&&s.startH===h);
-      const slotId=`pslot_${dk}_${h}`;
-      calHtml+=`<div class="plan-hour-row" id="${slotId}" data-date="${dk}" data-hour="${h}"
-        onclick="onPlanCellClick('${dk}',${h})"
-        style="cursor:${planDraggingClient?'cell':'default'}">
-        <div class="plan-hour-label">${String(h).padStart(2,'0')}</div>
-        <div class="plan-hour-slots">
-          ${svcsHere.map(s=>{
-            const sc=getSC(s.status||'Programado');
-            return`<div class="plan-svc-chip" style="background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}"
-              onclick="openEditSvcModal('${s.id}')" title="${s.client}">${s.client}</div>`;
-          }).join('')}
-          <div class="plan-drop-hint">Soltar aquí</div>
-        </div>
-      </div>`;
-    });
-  });
-  el.innerHTML=calHtml;
-  // Si hay cliente seleccionado, marcar celdas como clicables
-  if(planDraggingClient){
-    document.querySelectorAll('.plan-hour-row').forEach(r=>{
-      r.classList.add('client-selected');
-      r.style.cursor='cell';
-    });
-  }
-};
-
-// Clic en celda del mini-calendario cuando hay cliente seleccionado
-window.onPlanCellClick=function(date,hour){
-  const client=planDraggingClient;
-  if(!client){ return; } // sin cliente seleccionado, no hacer nada
-  // Limpiar selección visual
-  if(window._planSelectedMarker){
-    const prevHc=HORARIO_COLORS[getClientHorario(client)]||HORARIO_COLORS.none;
-    window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:prevHc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
-    window._planSelectedMarker=null;
-    window._planSelectedClient=null;
-  }
-  document.getElementById('planSelected').style.display='none';
-  planDraggingClient=null;
-
-  // Inferir datos del cliente
-  const horario=getClientHorario(client);
-  const techId=services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase())
-    .sort((a,b)=>b.date.localeCompare(a.date))[0]?.techId || (technicians[0]?.id||'');
-  const lastType=services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase())
-    .sort((a,b)=>b.date.localeCompare(a.date))[0]?.type || SVC_TYPES[0];
-
-  const sH=hour, sM=0, eH=Math.min(23,hour+1), eM=0;
-
-  const newSvc={
-    id:uid(), client:client.name, type:lastType,
-    techId, status:'Programado', date,
-    startH:sH, startM:sM, endH:eH, endM:eM,
-    address:client.address||'', phone:client.phone||'',
-    notes:'', timeMode:horario==='none'?'am':horario,
-    createdAt:Date.now()
-  };
-  services.push(newSvc);
-  addHistory('Servicio creado desde planificador',`${client.name} — ${date} ${String(hour).padStart(2,'0')}:00`);
-  saveData();
-  renderPlanMiniCal();
-  showToast(`✓ ${client.name} → ${date} ${String(hour).padStart(2,'0')}:00`,'success');
-};
-
-// Controles de navegación
-window.clearPlanSelection=function(){
-  planDraggingClient=null;
-  if(window._planSelectedMarker){
-    const c=window._planSelectedClient;
-    const hc=HORARIO_COLORS[getClientHorario(c)]||HORARIO_COLORS.none;
-    window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
-    window._planSelectedMarker=null;
-    window._planSelectedClient=null;
-  }
-  document.getElementById('planSelected').style.display='none';
-  renderPlanMiniCal();
-};
-window.togglePlanView=function(){
-  planView=planView==='week'?'day':'week';
-  document.getElementById('planViewToggle').textContent=planView==='week'?'Semana':'Día';
-  planOffset=0;
-  renderPlanMiniCal();
-};
-window.planNext =function(){ planOffset++; renderPlanMiniCal(); };
-window.planPrev =function(){ planOffset--; renderPlanMiniCal(); };
-window.planToday=function(){ planOffset=0; renderPlanMiniCal(); };
-</script>
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js")
-      .then(() => console.log("PWA lista"))
-      .catch(e => console.warn("SW:", e));
-  });
-}
-
-/* ═══ UI RECURRENCIAS ═══ */
 const DOW_LABELS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const DOW_FULL=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-
 function parseRecurrenciaImport(tipo,diaRef,margen,horario){
-  const t=(tipo||'').toLowerCase().trim();
-  const dia=parseInt(diaRef)||1;
-  const mar=parseInt(margen)||0;
-  const hr=(horario||'am').toLowerCase().trim();
-  const timeMode=hr.includes(':')?(hr.length===5?'defined':'am'):(hr==='pm'?'pm':hr==='dia'?'dia':'am');
-  if(t.match(/trimest/)) return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:3};
-  if(t.match(/semest/))  return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:6};
-  if(t.match(/bimens/))  return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:2};
-  if(t.match(/habil|hábil/)){ const n=parseInt(t.match(/\d+/)?.[0])||1; return {tipo:'dia_habil',nhabil:n,desde_fin:t.includes('fin'),timeMode,frecuencia:1}; }
-  if(t.match(/viernes|lunes|martes|miercoles|jueves|sabado|domingo/)){
-    const DOWS={lunes:0,martes:1,miercoles:2,jueves:3,viernes:4,sabado:5,domingo:6};
-    const dow=Object.keys(DOWS).find(k=>t.includes(k));
-    const nth=parseInt(t.match(/\d+/)?.[0])||1;
-    return {tipo:'nth_dow',dow:DOWS[dow]||4,nth,timeMode,frecuencia:1};
-  }
-  return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:1};
+  const t=(tipo||'').toLowerCase(),dia=parseInt(diaRef)||1,mar=parseInt(margen)||0,hr=(horario||'am').toLowerCase();
+  const timeMode=hr.match(/\d{1,2}:\d{2}/)?'defined':(hr==='pm'?'pm':hr==='dia'?'dia':'am');
+  if(t.match(/trimest/))return{tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:3};
+  if(t.match(/semest/))return{tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:6};
+  if(t.match(/bimens/))return{tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:2};
+  if(t.match(/habil|hábil/)){const n=parseInt(t.match(/\d+/)?.[0])||1;return{tipo:'dia_habil',nhabil:n,desde_fin:t.includes('fin'),timeMode,frecuencia:1};}
+  if(t.match(/viernes|lunes|martes|miercoles|jueves|sabado|domingo/)){const DOWS={lunes:0,martes:1,miercoles:2,jueves:3,viernes:4,sabado:5,domingo:6};const dow=Object.keys(DOWS).find(k=>t.includes(k));const nth=parseInt(t.match(/\d+/)?.[0])||1;return{tipo:'nth_dow',dow:DOWS[dow||'viernes']||4,nth,timeMode,frecuencia:1};}
+  return{tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:1};
 }
-
 window.openRecurrenceModal=function(clientId){
   window._rcClientId=clientId;
   const c=clients.find(x=>x.id===clientId);if(!c)return;
@@ -3028,8 +2677,7 @@ window.openRecurrenceModal=function(clientId){
         <option value="nth_dow" ${r.tipo==='nth_dow'?'selected':''}>N-ésimo día de semana</option>
         <option value="dia_habil" ${r.tipo==='dia_habil'?'selected':''}>N-ésimo día hábil</option>
         <option value="rango_mes" ${r.tipo==='rango_mes'?'selected':''}>Rango de días del mes</option>
-      </select>
-    </div>
+      </select></div>
     <div id="rc_fields"></div>
     <div class="form-row">
       <div class="form-group"><label>Frecuencia</label>
@@ -3038,16 +2686,14 @@ window.openRecurrenceModal=function(clientId){
           <option value="2" ${r.frecuencia===2?'selected':''}>Bimensual</option>
           <option value="3" ${r.frecuencia===3?'selected':''}>Trimestral</option>
           <option value="6" ${r.frecuencia===6?'selected':''}>Semestral</option>
-        </select>
-      </div>
+        </select></div>
       <div class="form-group"><label>Horario</label>
         <select id="rc_timemode" onchange="document.getElementById('rc_hora_row').style.display=this.value==='defined'?'flex':'none'">
           <option value="am" ${(r.timeMode||'am')==='am'?'selected':''}>AM</option>
           <option value="pm" ${r.timeMode==='pm'?'selected':''}>PM</option>
           <option value="dia" ${r.timeMode==='dia'?'selected':''}>Todo el día</option>
           <option value="defined" ${r.timeMode==='defined'?'selected':''}>Hora fija</option>
-        </select>
-      </div>
+        </select></div>
     </div>
     <div id="rc_hora_row" style="display:${r.timeMode==='defined'?'flex':'none'};gap:10px">
       <div class="form-group" style="flex:1"><label>Hora inicio</label><input type="time" id="rc_hora" value="${r.hora||'09:00'}"></div>
@@ -3060,11 +2706,9 @@ window.openRecurrenceModal=function(clientId){
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1"><label>Técnico</label>
-          <select id="rc_tech">${technicians.map(t=>`<option value="${t.id}" ${t.id===(r.techId||technicians[0]?.id)?'selected':''}>${t.name}</option>`).join('')}</select>
-        </div>
+          <select id="rc_tech">${technicians.map(t=>`<option value="${t.id}" ${t.id===(r.techId||technicians[0]?.id)?'selected':''}>${t.name}</option>`).join('')}</select></div>
         <div class="form-group" style="flex:1"><label>Tipo servicio</label>
-          <select id="rc_svctype">${SVC_TYPES.map(t=>`<option ${t===(r.svcType||'Servicio')?'selected':''}>${t}</option>`).join('')}</select>
-        </div>
+          <select id="rc_svctype">${SVC_TYPES.map(t=>`<option ${t===(r.svcType||'Servicio')?'selected':''}>${t}</option>`).join('')}</select></div>
       </div>
     </div>
     <div id="rc_preview" style="margin-top:8px"></div>
@@ -3076,50 +2720,15 @@ window.openRecurrenceModal=function(clientId){
     </div>`);
   renderRecurrenceFields();
 };
-
 window.renderRecurrenceFields=function(){
   const tipo=document.getElementById('rc_tipo')?.value;
-  const c=clients.find(x=>x.id===window._rcClientId)||{};
-  const r=c.recurrence||{};
+  const r=(clients.find(x=>x.id===window._rcClientId)||{}).recurrence||{};
   const el=document.getElementById('rc_fields');if(!el)return;
-  if(tipo==='dia_n'){
-    el.innerHTML=`<div class="form-row">
-      <div class="form-group"><label>Días del mes <span style="font-size:10px;color:var(--text2)">(separados por coma)</span></label>
-        <input id="rc_dias" placeholder="ej: 1, 2 ó 15" value="${(r.dias||[1]).join(', ')}"></div>
-      <div class="form-group"><label>Margen ± días</label>
-        <input type="number" id="rc_margen" value="${r.margen||0}" min="0" max="10" style="width:80px"></div>
-    </div>`;
-  } else if(tipo==='nth_dow'){
-    el.innerHTML=`<div class="form-row">
-      <div class="form-group"><label>Día de semana</label>
-        <select id="rc_dow">${DOW_FULL.map((d,i)=>`<option value="${i}" ${(r.dow||4)===i?'selected':''}>${d}</option>`).join('')}</select></div>
-      <div class="form-group"><label>¿Cuál?</label>
-        <select id="rc_nth">
-          ${[1,2,3,4].map(n=>`<option value="${n}" ${(r.nth||1)===n?'selected':''}>${n}° del mes</option>`).join('')}
-          <option value="-1" ${r.nth===-1?'selected':''}>Último del mes</option>
-        </select></div>
-    </div>`;
-  } else if(tipo==='dia_habil'){
-    el.innerHTML=`<div class="form-row">
-      <div class="form-group"><label>N° día hábil</label>
-        <input type="number" id="rc_nhabil" value="${r.nhabil||5}" min="1" max="23" style="width:80px"></div>
-      <div class="form-group"><label>Contar desde</label>
-        <select id="rc_desde_fin">
-          <option value="0" ${!r.desde_fin?'selected':''}>Inicio del mes</option>
-          <option value="1" ${r.desde_fin?'selected':''}>Fin del mes</option>
-        </select></div>
-    </div>`;
-  } else if(tipo==='rango_mes'){
-    el.innerHTML=`<div class="form-row">
-      <div class="form-group"><label>Día inicio rango</label>
-        <input type="number" id="rc_dmin" value="${r.dmin||1}" min="1" max="31" style="width:80px"></div>
-      <div class="form-group"><label>Día fin rango</label>
-        <input type="number" id="rc_dmax" value="${r.dmax||7}" min="1" max="31" style="width:80px"></div>
-    </div>
-    <p style="font-size:11px;color:var(--text2);margin:2px 0">Se usará el primer día hábil dentro del rango.</p>`;
-  }
+  if(tipo==='dia_n')el.innerHTML=`<div class="form-row"><div class="form-group"><label>Días del mes <span style="font-size:10px;color:var(--text2)">(separados por coma)</span></label><input id="rc_dias" placeholder="ej: 1, 2 ó 15" value="${(r.dias||[1]).join(', ')}"></div><div class="form-group"><label>Margen ± días</label><input type="number" id="rc_margen" value="${r.margen||0}" min="0" max="10" style="width:80px"></div></div>`;
+  else if(tipo==='nth_dow')el.innerHTML=`<div class="form-row"><div class="form-group"><label>Día de semana</label><select id="rc_dow">${DOW_FULL.map((d,i)=>`<option value="${i}" ${(r.dow||4)===i?'selected':''}>${d}</option>`).join('')}</select></div><div class="form-group"><label>¿Cuál?</label><select id="rc_nth">${[1,2,3,4].map(n=>`<option value="${n}" ${(r.nth||1)===n?'selected':''}>${n}° del mes</option>`).join('')}<option value="-1" ${r.nth===-1?'selected':''}>Último del mes</option></select></div></div>`;
+  else if(tipo==='dia_habil')el.innerHTML=`<div class="form-row"><div class="form-group"><label>N° día hábil</label><input type="number" id="rc_nhabil" value="${r.nhabil||5}" min="1" max="23" style="width:80px"></div><div class="form-group"><label>Contar desde</label><select id="rc_desde_fin"><option value="0" ${!r.desde_fin?'selected':''}>Inicio del mes</option><option value="1" ${r.desde_fin?'selected':''}>Fin del mes</option></select></div></div>`;
+  else if(tipo==='rango_mes')el.innerHTML=`<div class="form-row"><div class="form-group"><label>Día inicio rango</label><input type="number" id="rc_dmin" value="${r.dmin||1}" min="1" max="31" style="width:80px"></div><div class="form-group"><label>Día fin rango</label><input type="number" id="rc_dmax" value="${r.dmax||7}" min="1" max="31" style="width:80px"></div></div><p style="font-size:11px;color:var(--text2);margin:2px 0">Se usará el primer día hábil dentro del rango.</p>`;
 };
-
 function buildPatronFromUI(){
   const tipo=document.getElementById('rc_tipo').value;
   const frecuencia=parseInt(document.getElementById('rc_freq').value)||1;
@@ -3128,16 +2737,12 @@ function buildPatronFromUI(){
   const techId=document.getElementById('rc_tech')?.value||technicians[0]?.id;
   const svcType=document.getElementById('rc_svctype')?.value||'Servicio';
   const base={tipo,frecuencia,timeMode,hora,techId,svcType};
-  if(tipo==='dia_n'){
-    const dias=(document.getElementById('rc_dias').value||'1').split(',').map(x=>parseInt(x.trim())).filter(n=>n>0&&n<=31);
-    return {...base,dias,margen:parseInt(document.getElementById('rc_margen').value)||0};
-  }
-  if(tipo==='nth_dow') return {...base,dow:parseInt(document.getElementById('rc_dow').value),nth:parseInt(document.getElementById('rc_nth').value)};
-  if(tipo==='dia_habil') return {...base,nhabil:parseInt(document.getElementById('rc_nhabil').value)||5,desde_fin:document.getElementById('rc_desde_fin').value==='1'};
-  if(tipo==='rango_mes') return {...base,dmin:parseInt(document.getElementById('rc_dmin').value)||1,dmax:parseInt(document.getElementById('rc_dmax').value)||7};
+  if(tipo==='dia_n')return{...base,dias:(document.getElementById('rc_dias').value||'1').split(',').map(x=>parseInt(x.trim())).filter(n=>n>0&&n<=31),margen:parseInt(document.getElementById('rc_margen').value)||0};
+  if(tipo==='nth_dow')return{...base,dow:parseInt(document.getElementById('rc_dow').value),nth:parseInt(document.getElementById('rc_nth').value)};
+  if(tipo==='dia_habil')return{...base,nhabil:parseInt(document.getElementById('rc_nhabil').value)||5,desde_fin:document.getElementById('rc_desde_fin').value==='1'};
+  if(tipo==='rango_mes')return{...base,dmin:parseInt(document.getElementById('rc_dmin').value)||1,dmax:parseInt(document.getElementById('rc_dmax').value)||7};
   return base;
 }
-
 window.previewRecurrence=function(clientId){
   const patron=buildPatronFromUI();
   const desde=document.getElementById('rc_desde').value+'-01';
@@ -3145,18 +2750,8 @@ window.previewRecurrence=function(clientId){
   const fechas=generarFechas(patron,desde,hasta);
   const el=document.getElementById('rc_preview');if(!el)return;
   if(!fechas.length){el.innerHTML='<p style="color:var(--text2);font-size:12px">Sin fechas para este período.</p>';return;}
-  el.innerHTML=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
-    <div style="font-weight:500;font-size:12px;margin-bottom:8px;color:#a855f7">📅 ${fechas.length} fechas:</div>
-    <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${fechas.map(f=>{
-        const dd=new Date(f+'T12:00'),dow=DOW_LABELS[dd.getDay()===0?6:dd.getDay()-1],isFer=esFeriado(f);
-        return`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${isFer?'rgba(239,68,68,.15)':'rgba(168,85,247,.15)'};color:${isFer?'#ef4444':'#a855f7'}">${dow} ${f.slice(8)}/${f.slice(5,7)}${isFer?' 🚫':''}</span>`;
-      }).join('')}
-    </div>
-    ${fechas.some(f=>esFeriado(f))?'<p style="font-size:11px;color:#ef4444;margin-top:4px">🚫 Coincide con feriados</p>':''}
-  </div>`;
+  el.innerHTML=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px"><div style="font-weight:500;font-size:12px;margin-bottom:8px;color:#a855f7">📅 ${fechas.length} fechas:</div><div style="display:flex;flex-wrap:wrap;gap:5px">${fechas.map(f=>{const dd=new Date(f+'T12:00'),dow=DOW_LABELS[dd.getDay()===0?6:dd.getDay()-1],isFer=esFeriado(f);return`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${isFer?'rgba(239,68,68,.15)':'rgba(168,85,247,.15)'};color:${isFer?'#ef4444':'#a855f7'}">${dow} ${f.slice(8)}/${f.slice(5,7)}${isFer?' 🚫':''}</span>`;}).join('')}</div>${fechas.some(f=>esFeriado(f))?'<p style="font-size:11px;color:#ef4444;margin-top:4px">🚫 Coincide con feriados</p>':''}</div>`;
 };
-
 window.saveAndGenerateRecurrence=function(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c)return;
   const patron=buildPatronFromUI();
@@ -3170,31 +2765,29 @@ window.saveAndGenerateRecurrence=function(clientId){
   let creados=0;
   fechas.forEach(fecha=>{
     if(existentes.has(fecha))return;
-    const [sH,sM]=patron.timeMode==='defined'?(patron.hora||'09:00').split(':').map(Number):[patron.timeMode==='pm'?13:8,0];
-    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:patron.techId||technicians[0]?.id||'',
-      status:'Programado',date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,
-      address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,
-      recurrenceId:clientId,createdAt:Date.now()});
+    const[sH,sM]=patron.timeMode==='defined'?(patron.hora||'09:00').split(':').map(Number):[patron.timeMode==='pm'?13:8,0];
+    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:patron.techId||technicians[0]?.id||'',status:'Programado',date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,recurrenceId:clientId,createdAt:Date.now()});
     creados++;
   });
   addHistory('Recurrencia generada',`${c.name}: ${creados} servicios`);
-  saveData(); closeModal(); renderClients();
+  saveData();closeModal();renderClients();
   showToast(`✓ ${creados} servicios generados para ${c.name}`,'success');
 };
-
 window.deleteRecurrence=function(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c)return;
   const today=fmtKey(new Date());
-  if(!confirm(`¿Quitar recurrencia de ${c.name}?\n\nSe eliminarán servicios FUTUROS desde ${today}.\nLos pasados no se modifican.`))return;
+  if(!confirm(`¿Quitar recurrencia de ${c.name}?\nSe eliminarán servicios FUTUROS desde ${today}.\nLos pasados no se modifican.`))return;
   const antes=services.length;
   services=services.filter(s=>!(s.recurrenceId===clientId&&s.date>=today));
   const elim=antes-services.length;
   const ix=clients.findIndex(x=>x.id===clientId);
-  if(ix>=0){const {recurrence,...rest}=clients[ix];clients[ix]=rest;}
+  if(ix>=0){const{recurrence,...rest}=clients[ix];clients[ix]=rest;}
   addHistory('Recurrencia eliminada',`${c.name}: ${elim} servicios futuros eliminados`);
-  saveData(); closeModal(); renderClients();
+  saveData();closeModal();renderClients();
   showToast(`Recurrencia eliminada — ${elim} servicios futuros borrados`,'success');
 };
+
+boot();
 
 </script>
 </body>
