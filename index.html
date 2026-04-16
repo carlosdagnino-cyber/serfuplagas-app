@@ -1822,13 +1822,20 @@ window.renderGoogleMap=function(byTech,mapDiv){
   mapDiv.innerHTML='';
   mapDiv.style.height='500px';
   mapDiv.style.minHeight='500px';
+
+  // Mapa estilo Google Maps estándar — sin tema oscuro
   const map=new google.maps.Map(mapDiv,{
-    zoom:12,
-    center:{lat:-33.5928,lng:-70.7009}, // San Bernardo, RM
-    styles:[{elementType:'geometry',stylers:[{color:'#1e2333'}]},{elementType:'labels.text.fill',stylers:[{color:'#8b90a0'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#2d3347'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#0f1117'}]}]
+    zoom:13,
+    center:{lat:-33.5928,lng:-70.7009},
+    mapTypeId:'roadmap',
+    mapTypeControl:false,
+    streetViewControl:false,
+    fullscreenControl:true,
+    zoomControl:true,
+    gestureHandling:'cooperative',
+    styles:[] // Sin estilos custom — mapa normal de Google
   });
   mapInstance=map;
-  // Forzar redibujado del mapa después de que el DOM esté listo
   setTimeout(()=>{ google.maps.event.trigger(map,'resize'); map.setCenter({lat:-33.5928,lng:-70.7009}); }, 300);
 
   // Limpiar renderers anteriores
@@ -1840,42 +1847,76 @@ window.renderGoogleMap=function(byTech,mapDiv){
 
   Object.values(byTech).forEach((group,gi)=>{
     const color=ROUTE_COLORS[gi%ROUTE_COLORS.length];
-    const pal=getPalette(group.tech.colorIdx||gi);
 
-    // Geocodificar direcciones y agregar markers
     group.svcs.forEach((svc,i)=>{
       if(!svc.address)return;
       geocoder.geocode({address:svc.address+', Santiago, Chile'},(results,status)=>{
         if(status==='OK'&&results[0]){
           const pos=results[0].geometry.location;
           bounds.extend(pos);
+
+          // Pin con número y color del técnico
           const marker=new google.maps.Marker({
             position:pos, map,
-            label:{text:String(i+1),color:'#fff',fontSize:'11px',fontWeight:'bold'},
-            icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:color,fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
-            title:`${svc.client} · ${fmtTime(svc.startH,svc.startM||0)}`
+            label:{text:String(i+1),color:'#fff',fontSize:'13px',fontWeight:'bold'},
+            icon:{
+              path:google.maps.SymbolPath.CIRCLE,
+              scale:20,
+              fillColor:color,
+              fillOpacity:1,
+              strokeColor:'#fff',
+              strokeWeight:2.5
+            },
+            title:svc.client,
+            zIndex:100+i,
           });
-          const iw=new google.maps.InfoWindow({content:`
-            <div style="font-family:sans-serif;padding:4px">
-              <div style="font-weight:600;font-size:13px">${svc.client}</div>
-              <div style="font-size:11px;color:#666">${svc.type}</div>
-              <div style="font-size:11px;color:#666">${fmtTime(svc.startH,svc.startM||0)} – ${fmtTime(svc.endH,svc.endM||0)}</div>
-              <div style="font-size:11px">${svc.address}</div>
-            </div>`});
+
+          // Etiqueta siempre visible sobre el pin: nombre + hora
+          const overlay=new google.maps.OverlayView();
+          const lbl=document.createElement('div');
+          lbl.innerHTML=
+            '<div style="font-weight:700;font-size:12px;color:#202124">'+svc.client+'</div>'+
+            '<div style="font-size:11px;color:'+color+';font-weight:600">'+fmtTime(svc.startH,svc.startM||0)+' – '+fmtTime(svc.endH,svc.endM||0)+'</div>';
+          lbl.style.cssText=
+            'position:absolute;background:#fff;border-left:3px solid '+color+
+            ';border-radius:4px;padding:4px 8px;font-family:Google Sans,Roboto,sans-serif;'+
+            'white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);'+
+            'transform:translate(-50%,-165%);pointer-events:none;z-index:999;min-width:120px;';
+          overlay.onAdd=function(){ this.getPanes().floatPane.appendChild(lbl); };
+          overlay.draw=function(){
+            const proj=this.getProjection(); if(!proj)return;
+            const pt=proj.fromLatLngToDivPixel(pos);
+            if(pt){ lbl.style.left=pt.x+'px'; lbl.style.top=pt.y+'px'; }
+          };
+          overlay.onRemove=function(){ lbl.parentNode?.removeChild(lbl); };
+          overlay.setMap(map);
+
+          // InfoWindow al hacer clic en el pin
+          const iw=new google.maps.InfoWindow({content:
+            '<div style="font-family:Google Sans,Roboto,sans-serif;padding:6px;min-width:210px">'+
+            '<div style="font-weight:700;font-size:14px;color:#202124;margin-bottom:5px">'+
+              '<span style="display:inline-block;background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:12px;margin-right:6px">'+String(i+1)+'</span>'+
+              svc.client+'</div>'+
+            '<div style="font-size:12px;color:#1a73e8;font-weight:600;margin-bottom:3px">🕐 '+fmtTime(svc.startH,svc.startM||0)+' – '+fmtTime(svc.endH,svc.endM||0)+'</div>'+
+            '<div style="font-size:12px;color:#555;margin-bottom:2px">📍 '+svc.address+'</div>'+
+            '<div style="font-size:12px;color:#555">🔧 '+svc.type+'</div>'+
+            (svc.notes?'<div style="font-size:11px;color:#888;margin-top:3px;font-style:italic">'+svc.notes+'</div>':'')+
+            '</div>'
+          });
           marker.addListener('click',()=>iw.open(map,marker));
           map.fitBounds(bounds);
         }
       });
     });
 
-    // Direcciones con tráfico para el primer técnico
+    // Ruta con tráfico entre paradas
     if(group.svcs.length>=2){
       const validSvcs=group.svcs.filter(s=>s.address);
       if(validSvcs.length>=2){
         const ds=new google.maps.DirectionsService();
         const dr=new google.maps.DirectionsRenderer({
           map,suppressMarkers:true,
-          polylineOptions:{strokeColor:color,strokeOpacity:0.7,strokeWeight:4}
+          polylineOptions:{strokeColor:color,strokeOpacity:0.8,strokeWeight:5}
         });
         directionsRenderer.push(dr);
         ds.route({
