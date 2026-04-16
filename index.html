@@ -986,6 +986,28 @@ let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], appUsers=[], mapsKey='';
 let productos=[], certificados=[];
+
+/* ── CATÁLOGO DE PRODUCTOS POR DEFECTO ── */
+const DEFAULT_PRODUCTOS = [
+  {id:'p001', categoria:'Rodenticida', nombre:'Racumin Paste',      unidad:'g',  tipo:'rodenticida'},
+  {id:'p002', categoria:'Rodenticida', nombre:'Racumin Polvo',      unidad:'g',  tipo:'rodenticida'},
+  {id:'p003', categoria:'Rodenticida', nombre:'Klerat Pellets',     unidad:'g',  tipo:'rodenticida'},
+  {id:'p004', categoria:'Rodenticida', nombre:'Storm Bloque',       unidad:'g',  tipo:'rodenticida'},
+  {id:'p005', categoria:'Rodenticida', nombre:'Ratak Plus',         unidad:'g',  tipo:'rodenticida'},
+  {id:'p006', categoria:'Insecticida', nombre:'Demand CS',          unidad:'ml', tipo:'insecticida'},
+  {id:'p007', categoria:'Insecticida', nombre:'Cislin 25',          unidad:'ml', tipo:'insecticida'},
+  {id:'p008', categoria:'Insecticida', nombre:'Deltametrina 2.5%',  unidad:'ml', tipo:'insecticida'},
+  {id:'p009', categoria:'Insecticida', nombre:'Ficam W',            unidad:'g',  tipo:'insecticida'},
+  {id:'p010', categoria:'Insecticida', nombre:'K-Othrine',          unidad:'ml', tipo:'insecticida'},
+  {id:'p011', categoria:'Sanitizante', nombre:'Cloro al 5%',        unidad:'ml', tipo:'sanitizante'},
+  {id:'p012', categoria:'Sanitizante', nombre:'Amonio Cuaternario', unidad:'ml', tipo:'sanitizante'},
+  {id:'p013', categoria:'Sanitizante', nombre:'Alcohol 70%',        unidad:'ml', tipo:'sanitizante'},
+  {id:'p014', categoria:'Gel/Cebo',    nombre:'Syngenta Advion Gel',unidad:'g',  tipo:'gel'},
+  {id:'p015', categoria:'Gel/Cebo',    nombre:'Combat Gel',         unidad:'g',  tipo:'gel'},
+];
+const PLAGAS_LIST = ['Ratón doméstico','Rata noruega','Rata negra','Cucaracha alemana','Cucaracha americana','Cucaracha oriental','Hormiga carpintera','Hormiga argentina','Hormiga faraón','Mosca doméstica','Mosca de fruta','Mosquito','Pulga','Garrapata','Piojo','Polilla','Polilla de ropa','Gorgojo','Termita','Murciélago','Paloma','Otro'];
+const TIPO_TRAMPA = ['Trampa de golpe','Trampa de pegamento','Trampa jaula','Estación de cebo','Trampa luminosa','Feromona','Otro'];
+
 let statusColors={
   'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
   'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
@@ -3698,47 +3720,10 @@ window.switchRouteTab = function(btnEl, panelId, color){
    Flujo: Check-in → Formulario terreno → Check-out → Revisión admin → PDF
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ── CATÁLOGO DE PRODUCTOS POR DEFECTO ─────────────────────────────────── */
-const DEFAULT_PRODUCTOS = [
-  // Rodenticidas
-  {id:'p001', categoria:'Rodenticida', nombre:'Racumin Paste', unidad:'g', tipo:'rodenticida'},
-  {id:'p002', categoria:'Rodenticida', nombre:'Racumin Polvo', unidad:'g', tipo:'rodenticida'},
-  {id:'p003', categoria:'Rodenticida', nombre:'Klerat Pellets', unidad:'g', tipo:'rodenticida'},
-  {id:'p004', categoria:'Rodenticida', nombre:'Storm Bloque', unidad:'g', tipo:'rodenticida'},
-  {id:'p005', categoria:'Rodenticida', nombre:'Ratak Plus', unidad:'g', tipo:'rodenticida'},
-  // Insecticidas
-  {id:'p006', categoria:'Insecticida', nombre:'Demand CS', unidad:'ml', tipo:'insecticida'},
-  {id:'p007', categoria:'Insecticida', nombre:'Cislin 25', unidad:'ml', tipo:'insecticida'},
-  {id:'p008', categoria:'Insecticida', nombre:'Deltametrina 2.5%', unidad:'ml', tipo:'insecticida'},
-  {id:'p009', categoria:'Insecticida', nombre:'Ficam W', unidad:'g', tipo:'insecticida'},
-  {id:'p010', categoria:'Insecticida', nombre:'K-Othrine', unidad:'ml', tipo:'insecticida'},
-  // Sanitizantes
-  {id:'p011', categoria:'Sanitizante', nombre:'Cloro al 5%', unidad:'ml', tipo:'sanitizante'},
-  {id:'p012', categoria:'Sanitizante', nombre:'Amonio Cuaternario', unidad:'ml', tipo:'sanitizante'},
-  {id:'p013', categoria:'Sanitizante', nombre:'Alcohol 70%', unidad:'ml', tipo:'sanitizante'},
-  // Gel / cebo
-  {id:'p014', categoria:'Gel/Cebo', nombre:'Syngenta Advion Gel', unidad:'g', tipo:'gel'},
-  {id:'p015', categoria:'Gel/Cebo', nombre:'Combat Gel', unidad:'g', tipo:'gel'},
-];
-
-const PLAGAS_LIST = [
-  'Ratón doméstico','Rata noruega','Rata negra',
-  'Cucaracha alemana','Cucaracha americana','Cucaracha oriental',
-  'Hormiga carpintera','Hormiga argentina','Hormiga faraón',
-  'Mosca doméstica','Mosca de fruta','Mosquito',
-  'Pulga','Garrapata','Piojo',
-  'Polilla','Polilla de ropa','Gorgojo',
-  'Termita','Murciélago','Paloma','Otro',
-];
-
-const TIPO_TRAMPA = ['Trampa de golpe','Trampa de pegamento','Trampa jaula','Estación de cebo','Trampa luminosa','Feromona','Otro'];
+/* DEFAULT_PRODUCTOS, PLAGAS_LIST, TIPO_TRAMPA — declaradas en estado global arriba */
 
 /* ── ESTADO GLOBAL CERTIFICADOS ────────────────────────────────────────── */
-let productos = [];
-let certificados = [];
-
-/* ── INTEGRAR EN saveData / loadLocal / startDataSync ─────────────────── */
-// Estos se parchean desde fuera — ver apply_cert_patch.py
+// productos y certificados ya declarados en el estado global del módulo principal
 
 /* ── HELPERS ───────────────────────────────────────────────────────────── */
 function getProductos(){ return productos.length ? productos : DEFAULT_PRODUCTOS; }
