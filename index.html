@@ -251,6 +251,20 @@ header {
 .sb-meta   { font-size:9px; opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sb-time   { font-size:9px; font-family:var(--mono); opacity:.6; }
 .sb-status { font-size:8px; opacity:.8; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+.sb-actions { display:flex; gap:3px; margin-top:3px; }
+.sb-btn-status {
+  font-size:8px; font-weight:700; padding:1px 5px; border-radius:4px;
+  border:none; cursor:pointer; letter-spacing:.03em; text-transform:uppercase;
+  white-space:nowrap; transition:all .15s; line-height:1.6;
+}
+.sb-btn-contact {
+  width:18px; height:18px; border-radius:4px; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,0.15); transition:all .15s; flex-shrink:0;
+  padding:0;
+}
+.sb-btn-contact:hover { background:rgba(255,255,255,0.3); }
+.sb-btn-status:hover { filter:brightness(1.2); }
 
 #drag-ghost {
   position:fixed; pointer-events:none; z-index:9999;
@@ -758,10 +772,12 @@ let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], appUsers=[], mapsKey='';
 let statusColors={
-  'Pendiente': {bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
-  'Confirmado':{bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
-  'Completado':{bg:'rgba(34,197,94,0.14)',   bd:'#22c55e', tx:'#86efac'},
-  'Cancelado': {bg:'rgba(239,68,68,0.14)',   bd:'#ef4444', tx:'#fca5a5'},
+  'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
+  'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
+  'Confirmado':        {bg:'rgba(34,197,94,0.14)',   bd:'#22c55e', tx:'#86efac'},
+  'Reprogramar':       {bg:'rgba(239,68,68,0.14)',   bd:'#ef4444', tx:'#fca5a5'},
+  'Completado':        {bg:'rgba(168,85,247,0.14)',  bd:'#a855f7', tx:'#d8b4fe'},
+  'Cancelado':         {bg:'rgba(100,116,139,0.15)', bd:'#64748b', tx:'#94a3b8'},
 };
 let weekOffset=0, editingId=null, mapInstance=null, directionsRenderer=[];
 let dragSvcId=null, dragOffsetM=0;
@@ -776,7 +792,7 @@ const TECH_PALETTE=[
 ];
 const ROUTE_COLORS=['#4f8ef7','#22c55e','#f59e0b','#a855f7','#ef4444'];
 const SVC_TYPES=['Fumigación','Desratización','Desinsectación','Control de plagas','Saneamiento','Revisión','Instalación de trampas','Otro'];
-const SVC_STATUS=['Pendiente','Confirmado','Completado','Cancelado'];
+const SVC_STATUS=['Programado','Pend. confirmación','Confirmado','Reprogramar','Completado','Cancelado'];
 const HOURS=Array.from({length:17},(_,i)=>i+7);
 const DEFAULT_DUR=60;
 const ROLES_DEF={
@@ -1059,6 +1075,56 @@ function calcLayout(daySvcs){
   return res;
 }
 
+// Ciclo de estados rápido
+const STATUS_CYCLE=['Programado','Pend. confirmación','Confirmado','Reprogramar','Completado','Cancelado'];
+window.cycleStatus=function(e,svcId){
+  e.stopPropagation();
+  const idx=services.findIndex(s=>s.id===svcId); if(idx<0)return;
+  const cur=services[idx].status||'Programado';
+  const ci=STATUS_CYCLE.indexOf(cur);
+  const next=STATUS_CYCLE[(ci+1)%STATUS_CYCLE.length];
+  services[idx]={...services[idx],status:next,updatedAt:Date.now()};
+  addHistory('Estado cambiado',`${services[idx].client}: ${cur} → ${next}`);
+  saveData();
+};
+
+// Colores del botón de estado (compactos para el bloque)
+const STATUS_BTN={
+  'Programado':        {bg:'#3b82f6',tx:'#fff'},
+  'Pend. confirmación':{bg:'#f59e0b',tx:'#000'},
+  'Confirmado':        {bg:'#22c55e',tx:'#fff'},
+  'Reprogramar':       {bg:'#ef4444',tx:'#fff'},
+  'Completado':        {bg:'#a855f7',tx:'#fff'},
+  'Cancelado':         {bg:'#64748b',tx:'#fff'},
+};
+
+// Ícono de canal de contacto
+function contactIcon(channel){
+  if(channel==='whatsapp') return `<svg viewBox="0 0 24 24" width="11" height="11" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.139.564 4.148 1.55 5.889L.057 23.985l6.257-1.641A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 01-5.012-1.374l-.36-.214-3.714.975.993-3.624-.235-.372A9.783 9.783 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182c5.43 0 9.818 4.388 9.818 9.818 0 5.43-4.388 9.818-9.818 9.818z"/></svg>`;
+  if(channel==='correo') return `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>`;
+  if(channel==='telefono') return `<svg viewBox="0 0 24 24" width="11" height="11" fill="#fff"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`;
+  return `<svg viewBox="0 0 24 24" width="11" height="11" fill="#fff"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm0 5c.55 0 1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1v-6c0-.55.45-1 1-1z"/></svg>`;
+}
+
+// Canal de contacto del cliente
+function getClientContact(clientName){
+  const c=clients.find(x=>x.name.toLowerCase()===clientName.toLowerCase());
+  return c?.contactChannel||null;
+}
+
+// Cambiar canal de contacto desde el bloque
+window.cycleContact=function(e,svcId){
+  e.stopPropagation();
+  const svc=services.find(s=>s.id===svcId); if(!svc)return;
+  const ci=clients.findIndex(c=>c.name.toLowerCase()===svc.client.toLowerCase());
+  if(ci<0)return;
+  const channels=['whatsapp','correo','telefono'];
+  const cur=clients[ci].contactChannel||'whatsapp';
+  const next=channels[(channels.indexOf(cur)+1)%channels.length];
+  clients[ci]={...clients[ci],contactChannel:next};
+  saveData();
+};
+
 window.renderCalendar=function(){
   if(!hasPerm('view_calendar'))return;
   const days=getWeekDays(weekOffset);
@@ -1113,11 +1179,20 @@ window.renderCalendar=function(){
       block.draggable=canEdit;
       block.dataset.id=svc.id;
       block.style.cssText=`top:${topPx}px;height:${hpx}px;width:${w};left:${left};right:auto;background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}`;
+      const svcStatus=svc.status||'Programado';
+      const svcContact=getClientContact(svc.client);
+      const btnSC=STATUS_BTN[svcStatus]||STATUS_BTN['Programado'];
+      const contactBg=svcContact==='whatsapp'?'#25d366':svcContact==='correo'?'#3b82f6':svcContact==='telefono'?'#6b7280':'rgba(255,255,255,0.2)';
       block.innerHTML=`
         <div class="sb-client">${svc.client}</div>
         <div class="sb-meta">${svc.type}${total===1?' · '+tech.name:''}</div>
         <div class="sb-time">${fmtTime(svc.startH,svc.startM||0)}–${fmtTime(svc.endH,svc.endM||0)}</div>
-        <div class="sb-status">${svc.status||'Pendiente'}</div>`;
+        <div class="sb-actions">
+          <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
+            onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
+          ${svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
+            title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
+        </div>`;
 
       let mouseDownX=0, mouseDownY=0, isDragging=false;
       block.addEventListener('mousedown', e=>{mouseDownX=e.clientX; mouseDownY=e.clientY; isDragging=false;});
@@ -1410,8 +1485,8 @@ window.renderClients=function(){
     <div class="card card-row">
       <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="info-primary">${c.name}</div>
-        <div class="info-secondary">${[c.address,c.phone].filter(Boolean).join(' · ')||'Sin datos'}</div>
+        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''}</div>
+        <div class="info-secondary">${[c.address,c.phone,c.email].filter(Boolean).join(' · ')||'Sin datos'}</div>
       </div>
       ${canEdit?`<div class="card-actions">
         <button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
@@ -1425,9 +1500,20 @@ window.openAddClientModal=function(){
     <div class="form-group"><label>Nombre</label><input id="fc_name" placeholder="Nombre del cliente"></div>
     <div class="form-row">
       <div class="form-group"><label>Dirección</label><input id="fc_address" placeholder="Dirección"></div>
-      <div class="form-group"><label>Teléfono</label><input id="fc_phone" placeholder="+56 9 …"></div>
+      <div class="form-group"><label>Teléfono / WhatsApp</label><input id="fc_phone" placeholder="+56 9 …"></div>
     </div>
-    <div class="form-group"><label>Comentarios</label><textarea id="fc_notes" rows="2"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Correo electrónico</label><input id="fc_email" placeholder="correo@ejemplo.cl"></div>
+      <div class="form-group"><label>Canal de contacto preferido</label>
+        <select id="fc_contact">
+          <option value="">Sin definir</option>
+          <option value="whatsapp">📱 WhatsApp</option>
+          <option value="correo">✉️ Correo</option>
+          <option value="telefono">📞 Teléfono</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Comentarios / Notas internas</label><textarea id="fc_notes" rows="2"></textarea></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveClient()">Agregar</button>
@@ -1439,9 +1525,20 @@ window.openEditClientModal=function(id){
     <div class="form-group"><label>Nombre</label><input id="fc_name" value="${c.name}"></div>
     <div class="form-row">
       <div class="form-group"><label>Dirección</label><input id="fc_address" value="${c.address||''}"></div>
-      <div class="form-group"><label>Teléfono</label><input id="fc_phone" value="${c.phone||''}"></div>
+      <div class="form-group"><label>Teléfono / WhatsApp</label><input id="fc_phone" value="${c.phone||''}"></div>
     </div>
-    <div class="form-group"><label>Comentarios</label><textarea id="fc_notes" rows="2">${c.notes||''}</textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Correo electrónico</label><input id="fc_email" value="${c.email||''}"></div>
+      <div class="form-group"><label>Canal de contacto preferido</label>
+        <select id="fc_contact">
+          <option value="">Sin definir</option>
+          <option value="whatsapp" ${c.contactChannel==='whatsapp'?'selected':''}>📱 WhatsApp</option>
+          <option value="correo"   ${c.contactChannel==='correo'  ?'selected':''}>✉️ Correo</option>
+          <option value="telefono" ${c.contactChannel==='telefono'?'selected':''}>📞 Teléfono</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Comentarios / Notas internas</label><textarea id="fc_notes" rows="2">${c.notes||''}</textarea></div>
     <div class="modal-footer">
       <button class="btn btn-danger" onclick="deleteClient('${id}')">Eliminar</button>
       <button class="btn" onclick="closeModal()">Cancelar</button>
@@ -1453,14 +1550,16 @@ window.saveClient=function(id){
   if(!name){showToast('Ingresa el nombre','error');return;}
   const address=document.getElementById('fc_address').value.trim();
   const phone  =document.getElementById('fc_phone').value.trim();
+  const email  =document.getElementById('fc_email')?.value.trim()||'';
+  const contactChannel=document.getElementById('fc_contact')?.value||'';
   const notes  =document.getElementById('fc_notes').value.trim();
   if(id){
     const idx=clients.findIndex(c=>c.id===id);
-    if(idx>=0) clients[idx]={...clients[idx],name,address,phone,notes};
+    if(idx>=0) clients[idx]={...clients[idx],name,address,phone,email,contactChannel,notes};
     addHistory('Cliente editado',name);
     showToast('Cliente actualizado','success');
   } else {
-    clients.push({id:uid(),name,address,phone,notes,createdAt:Date.now()});
+    clients.push({id:uid(),name,address,phone,email,contactChannel,notes,createdAt:Date.now()});
     addHistory('Cliente agregado',name);
     showToast('Cliente agregado','success');
   }
