@@ -672,7 +672,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2.0 · Multi-tenant SaaS</p>
+    <p class="login-footer">v2026.04.16.2220 · 16/04/2026 22:20</p>
   </div>
 </div>
 
@@ -694,6 +694,13 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
+      <div id="versionBadge" title="Build: 16/04/2026 22:20"
+        style="font-size:10px;font-family:var(--mono);color:var(--text3);
+               background:var(--bg3);border:1px solid var(--border);
+               border-radius:6px;padding:3px 7px;cursor:default;
+               white-space:nowrap;display:none">
+        v2026.04.16.2220
+      </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
         <div id="notifPanel" class="notif-panel" style="display:none"></div>
@@ -705,6 +712,9 @@ header {
       <div class="user-dropdown" id="userDropdown">
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
+        <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
+          <span>v2026.04.16.2220</span><span>16/04/2026 22:20</span>
+        </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
         <div class="dropdown-item" onclick="switchTab('settings');closeUserMenu()">⚙️ Configuración</div>
@@ -1178,6 +1188,8 @@ function showApp(){
   document.getElementById('app').style.display='flex';
   updateUserUI();
   renderAll();
+  const _vb = document.getElementById('versionBadge');
+  if(_vb) _vb.style.display = 'block';
   // Ocultar pestañas según permisos
   document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
     const t=tab.dataset.tab;
@@ -1199,6 +1211,9 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
+const APP_VERSION = 'v2026.04.16.2220';
+const APP_BUILD  = '16/04/2026 22:20';
+
 function updateUserUI(){
   if(!currentUser)return;
   const av=document.getElementById('userAvatarBtn');
