@@ -414,12 +414,36 @@ header {
 /* ── TABS TÉCNICO MÓVIL ── */
 .route-tech-tabs { display:none; }
 @media(max-width:768px) {
-  /* En móvil: layout vertical, todo en una columna scrolleable */
-  #tab-routes { overflow-y:auto; }
-  .routes-layout { flex-direction:column; overflow:visible; flex:none; }
-  .routes-map-area { overflow-y:visible; order:2; }
-  .routes-sidebar { width:100%; max-height:none; flex-shrink:0; border-right:none; border-bottom:none; order:1; }
-  #routes-map { height:55vw; min-height:260px; border-radius:var(--radius); }
+  /* Romper el overflow:hidden heredado de .section y .main */
+  .main { overflow:visible !important; }
+  #tab-routes {
+    overflow-y:auto !important;
+    overflow-x:hidden;
+    height:calc(100vh - var(--header-h) - var(--tab-h) - 42px); /* descontar toolbar */
+    display:flex;
+    flex-direction:column;
+  }
+  .routes-layout {
+    flex-direction:column;
+    overflow:visible;
+    flex:none;
+  }
+  .routes-map-area {
+    overflow-y:visible;
+    order:2;
+    flex:none;
+  }
+  .routes-sidebar {
+    width:100%; max-height:none; flex-shrink:0;
+    border-right:none; border-bottom:none;
+    order:1; overflow:visible;
+  }
+  #routes-map {
+    height:70vw; min-height:280px;
+    border-radius:var(--radius);
+    flex-shrink:0;
+    margin-bottom:1rem;
+  }
 
   /* Tabs de técnico en móvil */
   .route-tech-tabs {
