@@ -483,6 +483,53 @@ header {
 .tech-svc-actions { display:flex; gap:8px; padding:0 14px 14px; }
 
 /* ── TOAST ── */
+/* ══ PLANIFICADOR ══ */
+#plan-map { flex:1; min-height:300px; border-radius:var(--radius-lg); overflow:hidden; position:relative; }
+.plan-layout { display:flex; flex:1; overflow:hidden; gap:0; }
+.plan-sidebar {
+  width:340px; flex-shrink:0; background:var(--bg2);
+  border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden;
+}
+.plan-mini-cal { flex:1; overflow-y:auto; }
+.plan-filters { padding:10px 12px; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:6px; }
+.plan-day-header {
+  padding:6px 12px; font-size:11px; font-weight:600; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.05em; background:var(--bg3);
+  border-bottom:1px solid var(--border); position:sticky; top:0; z-index:2;
+}
+.plan-hour-row {
+  display:flex; align-items:stretch; border-bottom:1px solid var(--border);
+  min-height:32px; transition:background .1s;
+}
+.plan-hour-row:hover { background:rgba(79,142,247,.04); }
+.plan-hour-row.drag-over { background:rgba(79,142,247,.18); outline:2px dashed rgba(79,142,247,.5); outline-offset:-2px; }
+.plan-hour-label {
+  width:40px; flex-shrink:0; font-size:9px; font-family:var(--mono);
+  color:var(--text3); padding:4px 4px 0 4px; text-align:right;
+}
+.plan-hour-slots { flex:1; padding:2px 4px; display:flex; flex-direction:column; gap:2px; }
+.plan-svc-chip {
+  font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px;
+  border-left:3px solid; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  cursor:pointer; transition:filter .1s;
+}
+.plan-svc-chip:hover { filter:brightness(1.2); }
+.plan-drop-hint {
+  font-size:10px; color:var(--text3); padding:4px 6px;
+  border:1px dashed var(--border2); border-radius:4px; text-align:center;
+  display:none;
+}
+.plan-hour-row.drag-over .plan-drop-hint { display:block; }
+.client-pin-label {
+  position:absolute; background:#fff; border-radius:4px; padding:3px 8px;
+  font-family:sans-serif; font-size:11px; font-weight:600; white-space:nowrap;
+  box-shadow:0 2px 6px rgba(0,0,0,.3); transform:translate(-50%,-150%);
+  pointer-events:none; z-index:999;
+}
+@media(max-width:768px){
+  .plan-layout { flex-direction:column; }
+  .plan-sidebar { width:100%; max-height:45vh; border-right:none; border-bottom:1px solid var(--border); }
+}
 .toast {
   position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(20px);
   background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius);
@@ -600,6 +647,7 @@ header {
     <div class="tab" data-tab="users"    onclick="switchTab('users')"   ><span class="tab-icon">🔑</span>Usuarios</div>
     <div class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span>Personalización</div>
     <div class="tab" data-tab="history"  onclick="switchTab('history')" ><span class="tab-icon">📋</span>Historial</div>
+    <div class="tab" data-tab="plan"     onclick="switchTab('plan')"    ><span class="tab-icon">📌</span>Planificar</div>
   </div>
 
   <div class="main">
@@ -731,6 +779,56 @@ header {
           </div>
           <button class="btn btn-primary" onclick="saveMapsKey()">Guardar API Key</button>
           <div id="mapsKeyStatus" style="font-size:12px;margin-top:8px;color:var(--text2)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PLANIFICAR ══ -->
+    <div id="tab-plan" class="section">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="btn btn-sm" id="planViewToggle" onclick="togglePlanView()" title="Cambiar vista">Semana</button>
+            <button class="btn btn-sm" onclick="planPrev()">←</button>
+            <span id="planLabel" style="font-size:12px;font-weight:500;font-family:var(--mono);min-width:180px;text-align:center"></span>
+            <button class="btn btn-sm" onclick="planNext()">→</button>
+            <button class="btn btn-sm" onclick="planToday()">Hoy</button>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <select id="planFilterTech" class="btn btn-sm" onchange="renderPlanMap()">
+            <option value="">Todos los técnicos</option>
+          </select>
+          <select id="planFilterHorario" class="btn btn-sm" onchange="renderPlanMap()">
+            <option value="">Todos los horarios</option>
+            <option value="am">AM</option>
+            <option value="pm">PM</option>
+            <option value="defined">Hora fija</option>
+            <option value="dia">Todo el día</option>
+            <option value="none">Sin horario</option>
+          </select>
+        </div>
+      </div>
+      <div class="plan-layout">
+        <!-- Panel derecho: mini-calendario -->
+        <div class="plan-sidebar">
+          <div class="plan-filters">
+            <span style="font-size:11px;color:var(--text2);align-self:center">Arrastra un pin aquí</span>
+          </div>
+          <div class="plan-mini-cal" id="planMiniCal"></div>
+        </div>
+        <!-- Mapa izquierda -->
+        <div style="flex:1;display:flex;flex-direction:column;padding:10px;gap:10px;overflow:hidden">
+          <div style="font-size:12px;color:var(--text2)">
+            🔵 AM &nbsp; 🟠 PM &nbsp; 🟢 Hora fija &nbsp; ⚪ Sin definir — Arrastra un pin al panel derecho para programar
+          </div>
+          <div id="plan-map" style="flex:1;min-height:400px;border-radius:var(--radius-lg);overflow:hidden;background:var(--bg3)">
+            <div class="map-placeholder">
+              <div style="font-size:40px">📌</div>
+              <div style="font-size:14px;font-weight:500">Mapa de clientes</div>
+              <div style="font-size:12px;color:var(--text2)">Cargando...</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2464,6 +2562,7 @@ window.switchTab =function(tab){
   document.getElementById('weekNavBar').style.display=tab==='calendar'?'flex':'none';
   if(tab==='calendar') renderCalendar();
   if(tab==='routes')   renderRouteSelects();
+  if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
 };
 
 /* ═══════════════ KEYBOARD ═══════════════ */
@@ -2516,6 +2615,279 @@ async function boot(){
 }
 
 boot();
+
+/* ═══════════════════════════════════════════════════════
+   MÓDULO PLANIFICADOR — Mapa de clientes + mini-calendario
+═══════════════════════════════════════════════════════ */
+let planMap=null, planMarkers=[], planView='week', planOffset=0;
+let planDraggingClient=null; // cliente arrastrado desde el mapa
+
+// Colores por tipo de horario
+const HORARIO_COLORS={
+  am:      {bg:'#f97316',border:'#ea580c',label:'AM'},
+  pm:      {bg:'#3b82f6',border:'#2563eb',label:'PM'},
+  defined: {bg:'#22c55e',border:'#16a34a',label:'Fijo'},
+  dia:     {bg:'#a855f7',border:'#9333ea',label:'Día'},
+  none:    {bg:'#64748b',border:'#475569',label:'—'},
+};
+
+function getClientHorario(c){
+  if(c.defaultTimeMode && c.defaultTimeMode!=='') return c.defaultTimeMode;
+  // Inferir del último servicio
+  const lastSvc=services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(lastSvc?.timeMode) return lastSvc.timeMode;
+  return 'none';
+}
+
+// ── Inicializar mapa de planificación ──
+function initPlanMap(){
+  if(!window.google||!mapsKey) return;
+  if(planMap) return; // ya inicializado
+  const mapDiv=document.getElementById('plan-map');
+  mapDiv.innerHTML='';
+  planMap=new google.maps.Map(mapDiv,{
+    zoom:11,
+    center:{lat:-33.5928,lng:-70.7009},
+    mapTypeId:'roadmap',
+    mapTypeControl:false,
+    streetViewControl:false,
+    fullscreenControl:true,
+    zoomControl:true,
+    gestureHandling:'greedy',
+    styles:[]
+  });
+}
+
+window.renderPlanMap=function(){
+  if(!mapsKey){
+    document.getElementById('plan-map').innerHTML=`
+      <div class="map-placeholder">
+        <div style="font-size:32px">📌</div>
+        <div style="font-size:13px;font-weight:500">Configura la API Key de Google Maps en ⚙️ Personalización</div>
+      </div>`;
+    return;
+  }
+  if(!window.google){
+    const script=document.createElement('script');
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady`;
+    script.async=true;
+    window._planMapReady=()=>{ initPlanMap(); renderPlanMap(); };
+    document.head.appendChild(script);
+    return;
+  }
+  initPlanMap();
+  if(!planMap) return;
+
+  // Limpiar markers anteriores
+  planMarkers.forEach(m=>m.setMap(null));
+  planMarkers=[];
+
+  const geocoder=new google.maps.Geocoder();
+  const filterHorario=document.getElementById('planFilterHorario')?.value||'';
+  const filterTech=document.getElementById('planFilterTech')?.value||'';
+  const bounds=new google.maps.LatLngBounds();
+
+  // Actualizar select técnicos
+  const pt=document.getElementById('planFilterTech');
+  if(pt){
+    const cur=pt.value;
+    pt.innerHTML='<option value="">Todos los técnicos</option>'+
+      technicians.map(t=>`<option value="${t.id}"${t.id===cur?' selected':''}>${t.name}</option>`).join('');
+  }
+
+  // Filtrar clientes con dirección
+  let clientsToShow=clients.filter(c=>c.address);
+  if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
+  if(filterTech){
+    const names=services.filter(s=>s.techId===filterTech).map(s=>s.client.toLowerCase());
+    clientsToShow=clientsToShow.filter(c=>names.includes(c.name.toLowerCase()));
+  }
+
+  let geocoded=0;
+  clientsToShow.forEach(client=>{
+    const horario=getClientHorario(client);
+    const hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
+
+    geocoder.geocode({address:client.address+', Santiago, Chile'},(res,st)=>{
+      if(st!=='OK'||!res[0]) return;
+      const pos=res[0].geometry.location;
+      bounds.extend(pos);
+
+      const marker=new google.maps.Marker({
+        position:pos, map:planMap,
+        icon:{
+          path:google.maps.SymbolPath.CIRCLE,
+          scale:14,
+          fillColor:hc.bg,
+          fillOpacity:1,
+          strokeColor:'#fff',
+          strokeWeight:2
+        },
+        title:client.name,
+        draggable:true, // ← draggable para arrastrar al calendario
+        zIndex:50
+      });
+
+      // Etiqueta siempre visible
+      const overlay=new google.maps.OverlayView();
+      const lbl=document.createElement('div');
+      lbl.innerHTML=`<span style="font-weight:700;color:#202124">${client.name}</span><br><span style="font-size:10px;color:${hc.border}">${hc.label}</span>`;
+      lbl.style.cssText=`position:absolute;background:#fff;border-left:3px solid ${hc.border};border-radius:4px;padding:3px 7px;font-family:sans-serif;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-160%);pointer-events:none;z-index:999;`;
+      overlay.onAdd=function(){ this.getPanes().floatPane.appendChild(lbl); };
+      overlay.draw=function(){
+        const proj=this.getProjection();if(!proj)return;
+        const pt=proj.fromLatLngToDivPixel(pos);
+        if(pt){lbl.style.left=pt.x+'px';lbl.style.top=pt.y+'px';}
+      };
+      overlay.onRemove=function(){lbl.parentNode?.removeChild(lbl);};
+      overlay.setMap(planMap);
+
+      // InfoWindow al hacer clic
+      const iw=new google.maps.InfoWindow({content:`
+        <div style="font-family:sans-serif;padding:6px;min-width:200px">
+          <div style="font-weight:700;font-size:14px">${client.name}</div>
+          <div style="font-size:12px;color:#555;margin:3px 0">📍 ${client.address||''}</div>
+          <div style="font-size:12px;color:#555">📞 ${client.phone||'—'}</div>
+          <div style="font-size:12px;margin-top:4px">
+            <span style="background:${hc.bg};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${hc.label}</span>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#888">Arrastra este pin al calendario →</div>
+        </div>`
+      });
+      marker.addListener('click',()=>iw.open(planMap,marker));
+
+      // Drag start — guardar cliente
+      marker.addListener('dragstart',()=>{
+        planDraggingClient=client;
+        // Activar zona de drop en el mini-calendario
+        document.querySelectorAll('.plan-hour-row').forEach(r=>r.classList.add('droppable'));
+        showToast(`Arrastrando: ${client.name} → suelta en el calendario`);
+      });
+      marker.addListener('dragend',(e)=>{
+        // Si no se soltó en una celda válida, devolver al lugar
+        planDraggingClient=null;
+        document.querySelectorAll('.plan-hour-row').forEach(r=>{
+          r.classList.remove('droppable');
+          r.classList.remove('drag-over');
+        });
+      });
+
+      planMarkers.push(marker);
+      geocoded++;
+      clearTimeout(window._planFitTimer);
+      window._planFitTimer=setTimeout(()=>{
+        if(!bounds.isEmpty()){ planMap.fitBounds(bounds,{padding:60}); }
+      },800);
+    });
+  });
+
+  if(clientsToShow.length===0){
+    document.getElementById('plan-map').innerHTML=`
+      <div class="map-placeholder">
+        <div style="font-size:32px">📌</div>
+        <div style="font-size:13px">Sin clientes con dirección${filterHorario?' para este horario':''}</div>
+      </div>`;
+  }
+};
+
+// ── Mini-calendario ──
+function getPlanDays(){
+  if(planView==='week'){
+    const now=new Date(), dow=now.getDay();
+    const mon=new Date(now); mon.setDate(now.getDate()-(dow===0?6:dow-1)+planOffset*7);
+    return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+  } else {
+    // Vista diaria
+    const d=new Date(); d.setDate(d.getDate()+planOffset);
+    return [d];
+  }
+}
+
+window.renderPlanMiniCal=function(){
+  const days=getPlanDays();
+  const DOW=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const HOURS=Array.from({length:13},(_,i)=>i+7); // 7am-19pm
+  const el=document.getElementById('planMiniCal');if(!el)return;
+
+  // Label
+  const first=days[0], last=days[days.length-1];
+  const fmt=d=>d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+  document.getElementById('planLabel').textContent=
+    planView==='week'?`${fmt(first)} – ${fmt(last)} ${last.getFullYear()}`:
+    first.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
+
+  let calHtml='';
+  days.forEach((day,di)=>{
+    const dk=day.toISOString().slice(0,10);
+    const dowLabel=DOW[day.getDay()===0?6:day.getDay()-1];
+    const isToday=dk===new Date().toISOString().slice(0,10);
+    calHtml+=`<div class="plan-day-header" style="${isToday?'color:var(--accent)':''}">
+      ${dowLabel} ${day.getDate()}/${day.getMonth()+1}
+    </div>`;
+    HOURS.forEach(h=>{
+      const svcsHere=services.filter(s=>s.date===dk&&s.startH===h);
+      const slotId=`pslot_${dk}_${h}`;
+      calHtml+=`<div class="plan-hour-row" id="${slotId}" data-date="${dk}" data-hour="${h}"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="onPlanDrop(event,'${dk}',${h})">
+        <div class="plan-hour-label">${String(h).padStart(2,'0')}</div>
+        <div class="plan-hour-slots">
+          ${svcsHere.map(s=>{
+            const sc=getSC(s.status||'Programado');
+            return`<div class="plan-svc-chip" style="background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}"
+              onclick="openEditSvcModal('${s.id}')" title="${s.client}">${s.client}</div>`;
+          }).join('')}
+          <div class="plan-drop-hint">Soltar aquí</div>
+        </div>
+      </div>`;
+    });
+  });
+  el.innerHTML=calHtml;
+};
+
+// Drop en celda del mini-calendario
+window.onPlanDrop=function(e,date,hour){
+  e.preventDefault();
+  document.querySelectorAll('.plan-hour-row').forEach(r=>r.classList.remove('drag-over','droppable'));
+  const client=planDraggingClient;
+  if(!client){ showToast('Arrastra un pin del mapa','error'); return; }
+  planDraggingClient=null;
+
+  // Inferir datos del cliente
+  const horario=getClientHorario(client);
+  const techId=services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase())
+    .sort((a,b)=>b.date.localeCompare(a.date))[0]?.techId || (technicians[0]?.id||'');
+  const lastType=services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase())
+    .sort((a,b)=>b.date.localeCompare(a.date))[0]?.type || SVC_TYPES[0];
+
+  const sH=hour, sM=0, eH=Math.min(23,hour+1), eM=0;
+
+  const newSvc={
+    id:uid(), client:client.name, type:lastType,
+    techId, status:'Programado', date,
+    startH:sH, startM:sM, endH:eH, endM:eM,
+    address:client.address||'', phone:client.phone||'',
+    notes:'', timeMode:horario==='none'?'am':horario,
+    createdAt:Date.now()
+  };
+  services.push(newSvc);
+  addHistory('Servicio creado desde planificador',`${client.name} — ${date} ${String(hour).padStart(2,'0')}:00`);
+  saveData();
+  renderPlanMiniCal();
+  showToast(`✓ ${client.name} → ${date} ${String(hour).padStart(2,'0')}:00`,'success');
+};
+
+// Controles de navegación
+window.togglePlanView=function(){
+  planView=planView==='week'?'day':'week';
+  document.getElementById('planViewToggle').textContent=planView==='week'?'Semana':'Día';
+  planOffset=0;
+  renderPlanMiniCal();
+};
+window.planNext =function(){ planOffset++; renderPlanMiniCal(); };
+window.planPrev =function(){ planOffset--; renderPlanMiniCal(); };
+window.planToday=function(){ planOffset=0; renderPlanMiniCal(); };
 </script>
 <script>
 if ("serviceWorker" in navigator) {
