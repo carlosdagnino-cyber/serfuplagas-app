@@ -238,6 +238,11 @@ header {
 .day-cell:last-child { border-right:none; }
 .day-cell:hover { background:rgba(79,142,247,.04); }
 .day-cell.drop-over { background:rgba(79,142,247,.18)!important; outline:2px dashed rgba(79,142,247,.5); outline-offset:-2px; }
+.day-cell.feriado { background:rgba(239,68,68,.04); }
+.day-cell.feriado:hover { background:rgba(239,68,68,.08); }
+.col-head.feriado { background:rgba(239,68,68,.07); }
+.col-head.feriado .dow { color:#ef4444; }
+.col-head.feriado .dom { color:#ef4444; }
 
 /* ── SERVICE BLOCKS ── */
 .svc-block {
@@ -1232,8 +1237,9 @@ window.renderCalendar=function(){
   let html='<div class="calendar-grid">';
   html+='<div class="cal-corner" style="border-bottom:1px solid var(--border)"></div>';
   days.forEach((d,i)=>{
-    html+=`<div class="col-head${isToday(d)?' today':''}">
-      <div class="dow">${DOW[i]}</div>
+    const dk0=fmtKey(d);
+    html+=`<div class="col-head${isToday(d)?' today':''}${esFeriado&&esFeriado(dk0)?' feriado':''}">
+      <div class="dow">${DOW[i]}${esFeriado&&esFeriado(dk0)?'<span style="font-size:8px;margin-left:3px;color:#ef4444">feriado</span>':''}</div>
       <div class="dom">${d.getDate()}</div>
     </div>`;
   });
@@ -1241,7 +1247,8 @@ window.renderCalendar=function(){
     html+=`<div class="time-label"><span>${fmtTime(h)}</span></div>`;
     days.forEach((d,di)=>{
       const dk=fmtKey(d);
-      html+=`<div class="day-cell" id="dc_${di}_${h}" data-date="${dk}" data-hour="${h}" onclick="onCellClick('${dk}',${h})"></div>`;
+      const isFer=esFeriado&&esFeriado(dk);
+      html+=`<div class="day-cell${isFer?' feriado':''}" id="dc_${di}_${h}" data-date="${dk}" data-hour="${h}" onclick="onCellClick('${dk}',${h})"></div>`;
     });
   });
   html+='</div>';
