@@ -396,20 +396,24 @@ header {
 /* ══════════════════════════════════════
    MÓDULO DE RUTAS
 ══════════════════════════════════════ */
-#routes-map { width:100%; flex:1; min-height:300px; border-radius:var(--radius-lg); overflow:hidden; background:var(--bg3); position:relative; }
+#routes-map { width:100%; flex:1; min-height:0; border-radius:var(--radius-lg); overflow:hidden; background:var(--bg3); position:relative; }
 #routes-map .map-placeholder {
   position:absolute; inset:0; display:flex; flex-direction:column;
   align-items:center; justify-content:center; gap:12px; color:var(--text2);
 }
 .routes-sidebar {
-  width:320px; flex-shrink:0; overflow-y:auto;
+  width:300px; flex-shrink:0; overflow-y:auto;
   background:var(--bg2); border-right:1px solid var(--border);
   display:flex; flex-direction:column;
 }
-.routes-layout { display:flex; flex:1; overflow:hidden; gap:0; }
+.routes-layout { display:flex; flex:1; overflow:hidden; gap:0; min-height:0; }
+/* En desktop el mapa ocupa todo el alto disponible */
+#tab-routes { overflow:hidden; }
+#tab-routes .toolbar { flex-shrink:0; }
 @media(max-width:768px) {
   .routes-layout { flex-direction:column; }
-  .routes-sidebar { width:100%; max-height:40vh; border-right:none; border-bottom:1px solid var(--border); }
+  .routes-sidebar { width:100%; max-height:38vh; flex-shrink:0; border-right:none; border-bottom:1px solid var(--border); }
+  #routes-map { min-height:55vw; }
 }
 .route-tech-panel { padding:10px 12px; border-bottom:1px solid var(--border); }
 .route-tech-title { font-size:11px; color:var(--text2); font-weight:500; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
@@ -654,6 +658,10 @@ header {
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
         <div class="dropdown-item" onclick="switchTab('settings');closeUserMenu()">⚙️ Configuración</div>
+        <div class="dropdown-divider" id="techPreviewDivider" style="display:none"></div>
+        <div class="dropdown-item" id="techPreviewBtn" style="display:none;color:var(--warning)" onclick="toggleTechPreview();closeUserMenu()">
+          <span id="techPreviewIcon">👷</span> <span id="techPreviewLabel">Simular vista técnico</span>
+        </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item danger" onclick="doLogout()">↩ Cerrar sesión</div>
       </div>
@@ -712,18 +720,20 @@ header {
           <button class="btn btn-primary btn-sm" onclick="generateRoutes()">🗺️ Generar mapa</button>
         </div>
       </div>
-      <div class="routes-layout" style="flex:1;overflow:hidden">
+      <div class="routes-layout" style="flex:1;overflow:hidden;min-height:0">
+        <!-- SIDEBAR: lista de paradas -->
         <div class="routes-sidebar" id="routesSidebar">
           <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">
             Selecciona una fecha y genera las rutas del día
           </div>
         </div>
-        <div style="flex:1;padding:10px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+        <!-- MAPA: ocupa todo el espacio restante -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
           <div id="noMapsWarning" class="no-maps-banner" style="display:none">
             ⚠️ API Key de Google Maps no configurada. Las rutas se mostrarán sin mapa. 
             <a href="#" onclick="openMapsSetup()">Configurar ahora →</a>
           </div>
-          <div id="routes-map">
+          <div id="routes-map" style="flex:1;min-height:0">
             <div class="map-placeholder">
               <div style="font-size:40px">🗺️</div>
               <div style="font-size:14px;font-weight:500">Mapa de rutas</div>
@@ -1138,6 +1148,7 @@ function showApp(){
   if(isMobileTech) showMobileTechView();
 }
 
+let _techPreviewActive = false;
 function updateUserUI(){
   if(!currentUser)return;
   const av=document.getElementById('userAvatarBtn');
@@ -1148,7 +1159,43 @@ function updateUserUI(){
   nm.textContent=currentUser.name?.split(' ')[0]||'—';
   const roleLabels=(currentUser.roles||[]).map(r=>ROLES_DEF[r]?.label||r).join(', ');
   dd.innerHTML=`<div><div style="font-size:13px;font-weight:500">${currentUser.name||currentUser.email}</div><div style="font-size:11px;color:var(--text2)">${roleLabels}</div></div>`;
+  // Mostrar opción de simulación solo a admins
+  const isAdmin = hasPerm('edit_users')||hasPerm('edit_settings');
+  const techBtn = document.getElementById('techPreviewBtn');
+  const techDiv = document.getElementById('techPreviewDivider');
+  if(techBtn){ techBtn.style.display = isAdmin ? 'flex' : 'none'; }
+  if(techDiv){ techDiv.style.display = isAdmin ? 'block' : 'none'; }
 }
+window.toggleTechPreview = function(){
+  _techPreviewActive = !_techPreviewActive;
+  const lbl = document.getElementById('techPreviewLabel');
+  const ico = document.getElementById('techPreviewIcon');
+  const pill = document.getElementById('techPreviewPill');
+  if(_techPreviewActive){
+    if(lbl) lbl.textContent = 'Volver a vista admin';
+    if(ico) ico.textContent = '🔙';
+    if(!pill){
+      const p = document.createElement('div');
+      p.id = 'techPreviewPill';
+      p.style.cssText = 'position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;font-size:11px;font-weight:700;padding:5px 14px;border-radius:20px;z-index:9999;letter-spacing:.03em;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+      p.textContent = '👷 SIMULANDO VISTA TÉCNICO — haz clic en "Volver a vista admin" para salir';
+      document.body.appendChild(p);
+    }
+    showMobileTechView();
+    // Ocultar calendario grid en desktop también
+    const cw = document.querySelector('.calendar-wrap');
+    if(cw) cw.style.display = 'none';
+    document.getElementById('mobileTechView').style.display = 'flex';
+  } else {
+    if(lbl) lbl.textContent = 'Simular vista técnico';
+    if(ico) ico.textContent = '👷';
+    document.getElementById('techPreviewPill')?.remove();
+    const cw = document.querySelector('.calendar-wrap');
+    if(cw) cw.style.display = '';
+    document.getElementById('mobileTechView').style.display = 'none';
+    renderCalendar();
+  }
+};
 
 window.toggleUserMenu=function(){ document.getElementById('userDropdown').classList.toggle('open'); };
 window.closeUserMenu =function(){ document.getElementById('userDropdown').classList.remove('open'); };
@@ -1313,8 +1360,17 @@ window.renderCalendar=function(){
     const daySvcs=filtered.filter(s=>s.date===dk);
     const layout=calcLayout(daySvcs);
     daySvcs.forEach(svc=>{
-      // Usar svc.startH siempre — el drop lo actualiza para todos los modos
-      const cell=document.getElementById(`dc_${di}_${svc.startH}`);
+      // Normalizar startH — puede llegar como string desde Firebase
+      const sH = Math.max(7, Math.min(22, parseInt(svc.startH) || 8));
+      // Fallback: si la celda exacta no existe, usar la primera disponible del día
+      let cell = document.getElementById(`dc_${di}_${sH}`);
+      if(!cell){
+        // buscar cualquier celda del día
+        for(let hh=7;hh<=22;hh++){
+          cell = document.getElementById(`dc_${di}_${hh}`);
+          if(cell) break;
+        }
+      }
       if(!cell)return;
       const sc=getSC(svc.status||'Pendiente');
       const tech=getSvcMainTech(svc); // primer técnico para color
@@ -2613,7 +2669,9 @@ window.generateRoutes=function(){
               <div class="stop-client">${s.client}</div>
               <div class="stop-addr">${s.address||'Sin dirección'}</div>
               <div class="stop-time">${fmtTime(s.startH,s.startM||0)} – ${fmtTime(s.endH,s.endM||0)}</div>
-              ${s.address?`<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}" target="_blank" style="font-size:10px;color:var(--accent)">Ver en Maps →</a>`:''}
+              ${s.address?`<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}" target="_blank"
+                style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:4px 10px;border-radius:6px;background:#1a73e8;color:#fff;font-size:11px;font-weight:600;text-decoration:none">
+                🧭 Abrir en Google Maps</a>`:''}
             </div>
           </div>`).join('')}
         ${extras.map(ex=>`
@@ -2629,6 +2687,22 @@ window.generateRoutes=function(){
           <span>🛑 ${group.svcs.length} paradas</span>
           <span>⏱ ${Math.floor(totalMin/60)}h ${totalMin%60}m</span>
         </div>
+        ${(()=>{
+          const validAddrs = group.svcs.filter(s=>s.address).map(s=>encodeURIComponent(s.address));
+          if(!validAddrs.length) return '';
+          // Ruta completa: origen desde casa del técnico si existe
+          const tech2 = getTech(group.tech?.id||group.svcs[0]?.techId);
+          const origin = tech2.homeAddress ? encodeURIComponent(tech2.homeAddress) : validAddrs[0];
+          const dest   = validAddrs[validAddrs.length-1];
+          const waypts = validAddrs.slice(0, validAddrs.length-1).map(a=>'|'+a).join('');
+          const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${validAddrs.slice(0,validAddrs.length-1).join('|')}&travelmode=driving`;
+          return `<div style="padding:8px 12px 0">
+            <a href="${fullUrl}" target="_blank"
+              style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:8px;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;font-size:12px;font-weight:600;text-decoration:none;width:100%">
+              🗺️ Abrir ruta completa en Maps
+            </a>
+          </div>`;
+        })()}
         <div style="padding:6px 12px 10px">
           <button class="btn btn-sm" style="width:100%;justify-content:center;border-style:dashed;font-size:12px" onclick="addExtraStop('${group.tech.id}')">+ Agregar parada extra</button>
         </div>
@@ -2655,8 +2729,8 @@ function loadGoogleMap(byTech, date){
 
 window.renderGoogleMap=function(byTech,mapDiv){
   mapDiv.innerHTML='';
-  mapDiv.style.height='500px';
-  mapDiv.style.minHeight='500px';
+  mapDiv.style.height='100%';
+  mapDiv.style.minHeight='0';
 
   // Mapa estilo Google Maps estándar — sin tema oscuro
   const map=new google.maps.Map(mapDiv,{
