@@ -1146,7 +1146,7 @@ async function saveData(){
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
     statusColors, mapsKey,
-    productos: Object.fromEntries(getProductos().map(p=>[p.id,p])),
+    productos: Object.fromEntries((productos.length?productos:DEFAULT_PRODUCTOS).map(p=>[p.id,p])),
     certificados: Object.fromEntries(certificados.map(c=>[c.id,c])),
     updatedAt:Date.now()
   };
@@ -4510,9 +4510,10 @@ window.generarCertificadoPDF = function(svcId){
     <span>Generado: ${new Date().toLocaleString('es-CL')}</span>
   </div>
 
-  <script>setTimeout(()=>{window.focus();window.print();},400);</script>
   </body></html>`);
   win.document.close();
+  // Imprimir solo si se abrió ventana nueva (no en móvil)
+  if(win && win !== window){ setTimeout(()=>{ try{ win.focus(); win.print(); }catch(e){} }, 500); }
 };
 
 window.generarTrazabilidadPDF = function(svcId){
@@ -4622,9 +4623,9 @@ window.generarTrazabilidadPDF = function(svcId){
     <span>Serfuplagas Ltda. · RUT 76.818.360-0 · Res. Sanitaria N°44716</span>
     <span>Informe generado: ${new Date().toLocaleString('es-CL')}</span>
   </div>
-  <script>setTimeout(()=>{window.focus();window.print();},400);</script>
   </body></html>`);
   win.document.close();
+  if(win && win !== window){ setTimeout(()=>{ try{ win.focus(); win.print(); }catch(e){} }, 500); }
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
