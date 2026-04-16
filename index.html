@@ -411,11 +411,38 @@ header {
 .routes-map-area { flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:10px; gap:10px; }
 #tab-routes { overflow:hidden; }
 #tab-routes .toolbar { flex-shrink:0; }
+/* ── TABS TÉCNICO MÓVIL ── */
+.route-tech-tabs { display:none; }
 @media(max-width:768px) {
-  .routes-layout { flex-direction:column; overflow-y:auto; }
-  .routes-sidebar { width:100%; max-height:none; flex-shrink:0; border-right:none; border-bottom:1px solid var(--border); }
-  #routes-map { height:70vw; min-height:300px; }
-  .routes-map-area { overflow-y:visible; }
+  /* En móvil: layout vertical, todo en una columna scrolleable */
+  #tab-routes { overflow-y:auto; }
+  .routes-layout { flex-direction:column; overflow:visible; flex:none; }
+  .routes-map-area { overflow-y:visible; order:2; }
+  .routes-sidebar { width:100%; max-height:none; flex-shrink:0; border-right:none; border-bottom:none; order:1; }
+  #routes-map { height:55vw; min-height:260px; border-radius:var(--radius); }
+
+  /* Tabs de técnico en móvil */
+  .route-tech-tabs {
+    display:flex; gap:0; border-bottom:2px solid var(--border);
+    background:var(--bg2); position:sticky; top:0; z-index:10;
+    overflow-x:auto; scrollbar-width:none; flex-shrink:0;
+  }
+  .route-tech-tabs::-webkit-scrollbar { display:none; }
+  .route-tab-btn {
+    padding:9px 16px; font-size:13px; font-weight:500; white-space:nowrap;
+    cursor:pointer; border:none; background:none; color:var(--text2);
+    border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .15s;
+    flex-shrink:0;
+  }
+  .route-tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .route-tech-panel { display:none; }
+  .route-tech-panel.active-panel { display:block; }
+
+  /* Paradas más cómodas en móvil */
+  .route-stop { padding:12px 0; }
+  .stop-client { font-size:14px; }
+  .stop-addr { font-size:12px; }
+  .stop-time { font-size:12px; }
 }
 .route-tech-panel { padding:10px 12px; border-bottom:1px solid var(--border); }
 .route-tech-title { font-size:11px; color:var(--text2); font-weight:500; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
@@ -2648,14 +2675,32 @@ window.generateRoutes=function(){
       byTech['__none__'].svcs.push(s);
     }
   });
-  let sidebarHtml='';
-  Object.values(byTech).forEach((group,gi)=>{
+  const techGroups = Object.values(byTech);
+  // Generar tabs de técnico para móvil
+  let tabsHtml = '';
+  if(techGroups.length > 1){
+    tabsHtml = '<div class="route-tech-tabs">' +
+      techGroups.map((g,i) => {
+        const p=getPalette(g.tech.colorIdx||i);
+        return `<button class="route-tab-btn${i===0?' active':''}"
+          style="${i===0?'color:'+p.bd+';border-bottom-color:'+p.bd:''}"
+          onclick="switchRouteTab(this,'rtp_${g.tech.id||i}','${p.bd}')"
+          data-color="${p.bd}">
+          ${g.tech.initials||g.tech.name.split(' ')[0]}
+        </button>`;
+      }).join('') +
+    '</div>';
+  }
+  let sidebarHtml = tabsHtml;
+  techGroups.forEach((group,gi)=>{
     const pal=getPalette(group.tech.colorIdx||gi);
     const totalMin=group.svcs.reduce((acc,s)=>(s.endH-s.startH)*60+((s.endM||0)-(s.startM||0))+acc,0);
     const extras=extraStops[group.tech.id]||[];
     const hasHome=!!group.tech.homeAddress;
+    const panelId=`rtp_${group.tech.id||gi}`;
+    const isFirst=gi===0;
     sidebarHtml+=`
-      <div class="route-tech-panel" style="border-left:3px solid ${pal.bd}">
+      <div class="route-tech-panel${isFirst?' active-panel':''}" id="${panelId}" style="border-left:3px solid ${pal.bd}">
         <div class="route-tech-title" style="color:${pal.bd}">${group.tech.name}</div>
         ${hasHome?`<div class="route-stop" style="opacity:.7">
           <div class="stop-num" style="background:#6b7280;color:#fff;font-size:13px">🏠</div>
@@ -3556,6 +3601,24 @@ window.deleteRecurrence=function(clientId){
   saveData();closeModal();renderClients();
   showToast(`Recurrencia eliminada — ${elim} servicios futuros borrados`,'success');
 };
+
+/* ═══ TABS TÉCNICO MÓVIL ═══ */
+window.switchRouteTab = function(btnEl, panelId, color){
+  // Desactivar todos los tabs y paneles
+  btnEl.closest('.route-tech-tabs').querySelectorAll('.route-tab-btn').forEach(b=>{
+    b.classList.remove('active');
+    b.style.color='';
+    b.style.borderBottomColor='';
+  });
+  document.querySelectorAll('.route-tech-panel').forEach(p=>p.classList.remove('active-panel'));
+  // Activar el seleccionado
+  btnEl.classList.add('active');
+  btnEl.style.color = color;
+  btnEl.style.borderBottomColor = color;
+  const panel = document.getElementById(panelId);
+  if(panel) panel.classList.add('active-panel');
+};
+
 
 boot();
 startNotifChecker();
