@@ -2684,6 +2684,207 @@ async function boot(){
   await firstTimeSetup();
 }
 
+/* ═══════════════════════════════════════════════════════
+   MÓDULO PLANIFICADOR
+═══════════════════════════════════════════════════════ */
+let planMap=null, planMarkers=[], planView='week', planOffset=0;
+let planDraggingClient=null;
+const HORARIO_COLORS={
+  am:     {bg:'#f97316',border:'#ea580c',label:'AM'},
+  pm:     {bg:'#3b82f6',border:'#2563eb',label:'PM'},
+  defined:{bg:'#22c55e',border:'#16a34a',label:'Fijo'},
+  dia:    {bg:'#a855f7',border:'#9333ea',label:'Día'},
+  none:   {bg:'#64748b',border:'#475569',label:'—'},
+};
+function getClientHorario(c){
+  if(c.defaultTimeMode&&c.defaultTimeMode!=='') return c.defaultTimeMode;
+  const lastSvc=services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(lastSvc?.timeMode) return lastSvc.timeMode;
+  return 'none';
+}
+function initPlanMap(){
+  if(!window.google||!mapsKey||planMap) return;
+  const mapDiv=document.getElementById('plan-map');
+  if(!mapDiv) return;
+  mapDiv.innerHTML='';
+  planMap=new google.maps.Map(mapDiv,{
+    zoom:11, center:{lat:-33.5928,lng:-70.7009}, mapTypeId:'roadmap',
+    mapTypeControl:false, streetViewControl:false, fullscreenControl:true,
+    zoomControl:true, gestureHandling:'greedy', styles:[]
+  });
+}
+window.renderPlanMap=function(){
+  if(!mapsKey){
+    const d=document.getElementById('plan-map');
+    if(d)d.innerHTML=`<div class="map-placeholder"><div style="font-size:32px">📌</div><div style="font-size:13px">Configura la API Key de Google Maps en ⚙️ Personalización</div></div>`;
+    return;
+  }
+  if(!window.google){
+    const script=document.createElement('script');
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady`;
+    script.async=true;
+    window._planMapReady=()=>{ initPlanMap(); window.renderPlanMap(); };
+    document.head.appendChild(script);
+    return;
+  }
+  initPlanMap();
+  if(!planMap) return;
+  planMarkers.forEach(m=>m.setMap(null));
+  planMarkers=[];
+  const geocoder=new google.maps.Geocoder();
+  const filterHorario=document.getElementById('planFilterHorario')?.value||'';
+  const filterTech=document.getElementById('planFilterTech')?.value||'';
+  const pt=document.getElementById('planFilterTech');
+  if(pt){ const cur=pt.value; pt.innerHTML='<option value="">Todos los técnicos</option>'+technicians.map(t=>`<option value="${t.id}"${t.id===cur?' selected':''}>${t.name}</option>`).join(''); }
+  let clientsToShow=clients.filter(c=>c.address);
+  if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
+  if(filterTech){ const names=services.filter(s=>(s.techIds||[s.techId]).includes(filterTech)).map(s=>s.client.toLowerCase()); clientsToShow=clientsToShow.filter(c=>names.includes(c.name.toLowerCase())); }
+  if(!clientsToShow.length){
+    const d=document.getElementById('plan-map');
+    if(d)d.innerHTML=`<div class="map-placeholder"><div style="font-size:32px">📌</div><div>Sin clientes con dirección${filterHorario?' para este horario':''}</div></div>`;
+    return;
+  }
+  const bounds=new google.maps.LatLngBounds();
+  clientsToShow.forEach(client=>{
+    const horario=getClientHorario(client);
+    const hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
+    geocoder.geocode({address:client.address+', Santiago, Chile'},(res,st)=>{
+      if(st!=='OK'||!res[0]) return;
+      const pos=res[0].geometry.location;
+      bounds.extend(pos);
+      const marker=new google.maps.Marker({
+        position:pos, map:planMap, draggable:false, zIndex:50,
+        icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
+        title:client.name
+      });
+      const overlay=new google.maps.OverlayView();
+      const lbl=document.createElement('div');
+      lbl.innerHTML=`<span style="font-weight:700;color:#202124">${client.name}</span><br><span style="font-size:10px;color:${hc.border}">${hc.label}</span>`;
+      lbl.style.cssText=`position:absolute;background:#fff;border-left:3px solid ${hc.border};border-radius:4px;padding:3px 7px;font-family:sans-serif;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-160%);pointer-events:none;z-index:999;`;
+      overlay.onAdd=function(){this.getPanes().floatPane.appendChild(lbl);};
+      overlay.draw=function(){const proj=this.getProjection();if(!proj)return;const pt=proj.fromLatLngToDivPixel(pos);if(pt){lbl.style.left=pt.x+'px';lbl.style.top=pt.y+'px';}};
+      overlay.onRemove=function(){lbl.parentNode?.removeChild(lbl);};
+      overlay.setMap(planMap);
+      const iw=new google.maps.InfoWindow({content:`<div style="font-family:sans-serif;padding:6px;min-width:200px"><div style="font-weight:700;font-size:14px">${client.name}</div><div style="font-size:12px;color:#555;margin:3px 0">📍 ${client.address||''}</div><div style="font-size:12px;color:#555">📞 ${client.phone||'—'}</div><div style="margin-top:4px"><span style="background:${hc.bg};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${hc.label}</span></div><div style="margin-top:8px;font-size:11px;color:#888">Haz clic para seleccionar →</div></div>`});
+      marker.addListener('click',()=>{
+        if(window._planActiveIW) window._planActiveIW.close();
+        if(planDraggingClient&&planDraggingClient.id===client.id){
+          planDraggingClient=null;
+          marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+          const banner=document.getElementById('planSelected');
+          if(banner)banner.style.display='none';
+          if(window._planSelectedMarker){window._planSelectedMarker=null;window._planSelectedClient=null;}
+          return;
+        }
+        if(window._planSelectedMarker){
+          const pHc=HORARIO_COLORS[getClientHorario(window._planSelectedClient)]||HORARIO_COLORS.none;
+          window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:pHc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+        }
+        planDraggingClient=client;
+        window._planSelectedMarker=marker;
+        window._planSelectedClient=client;
+        marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:18,fillColor:hc.bg,fillOpacity:1,strokeColor:'#facc15',strokeWeight:3});
+        const banner=document.getElementById('planSelected');
+        if(banner){
+          banner.style.display='flex';
+          banner.innerHTML=`<span>📌 <b>${client.name}</b> seleccionado — haz clic en una celda del calendario</span><button onclick="clearPlanSelection()" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:16px;padding:0 4px">✕</button>`;
+        }
+        iw.open(planMap,marker);
+        window._planActiveIW=iw;
+        document.getElementById('planMiniCal')?.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+      planMarkers.push(marker);
+      clearTimeout(window._planFitTimer);
+      window._planFitTimer=setTimeout(()=>{if(!bounds.isEmpty())planMap.fitBounds(bounds,{padding:60});},800);
+    });
+  });
+};
+window.renderPlanMiniCal=function(){
+  const days=getPlanDays();
+  const DOW=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const HOURS=Array.from({length:13},(_,i)=>i+7);
+  const el=document.getElementById('planMiniCal');if(!el)return;
+  const first=days[0],last=days[days.length-1];
+  const fmt=d=>d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+  const lbl=document.getElementById('planLabel');
+  if(lbl)lbl.textContent=planView==='week'?`${fmt(first)} – ${fmt(last)} ${last.getFullYear()}`:first.toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'});
+  let calHtml='';
+  days.forEach(day=>{
+    const dk=day.toISOString().slice(0,10);
+    const dow=DOW[day.getDay()===0?6:day.getDay()-1];
+    const isToday2=dk===new Date().toISOString().slice(0,10);
+    const isFer=esFeriado&&esFeriado(dk);
+    calHtml+=`<div class="plan-day-header" style="${isToday2?'color:var(--accent)':''}${isFer?';color:#ef4444;background:rgba(239,68,68,.07)':''}">
+      ${dow} ${day.getDate()}/${day.getMonth()+1}${isFer?' 🚫':''}
+    </div>`;
+    HOURS.forEach(h=>{
+      const svcsHere=services.filter(s=>s.date===dk&&s.startH===h);
+      calHtml+=`<div class="plan-hour-row${planDraggingClient?' client-selected':''}" id="pslot_${dk}_${h}" data-date="${dk}" data-hour="${h}"
+        onclick="onPlanCellClick('${dk}',${h})"
+        style="cursor:${planDraggingClient?'cell':'default'}">
+        <div class="plan-hour-label">${String(h).padStart(2,'0')}</div>
+        <div class="plan-hour-slots">
+          ${svcsHere.map(s=>{const sc=getSC(s.status||'Programado');return`<div class="plan-svc-chip" style="background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}" onclick="openEditSvcModal('${s.id}')" title="${s.client}">${s.client}</div>`;}).join('')}
+          <div class="plan-drop-hint">Soltar aquí</div>
+        </div>
+      </div>`;
+    });
+  });
+  el.innerHTML=calHtml;
+};
+function getPlanDays(){
+  if(planView==='week'){
+    const now=new Date(),dow=now.getDay();
+    const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1)+planOffset*7);
+    return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+  }
+  const d=new Date();d.setDate(d.getDate()+planOffset);return[d];
+}
+window.onPlanCellClick=function(date,hour){
+  const client=planDraggingClient;
+  if(!client)return;
+  if(window._planSelectedMarker){
+    const hc=HORARIO_COLORS[getClientHorario(client)]||HORARIO_COLORS.none;
+    window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+    window._planSelectedMarker=null;window._planSelectedClient=null;
+  }
+  if(window._planActiveIW){window._planActiveIW.close();window._planActiveIW=null;}
+  const banner=document.getElementById('planSelected');
+  if(banner)banner.style.display='none';
+  planDraggingClient=null;
+  const horario=getClientHorario(client);
+  const techId=(services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0]?.techId)||technicians[0]?.id||'';
+  const techIds=(services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0]?.techIds)||[techId].filter(Boolean);
+  const lastType=services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0]?.type||SVC_TYPES[0];
+  services.push({id:uid(),client:client.name,type:lastType,techId,techIds,status:'Programado',date,startH:hour,startM:0,endH:Math.min(23,hour+1),endM:0,address:client.address||'',phone:client.phone||'',notes:'',timeMode:horario==='none'?'am':horario,createdAt:Date.now()});
+  addHistory('Servicio creado desde planificador',`${client.name} — ${date} ${String(hour).padStart(2,'0')}:00`);
+  saveData();
+  window.renderPlanMiniCal();
+  showToast(`✓ ${client.name} → ${date} ${String(hour).padStart(2,'0')}:00`,'success');
+};
+window.clearPlanSelection=function(){
+  planDraggingClient=null;
+  if(window._planSelectedMarker){
+    const c=window._planSelectedClient;
+    const hc=HORARIO_COLORS[getClientHorario(c||{})]||HORARIO_COLORS.none;
+    window._planSelectedMarker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+    window._planSelectedMarker=null;window._planSelectedClient=null;
+  }
+  if(window._planActiveIW){window._planActiveIW.close();window._planActiveIW=null;}
+  const banner=document.getElementById('planSelected');
+  if(banner)banner.style.display='none';
+  window.renderPlanMiniCal();
+};
+window.togglePlanView=function(){
+  planView=planView==='week'?'day':'week';
+  const btn=document.getElementById('planViewToggle');
+  if(btn)btn.textContent=planView==='week'?'Semana':'Día';
+  planOffset=0;window.renderPlanMiniCal();
+};
+window.planNext=function(){planOffset++;window.renderPlanMiniCal();};
+window.planPrev=function(){planOffset--;window.renderPlanMiniCal();};
+window.planToday=function(){planOffset=0;window.renderPlanMiniCal();};
+
 /* ═══ SERVICIOS VINCULADOS ═══ */
 window.openLinkedModal=function(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c)return;
