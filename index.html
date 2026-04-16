@@ -396,7 +396,7 @@ header {
 /* ══════════════════════════════════════
    MÓDULO DE RUTAS
 ══════════════════════════════════════ */
-#routes-map { width:100%; flex:1; min-height:0; border-radius:var(--radius-lg); overflow:hidden; background:var(--bg3); position:relative; }
+#routes-map { width:100%; height:560px; min-height:460px; border-radius:var(--radius-lg); overflow:hidden; background:var(--bg3); position:relative; flex-shrink:0; }
 #routes-map .map-placeholder {
   position:absolute; inset:0; display:flex; flex-direction:column;
   align-items:center; justify-content:center; gap:12px; color:var(--text2);
@@ -406,14 +406,16 @@ header {
   background:var(--bg2); border-right:1px solid var(--border);
   display:flex; flex-direction:column;
 }
+/* Layout: sidebar fijo + área derecha scrolleable */
 .routes-layout { display:flex; flex:1; overflow:hidden; gap:0; min-height:0; }
-/* En desktop el mapa ocupa todo el alto disponible */
+.routes-map-area { flex:1; overflow-y:auto; display:flex; flex-direction:column; padding:10px; gap:10px; }
 #tab-routes { overflow:hidden; }
 #tab-routes .toolbar { flex-shrink:0; }
 @media(max-width:768px) {
-  .routes-layout { flex-direction:column; }
-  .routes-sidebar { width:100%; max-height:38vh; flex-shrink:0; border-right:none; border-bottom:1px solid var(--border); }
-  #routes-map { min-height:55vw; }
+  .routes-layout { flex-direction:column; overflow-y:auto; }
+  .routes-sidebar { width:100%; max-height:none; flex-shrink:0; border-right:none; border-bottom:1px solid var(--border); }
+  #routes-map { height:70vw; min-height:300px; }
+  .routes-map-area { overflow-y:visible; }
 }
 .route-tech-panel { padding:10px 12px; border-bottom:1px solid var(--border); }
 .route-tech-title { font-size:11px; color:var(--text2); font-weight:500; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
@@ -727,13 +729,13 @@ header {
             Selecciona una fecha y genera las rutas del día
           </div>
         </div>
-        <!-- MAPA: ocupa todo el espacio restante -->
-        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
+        <!-- MAPA: área scrolleable -->
+        <div class="routes-map-area">
           <div id="noMapsWarning" class="no-maps-banner" style="display:none">
             ⚠️ API Key de Google Maps no configurada. Las rutas se mostrarán sin mapa. 
             <a href="#" onclick="openMapsSetup()">Configurar ahora →</a>
           </div>
-          <div id="routes-map" style="flex:1;min-height:0">
+          <div id="routes-map">
             <div class="map-placeholder">
               <div style="font-size:40px">🗺️</div>
               <div style="font-size:14px;font-weight:500">Mapa de rutas</div>
@@ -2729,8 +2731,8 @@ function loadGoogleMap(byTech, date){
 
 window.renderGoogleMap=function(byTech,mapDiv){
   mapDiv.innerHTML='';
-  mapDiv.style.height='100%';
-  mapDiv.style.minHeight='0';
+  mapDiv.style.height='560px';
+  mapDiv.style.minHeight='460px';
 
   // Mapa estilo Google Maps estándar — sin tema oscuro
   const map=new google.maps.Map(mapDiv,{
