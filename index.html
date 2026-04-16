@@ -1161,12 +1161,8 @@ window.renderCalendar=function(){
     const daySvcs=filtered.filter(s=>s.date===dk);
     const layout=calcLayout(daySvcs);
     daySvcs.forEach(svc=>{
-      // Para franja horaria, usar hora de inicio de la franja
-      const displayH = svc.timeMode==='defined' ? svc.startH
-                      : svc.timeMode==='pm' ? 13
-                      : svc.timeMode==='dia' ? 8
-                      : 8; // am o default
-      const cell=document.getElementById(`dc_${di}_${displayH}`);
+      // Usar svc.startH siempre — el drop lo actualiza para todos los modos
+      const cell=document.getElementById(`dc_${di}_${svc.startH}`);
       if(!cell)return;
       const sc=getSC(svc.status||'Pendiente');
       const tech=getTech(svc.techId);
@@ -1446,11 +1442,14 @@ window.saveSvc=function(){
   const date   =document.getElementById('f_date').value;
   const timeDef=document.getElementById('f_timedef')?.checked;
   const franja =timeDef?'defined':(document.querySelector('input[name="f_franja"]:checked')?.value||'am');
-  // Si hay hora definida usar los inputs; si no, usar franja horaria con horas por defecto
-  const startStr=document.getElementById('f_start')?.value||'08:00';
-  const endStr  =document.getElementById('f_end')?.value||'09:00';
-  const[sH,sM]=startStr.split(':').map(Number);
-  const[eH,eM]=endStr.split(':').map(Number);
+  // Hora de inicio por defecto según franja
+  const franjaDefaultH = franja==='pm' ? 13 : franja==='dia' ? 8 : 8;
+  const startStr=document.getElementById('f_start')?.value||(timeDef?'08:00':null);
+  const endStr  =document.getElementById('f_end')?.value||(timeDef?'09:00':null);
+  const sH = timeDef ? parseInt((startStr||'08:00').split(':')[0]) : franjaDefaultH;
+  const sM = timeDef ? parseInt((startStr||'08:00').split(':')[1]) : 0;
+  const eH = timeDef ? parseInt((endStr||'09:00').split(':')[0])   : franjaDefaultH+1;
+  const eM = timeDef ? parseInt((endStr||'09:00').split(':')[1])   : 0;
   const address=document.getElementById('f_address').value.trim();
   const phone  =document.getElementById('f_phone').value.trim();
   const notes  =document.getElementById('f_notes').value.trim();
