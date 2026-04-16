@@ -1198,6 +1198,7 @@ window.renderCalendar=function(){
         <div class="sb-actions">
           ${svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
             title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
+          ${(()=>{ const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase()); return (_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo de confirmación" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:''; })()}
           <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
             onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
         </div>`;
@@ -1557,13 +1558,14 @@ window.renderClients=function(){
     <div class="card card-row">
       <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''}</div>
+        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''} ${c.emailTemplate?'<span style="color:#0078d4;font-size:10px">✉ plantilla</span>':''}</div>
         <div class="info-secondary">${[c.whatsappName?'👤 '+c.whatsappName:null,c.phone,c.email,c.address].filter(Boolean).join(' · ')||'Sin datos'}</div>
       </div>
-      ${canEdit?`<div class="card-actions">
-        <button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>
-      </div>`:''}
+      <div class="card-actions">
+        <button class="btn btn-sm" style="background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)" onclick="openEmailTemplateModal('${c.id}')">✉ Plantilla</button>
+        ${canEdit?`<button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>`:''}
+      </div>
     </div>`).join('');
 };
 
@@ -1640,6 +1642,87 @@ window.saveClient=function(id){
   }
   closeModal(); saveData();
 };
+// ═══ EMAIL TEMPLATE ═══
+window.openEmailTemplateModal=function(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  const t=c.emailTemplate||{};
+  showModal(`<h3>✉ Plantilla de correo — ${c.name}</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+      Variables disponibles: <code>{cliente}</code> <code>{contacto}</code> <code>{fecha}</code> <code>{hora}</code> <code>{direccion}</code> <code>{tecnico}</code> <code>{tipo}</code>
+    </p>
+    <div class="form-group"><label>Destinatario (To)</label>
+      <input id="et_to" value="${t.to||c.email||''}" placeholder="correo@cliente.cl">
+    </div>
+    <div class="form-group"><label>Con copia (CC)</label>
+      <input id="et_cc" value="${t.cc||''}" placeholder="opcional@empresa.cl">
+    </div>
+    <div class="form-group"><label>Asunto</label>
+      <input id="et_subject" value="${t.subject||'Confirmación de servicio — {tipo} el {fecha}'}" placeholder="Asunto del correo">
+    </div>
+    <div class="form-group"><label>Cuerpo del correo</label>
+      <textarea id="et_body" rows="6" placeholder="Texto del correo…">${t.body||'Estimado/a {contacto},\n\nLe confirmamos que realizaremos el servicio de {tipo} el día {fecha}${t.hora?\' a las {hora}\':\'\'} en {direccion}.\n\nQuedamos atentos a cualquier consulta.\n\nSaludos,\nSerfuplagas'}</textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEmailTemplate('${clientId}')">Guardar plantilla</button>
+    </div>`);
+};
+
+window.saveEmailTemplate=function(clientId){
+  const idx=clients.findIndex(c=>c.id===clientId);if(idx<0)return;
+  clients[idx]={...clients[idx],emailTemplate:{
+    to:     document.getElementById('et_to').value.trim(),
+    cc:     document.getElementById('et_cc').value.trim(),
+    subject:document.getElementById('et_subject').value.trim(),
+    body:   document.getElementById('et_body').value,
+  }};
+  saveData();
+  closeModal();
+  showToast('Plantilla guardada','success');
+};
+
+// Reemplazar variables en plantilla con datos del servicio
+function buildEmail(clientId, svcId){
+  const c=clients.find(x=>x.id===clientId);
+  const svc=services.find(x=>x.id===svcId);
+  if(!c||!svc)return null;
+  const t=c.emailTemplate||{};
+  const tech=getTech(svc.techId);
+  const dateStr=svc.date?new Date(svc.date+'T12:00').toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
+  const horaStr=svc.timeMode==='defined'?fmtTime(svc.startH,svc.startM||0):(svc.timeMode==='pm'?'PM':svc.timeMode==='dia'?'durante el día':'AM');
+  const vars={
+    '{cliente}':  c.name,
+    '{contacto}': c.whatsappName||c.name,
+    '{fecha}':    dateStr,
+    '{hora}':     horaStr,
+    '{direccion}':svc.address||c.address||'',
+    '{tecnico}':  tech.name,
+    '{tipo}':     svc.type,
+  };
+  const replace=str=>Object.entries(vars).reduce((s,[k,v])=>s.replaceAll(k,v),str||'');
+  return {
+    to:      replace(t.to||c.email||''),
+    cc:      replace(t.cc||''),
+    subject: replace(t.subject||'Confirmación de servicio'),
+    body:    replace(t.body||''),
+  };
+}
+
+window.sendEmailFromCalendar=function(e,svcId){
+  e.stopPropagation();
+  const svc=services.find(x=>x.id===svcId);if(!svc)return;
+  const c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase());
+  if(!c){ showToast('Cliente sin plantilla de correo','error'); return; }
+  if(!c.emailTemplate&&!c.email){ showToast('Configura la plantilla del cliente primero','error'); return; }
+  const email=buildEmail(c.id,svcId);
+  if(!email||!email.to){ showToast('El cliente no tiene correo configurado','error'); return; }
+  const mailto=`mailto:${email.to}`
+    +(email.cc?`?cc=${encodeURIComponent(email.cc)}&`:'?')
+    +`subject=${encodeURIComponent(email.subject)}`
+    +`&body=${encodeURIComponent(email.body)}`;
+  window.open(mailto,'_blank');
+};
+
 window.deleteClient=function(id){
   const c=clients.find(x=>x.id===id);
   if(!confirm(`¿Eliminar a ${c?.name}?`))return;
@@ -1679,11 +1762,11 @@ function readImportFile(file){
     const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
     if(!json.length){showToast('Archivo vacío','error');return;}
     const norm=s=>s.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-    const aliases={cliente:['cliente','client','nombre','name'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio']};
+    const aliases={cliente:['cliente','client','nombre','name'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje']};
     const colMap={};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
     if(!colMap.cliente){showToast('No encontré columna "cliente"','error');return;}
-    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:String(r[colMap.direccion]||'').trim(),phone:String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():''})).filter(r=>r.name);
+    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:String(r[colMap.direccion]||'').trim(),phone:String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():''})).filter(r=>r.name);
     document.getElementById('importPreview').innerHTML=`
       <p style="font-size:12px;color:var(--text2);margin:.75rem 0 .5rem">${importRows.length} filas · vista previa:</p>
       <div class="import-preview">
@@ -1701,7 +1784,7 @@ window.confirmImport=function(){
   let nc=0,ns=0;
   importRows.forEach(row=>{
     let cli=clients.find(c=>c.name.toLowerCase()===row.name.toLowerCase());
-    if(!cli){cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,createdAt:Date.now()};clients.push(cli);nc++;}
+    if(!cli){const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,...(emailTpl?{emailTemplate:emailTpl}:{}),createdAt:Date.now()};clients.push(cli);nc++;}
     if(row.fecha&&row.hora){
       let dk='';
       if(/^\d{4,5}$/.test(row.fecha)) dk=fmtKey(new Date(Math.round((Number(row.fecha)-25569)*86400*1000)));
