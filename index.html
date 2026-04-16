@@ -1820,13 +1820,16 @@ function loadGoogleMap(byTech, date){
 
 window.renderGoogleMap=function(byTech,mapDiv){
   mapDiv.innerHTML='';
-  mapDiv.style.minHeight='400px';
+  mapDiv.style.height='500px';
+  mapDiv.style.minHeight='500px';
   const map=new google.maps.Map(mapDiv,{
     zoom:12,
     center:{lat:-33.5928,lng:-70.7009}, // San Bernardo, RM
     styles:[{elementType:'geometry',stylers:[{color:'#1e2333'}]},{elementType:'labels.text.fill',stylers:[{color:'#8b90a0'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#2d3347'}]},{featureType:'water',elementType:'geometry',stylers:[{color:'#0f1117'}]}]
   });
   mapInstance=map;
+  // Forzar redibujado del mapa después de que el DOM esté listo
+  setTimeout(()=>{ google.maps.event.trigger(map,'resize'); map.setCenter({lat:-33.5928,lng:-70.7009}); }, 300);
 
   // Limpiar renderers anteriores
   directionsRenderer.forEach(r=>r.setMap(null));
