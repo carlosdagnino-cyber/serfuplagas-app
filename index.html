@@ -1196,10 +1196,10 @@ window.renderCalendar=function(){
           ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
         </div>
         <div class="sb-actions">
-          <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
-            onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
           ${svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
             title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
+          <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
+            onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
         </div>`;
 
       let mouseDownX=0, mouseDownY=0, isDragging=false;
@@ -2313,40 +2313,27 @@ window.renderGoogleMap=function(byTech,mapDiv){
 
 /* ═══════════════ SETTINGS ═══════════════ */
 function renderStatusConfig(){
-  const el=document.getElementById('statusColorConfig');if(!el)return;
-  el.innerHTML=getSvcStatuses().map(s=>{
+  // Renderizar en la nueva pestaña Personalización
+  const el=document.getElementById('statusConfigList');if(!el)return;
+  const statuses=getSvcStatuses();
+  el.innerHTML=statuses.map((s,idx)=>{
     const c=getSC(s);
-    return`<div class="status-row">
-      <label style="font-size:13px;font-weight:500;margin-bottom:8px;display:block">${s}</label>
-      <div class="color-fields">
-        <div class="color-field">
-          <div class="color-swatch" style="background:${c.bd}"><input type="color" id="sc_bd_${s}" value="${c.bd}" oninput="previewStatus('${s}')"></div>
-          <span>Borde</span>
-        </div>
-        <div class="color-field">
-          <div class="color-swatch" style="background:${c.tx}"><input type="color" id="sc_tx_${s}" value="${c.tx}" oninput="previewStatus('${s}')"></div>
-          <span>Texto</span>
+    const isFirst=idx===0;
+    return`<div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px">
+      <div style="width:12px;height:12px;border-radius:50%;background:${c.bd};flex-shrink:0"></div>
+      <span style="flex:1;font-size:13px;font-weight:500">${s}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:11px;color:var(--text2)">Color</label>
+        <div style="position:relative;width:32px;height:22px;border-radius:5px;border:1px solid var(--border2);overflow:hidden;cursor:pointer;background:${c.bd}">
+          <input type="color" value="${c.bd}" onchange="updateStatusColor('${s}',this.value)"
+            style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
         </div>
       </div>
-      <div style="height:4px;border-radius:2px;margin-top:8px;transition:background .2s;background:${c.bd}" id="spb_${s}"></div>
+      ${!isFirst?`<button class="btn btn-sm btn-danger" style="padding:3px 8px;font-size:11px" onclick="removeStatus('${s}')">Quitar</button>`:'<div style="width:52px"></div>'}
     </div>`;
   }).join('');
 }
-window.previewStatus=function(s){
-  const bd=document.getElementById(`sc_bd_${s}`)?.value;
-  if(bd) document.getElementById(`spb_${s}`).style.background=bd;
-};
-window.saveStatusColors=function(){
-  getSvcStatuses().forEach(s=>{
-    const bd=document.getElementById(`sc_bd_${s}`)?.value||statusColors[s].bd;
-    const tx=document.getElementById(`sc_tx_${s}`)?.value||statusColors[s].tx;
-    const r=parseInt(bd.slice(1,3),16),g=parseInt(bd.slice(3,5),16),b=parseInt(bd.slice(5,7),16);
-    statusColors[s]={bg:`rgba(${r},${g},${b},0.15)`,bd,tx};
-  });
-  addHistory('Colores actualizados','Colores de estado personalizados');
-  showToast('Colores guardados','success');
-  saveData();
-};
+window.saveStatusColors=function(){ saveData(); };
 window.saveMapsKey=function(){
   const k=document.getElementById('mapsKeyInput').value.trim();
   mapsKey=k;
