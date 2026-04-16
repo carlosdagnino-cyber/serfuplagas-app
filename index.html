@@ -4510,7 +4510,7 @@ window.generarCertificadoPDF = function(svcId){
     <span>Generado: ${new Date().toLocaleString('es-CL')}</span>
   </div>
 
-  <script>window.onload=()=>{window.print();}</script>
+  <script>setTimeout(()=>{window.focus();window.print();},400);</script>
   </body></html>`);
   win.document.close();
 };
@@ -4622,7 +4622,7 @@ window.generarTrazabilidadPDF = function(svcId){
     <span>Serfuplagas Ltda. · RUT 76.818.360-0 · Res. Sanitaria N°44716</span>
     <span>Informe generado: ${new Date().toLocaleString('es-CL')}</span>
   </div>
-  <script>window.onload=()=>{window.print();}</script>
+  <script>setTimeout(()=>{window.focus();window.print();},400);</script>
   </body></html>`);
   win.document.close();
 };
