@@ -414,26 +414,17 @@ header {
 /* ── TABS TÉCNICO MÓVIL ── */
 .route-tech-tabs { display:none; }
 @media(max-width:768px) {
-  /* SOLUCIÓN: #tab-routes sale del flujo encajonado y ocupa pantalla completa */
-  #tab-routes.active {
-    position:fixed;
-    top:calc(var(--header-h) + var(--tab-h));
-    left:0; right:0;
-    bottom:0;
+  /* Rutas móvil: .main se vuelve scrolleable cuando routes está activo */
+  .main.routes-active {
     overflow-y:auto;
     overflow-x:hidden;
     -webkit-overflow-scrolling:touch;
-    display:flex;
-    flex-direction:column;
-    z-index:5;
   }
-  #tab-routes .toolbar {
-    flex-shrink:0;
-    position:sticky;
-    top:0;
-    z-index:6;
-    background:var(--bg);
-    border-bottom:1px solid var(--border);
+  .main.routes-active #tab-routes {
+    overflow:visible;
+    flex:none;
+    height:auto;
+    min-height:100%;
   }
   .routes-layout { flex-direction:column; overflow:visible; flex:none; }
   .routes-map-area { overflow:visible; order:2; flex:none; padding:10px; }
@@ -525,8 +516,11 @@ header {
 ══════════════════════════════════════ */
 .mobile-tech-view { display:none; }
 @media(max-width:640px) {
-  .mobile-tech-view { display:flex; flex-direction:column; flex:1; overflow:hidden; }
-  #tab-calendar .calendar-wrap { display:none; }
+  /* El calendario grid se muestra en móvil (scroll horizontal) */
+  #tab-calendar .calendar-wrap { display:block; overflow-x:auto; overflow-y:auto; }
+  /* mobileTechView solo se muestra cuando se activa por JS */
+  .mobile-tech-view { display:none; }
+  .mobile-tech-view.active { display:flex; flex-direction:column; flex:1; overflow-y:auto; }
   .mobile-cal-fallback { display:flex; }
 }
 .tech-service-card {
@@ -1238,17 +1232,12 @@ window.toggleTechPreview = function(){
       document.body.appendChild(p);
     }
     showMobileTechView();
-    // Ocultar calendario grid en desktop también
-    const cw = document.querySelector('.calendar-wrap');
-    if(cw) cw.style.display = 'none';
-    document.getElementById('mobileTechView').style.display = 'flex';
   } else {
     if(lbl) lbl.textContent = 'Simular vista técnico';
     if(ico) ico.textContent = '👷';
     document.getElementById('techPreviewPill')?.remove();
-    const cw = document.querySelector('.calendar-wrap');
-    if(cw) cw.style.display = '';
-    document.getElementById('mobileTechView').style.display = 'none';
+    document.getElementById('mobileTechView').classList.remove('active');
+    document.getElementById('mobileTechView').style.display = '';
     renderCalendar();
   }
 };
@@ -1789,9 +1778,8 @@ function showMobileTechView(){
   const calSection=document.getElementById('tab-calendar');
   const mobileCal=document.getElementById('mobileTechView');
   if(!calSection||!mobileCal)return;
-  calSection.querySelector('.toolbar').style.display='none';
-  calSection.querySelector('.calendar-wrap').style.display='none';
-  mobileCal.style.display='flex';
+  mobileCal.classList.add('active');
+  mobileCal.style.display='';
   renderMobileTechView();
 }
 
@@ -3085,6 +3073,12 @@ window.switchTab =function(tab){
   document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
   const sec=document.getElementById('tab-'+tab);
   if(sec) sec.classList.add('active');
+  // Scroll móvil: .main scrolleable solo en rutas
+  const mainEl=document.querySelector('.main');
+  if(mainEl){
+    if(tab==='routes') mainEl.classList.add('routes-active');
+    else mainEl.classList.remove('routes-active');
+  }
   // Mostrar/ocultar week nav
   document.getElementById('weekNavBar').style.display=tab==='calendar'?'flex':'none';
   if(tab==='calendar') renderCalendar();
