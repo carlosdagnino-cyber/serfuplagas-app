@@ -1658,11 +1658,12 @@ window.renderClients=function(){
     <div class="card card-row">
       <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''} ${c.emailTemplate?'<span style="color:#0078d4;font-size:10px">✉ plantilla</span>':''}</div>
+        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''} ${c.emailTemplate?'<span style="color:#0078d4;font-size:10px">✉ plantilla</span>':''} ${c.recurrence?'<span style="color:#a855f7;font-size:10px">🔁 recurrente</span>':''}</div>
         <div class="info-secondary">${[c.whatsappName?'👤 '+c.whatsappName:null,c.phone,c.email,c.address].filter(Boolean).join(' · ')||'Sin datos'}</div>
       </div>
       <div class="card-actions">
         <button class="btn btn-sm" style="background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)" onclick="openEmailTemplateModal('${c.id}')">✉ Plantilla</button>
+        <button class="btn btn-sm" style="background:rgba(168,85,247,.15);color:#a855f7;border-color:rgba(168,85,247,.3)" onclick="openRecurrenceModal('${c.id}')">🔁 Recurrencia</button>
         ${canEdit?`<button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
         <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>`:''}
       </div>
@@ -1862,11 +1863,11 @@ function readImportFile(file){
     const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
     if(!json.length){showToast('Archivo vacío','error');return;}
     const norm=s=>s.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-    const aliases={cliente:['cliente','client','nombre','name'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje']};
+    const aliases={cliente:['cliente','client','nombre','name'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje'],recurrencia:['recurrencia','recurrence','patron'],dia_ref:['dia_referencia','dia_ref','dia'],margen:['margen_dias','margen','tolerancia'],horario_rec:['horario','horario_rec','franja']};
     const colMap={};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
     if(!colMap.cliente){showToast('No encontré columna "cliente"','error');return;}
-    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:String(r[colMap.direccion]||'').trim(),phone:String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():''})).filter(r=>r.name);
+    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:String(r[colMap.direccion]||'').trim(),phone:String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():'',recurrencia:colMap.recurrencia?String(r[colMap.recurrencia]||'').trim():'',diaRef:colMap.dia_ref?String(r[colMap.dia_ref]||'').trim():'',margen:colMap.margen?String(r[colMap.margen]||'').trim():'',horarioRec:colMap.horario_rec?String(r[colMap.horario_rec]||'').trim():''})).filter(r=>r.name);
     document.getElementById('importPreview').innerHTML=`
       <p style="font-size:12px;color:var(--text2);margin:.75rem 0 .5rem">${importRows.length} filas · vista previa:</p>
       <div class="import-preview">
@@ -1884,7 +1885,15 @@ window.confirmImport=function(){
   let nc=0,ns=0;
   importRows.forEach(row=>{
     let cli=clients.find(c=>c.name.toLowerCase()===row.name.toLowerCase());
-    if(!cli){const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,...(emailTpl?{emailTemplate:emailTpl}:{}),createdAt:Date.now()};clients.push(cli);nc++;}
+    if(!cli){
+      const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
+      const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
+      cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,
+        ...(emailTpl?{emailTemplate:emailTpl}:{}),
+        ...(recPat?{recurrence:recPat}:{}),
+        createdAt:Date.now()};
+      clients.push(cli);nc++;
+    }
     if(row.fecha&&row.hora){
       let dk='';
       if(/^\d{4,5}$/.test(row.fecha)) dk=fmtKey(new Date(Math.round((Number(row.fecha)-25569)*86400*1000)));
@@ -2619,6 +2628,49 @@ async function boot(){
 boot();
 
 /* ═══════════════════════════════════════════════════════
+   MÓDULO RECURRENCIAS — Motor de cálculo
+═══════════════════════════════════════════════════════ */
+
+// Feriados Chile 2025 y 2026
+const FERIADOS_CL = new Set([
+  '2025-01-01','2025-04-18','2025-04-19','2025-05-01','2025-05-21',
+  '2025-06-20','2025-06-29','2025-07-16','2025-08-15','2025-09-18',
+  '2025-09-19','2025-10-12','2025-10-31','2025-11-01','2025-12-08','2025-12-25',
+  '2026-01-01','2026-04-03','2026-04-04','2026-05-01','2026-05-21',
+  '2026-06-21','2026-06-29','2026-07-16','2026-08-15','2026-09-18',
+  '2026-09-19','2026-10-12','2026-10-31','2026-11-01','2026-12-08','2026-12-25',
+]);
+function esFeriado(ds){ return FERIADOS_CL.has(ds); }
+function esDiaHabil(ds){ const d=new Date(ds+'T12:00'),dow=d.getDay(); return dow!==0&&dow!==6&&!esFeriado(ds); }
+function addDays(ds,n){ const d=new Date(ds+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+
+function nthHabilDelMes(y,m,n){ let c=0; for(let d=1;d<=daysInMonth(y,m);d++){ const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; if(esDiaHabil(ds)){c++;if(c===n)return ds;} } return null; }
+function nthHabilDesdeFinMes(y,m,n){ let c=0; for(let d=daysInMonth(y,m);d>=1;d--){ const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; if(esDiaHabil(ds)){c++;if(c===n)return ds;} } return null; }
+function nthDowDelMes(y,m,dow,nth){ const JS=[1,2,3,4,5,6,0],target=JS[dow]; if(nth===-1){for(let d=daysInMonth(y,m);d>=1;d--){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(new Date(ds+'T12:00').getDay()===target)return ds;}return null;} let c=0; for(let d=1;d<=daysInMonth(y,m);d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(new Date(ds+'T12:00').getDay()===target){c++;if(c===nth)return ds;}} return null; }
+function diaNConMargen(y,m,dia,margen){ const total=daysInMonth(y,m),base=Math.min(dia,total),ds=`${y}-${String(m).padStart(2,'0')}-${String(base).padStart(2,'0')}`; if(esDiaHabil(ds))return ds; for(let i=1;i<=margen;i++)for(const delta of[i,-i]){const d2=addDays(ds,delta);if(parseInt(d2.slice(5,7))===m&&esDiaHabil(d2))return d2;} return ds; }
+
+function generarFechas(patron,desde,hasta){
+  const fechas=[],dStart=new Date(desde+'T12:00'),dEnd=new Date(hasta+'T12:00');
+  let y=dStart.getFullYear(),m=dStart.getMonth()+1;
+  const yEnd=dEnd.getFullYear(),mEnd=dEnd.getMonth()+1;
+  while(y<yEnd||(y===yEnd&&m<=mEnd)){
+    const cands=[];
+    const freq=patron.frecuencia||1;
+    const mIdx=(y*12+m-1)-(dStart.getFullYear()*12+dStart.getMonth());
+    if(mIdx%freq===0){
+      if(patron.tipo==='dia_n'){(patron.dias||[1]).forEach(d=>{const f=diaNConMargen(y,m,d,patron.margen||0);if(f)cands.push(f);});}
+      else if(patron.tipo==='nth_dow'){const f=nthDowDelMes(y,m,patron.dow,patron.nth);if(f)cands.push(f);}
+      else if(patron.tipo==='dia_habil'){const f=patron.desde_fin?nthHabilDesdeFinMes(y,m,patron.nhabil):nthHabilDelMes(y,m,patron.nhabil);if(f)cands.push(f);}
+      else if(patron.tipo==='rango_mes'){for(let d=patron.dmin||1;d<=Math.min(patron.dmax||7,daysInMonth(y,m));d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;if(esDiaHabil(ds)){cands.push(ds);break;}}}
+    }
+    cands.forEach(f=>{const fd=new Date(f+'T12:00');if(fd>=dStart&&fd<=dEnd)fechas.push(f);});
+    m++;if(m>12){m=1;y++;}
+  }
+  return [...new Set(fechas)].sort();
+}
+
+/* ═══════════════════════════════════════════════════════
    MÓDULO PLANIFICADOR — Mapa de clientes + mini-calendario
 ═══════════════════════════════════════════════════════ */
 let planMap=null, planMarkers=[], planView='week', planOffset=0;
@@ -2941,6 +2993,209 @@ if ("serviceWorker" in navigator) {
       .catch(e => console.warn("SW:", e));
   });
 }
+
+/* ═══ UI RECURRENCIAS ═══ */
+const DOW_LABELS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const DOW_FULL=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+function parseRecurrenciaImport(tipo,diaRef,margen,horario){
+  const t=(tipo||'').toLowerCase().trim();
+  const dia=parseInt(diaRef)||1;
+  const mar=parseInt(margen)||0;
+  const hr=(horario||'am').toLowerCase().trim();
+  const timeMode=hr.includes(':')?(hr.length===5?'defined':'am'):(hr==='pm'?'pm':hr==='dia'?'dia':'am');
+  if(t.match(/trimest/)) return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:3};
+  if(t.match(/semest/))  return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:6};
+  if(t.match(/bimens/))  return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:2};
+  if(t.match(/habil|hábil/)){ const n=parseInt(t.match(/\d+/)?.[0])||1; return {tipo:'dia_habil',nhabil:n,desde_fin:t.includes('fin'),timeMode,frecuencia:1}; }
+  if(t.match(/viernes|lunes|martes|miercoles|jueves|sabado|domingo/)){
+    const DOWS={lunes:0,martes:1,miercoles:2,jueves:3,viernes:4,sabado:5,domingo:6};
+    const dow=Object.keys(DOWS).find(k=>t.includes(k));
+    const nth=parseInt(t.match(/\d+/)?.[0])||1;
+    return {tipo:'nth_dow',dow:DOWS[dow]||4,nth,timeMode,frecuencia:1};
+  }
+  return {tipo:'dia_n',dias:[dia],margen:mar,timeMode,frecuencia:1};
+}
+
+window.openRecurrenceModal=function(clientId){
+  window._rcClientId=clientId;
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  const r=c.recurrence||{};
+  showModal(`<h3>🔁 Recurrencia — ${c.name}</h3>
+    <div class="form-group"><label>Tipo de patrón</label>
+      <select id="rc_tipo" onchange="renderRecurrenceFields()">
+        <option value="dia_n" ${(r.tipo||'dia_n')==='dia_n'?'selected':''}>Día N del mes</option>
+        <option value="nth_dow" ${r.tipo==='nth_dow'?'selected':''}>N-ésimo día de semana</option>
+        <option value="dia_habil" ${r.tipo==='dia_habil'?'selected':''}>N-ésimo día hábil</option>
+        <option value="rango_mes" ${r.tipo==='rango_mes'?'selected':''}>Rango de días del mes</option>
+      </select>
+    </div>
+    <div id="rc_fields"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Frecuencia</label>
+        <select id="rc_freq">
+          <option value="1" ${(r.frecuencia||1)===1?'selected':''}>Mensual</option>
+          <option value="2" ${r.frecuencia===2?'selected':''}>Bimensual</option>
+          <option value="3" ${r.frecuencia===3?'selected':''}>Trimestral</option>
+          <option value="6" ${r.frecuencia===6?'selected':''}>Semestral</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Horario</label>
+        <select id="rc_timemode" onchange="document.getElementById('rc_hora_row').style.display=this.value==='defined'?'flex':'none'">
+          <option value="am" ${(r.timeMode||'am')==='am'?'selected':''}>AM</option>
+          <option value="pm" ${r.timeMode==='pm'?'selected':''}>PM</option>
+          <option value="dia" ${r.timeMode==='dia'?'selected':''}>Todo el día</option>
+          <option value="defined" ${r.timeMode==='defined'?'selected':''}>Hora fija</option>
+        </select>
+      </div>
+    </div>
+    <div id="rc_hora_row" style="display:${r.timeMode==='defined'?'flex':'none'};gap:10px">
+      <div class="form-group" style="flex:1"><label>Hora inicio</label><input type="time" id="rc_hora" value="${r.hora||'09:00'}"></div>
+    </div>
+    <div class="form-group" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+      <label style="font-weight:500;margin-bottom:8px;display:block">Generar servicios para el período</label>
+      <div class="form-row">
+        <div class="form-group"><label>Desde</label><input type="month" id="rc_desde" value="${new Date().toISOString().slice(0,7)}"></div>
+        <div class="form-group"><label>Hasta</label><input type="month" id="rc_hasta" value="${new Date(Date.now()+90*864e5).toISOString().slice(0,7)}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1"><label>Técnico</label>
+          <select id="rc_tech">${technicians.map(t=>`<option value="${t.id}" ${t.id===(r.techId||technicians[0]?.id)?'selected':''}>${t.name}</option>`).join('')}</select>
+        </div>
+        <div class="form-group" style="flex:1"><label>Tipo servicio</label>
+          <select id="rc_svctype">${SVC_TYPES.map(t=>`<option ${t===(r.svcType||'Servicio')?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+      </div>
+    </div>
+    <div id="rc_preview" style="margin-top:8px"></div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
+      ${c.recurrence?`<button class="btn btn-danger" onclick="deleteRecurrence('${clientId}')">Quitar recurrencia</button>`:''}
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn" onclick="previewRecurrence('${clientId}')">👁 Vista previa</button>
+      <button class="btn btn-primary" onclick="saveAndGenerateRecurrence('${clientId}')">✓ Guardar y generar</button>
+    </div>`);
+  renderRecurrenceFields();
+};
+
+window.renderRecurrenceFields=function(){
+  const tipo=document.getElementById('rc_tipo')?.value;
+  const c=clients.find(x=>x.id===window._rcClientId)||{};
+  const r=c.recurrence||{};
+  const el=document.getElementById('rc_fields');if(!el)return;
+  if(tipo==='dia_n'){
+    el.innerHTML=`<div class="form-row">
+      <div class="form-group"><label>Días del mes <span style="font-size:10px;color:var(--text2)">(separados por coma)</span></label>
+        <input id="rc_dias" placeholder="ej: 1, 2 ó 15" value="${(r.dias||[1]).join(', ')}"></div>
+      <div class="form-group"><label>Margen ± días</label>
+        <input type="number" id="rc_margen" value="${r.margen||0}" min="0" max="10" style="width:80px"></div>
+    </div>`;
+  } else if(tipo==='nth_dow'){
+    el.innerHTML=`<div class="form-row">
+      <div class="form-group"><label>Día de semana</label>
+        <select id="rc_dow">${DOW_FULL.map((d,i)=>`<option value="${i}" ${(r.dow||4)===i?'selected':''}>${d}</option>`).join('')}</select></div>
+      <div class="form-group"><label>¿Cuál?</label>
+        <select id="rc_nth">
+          ${[1,2,3,4].map(n=>`<option value="${n}" ${(r.nth||1)===n?'selected':''}>${n}° del mes</option>`).join('')}
+          <option value="-1" ${r.nth===-1?'selected':''}>Último del mes</option>
+        </select></div>
+    </div>`;
+  } else if(tipo==='dia_habil'){
+    el.innerHTML=`<div class="form-row">
+      <div class="form-group"><label>N° día hábil</label>
+        <input type="number" id="rc_nhabil" value="${r.nhabil||5}" min="1" max="23" style="width:80px"></div>
+      <div class="form-group"><label>Contar desde</label>
+        <select id="rc_desde_fin">
+          <option value="0" ${!r.desde_fin?'selected':''}>Inicio del mes</option>
+          <option value="1" ${r.desde_fin?'selected':''}>Fin del mes</option>
+        </select></div>
+    </div>`;
+  } else if(tipo==='rango_mes'){
+    el.innerHTML=`<div class="form-row">
+      <div class="form-group"><label>Día inicio rango</label>
+        <input type="number" id="rc_dmin" value="${r.dmin||1}" min="1" max="31" style="width:80px"></div>
+      <div class="form-group"><label>Día fin rango</label>
+        <input type="number" id="rc_dmax" value="${r.dmax||7}" min="1" max="31" style="width:80px"></div>
+    </div>
+    <p style="font-size:11px;color:var(--text2);margin:2px 0">Se usará el primer día hábil dentro del rango.</p>`;
+  }
+};
+
+function buildPatronFromUI(){
+  const tipo=document.getElementById('rc_tipo').value;
+  const frecuencia=parseInt(document.getElementById('rc_freq').value)||1;
+  const timeMode=document.getElementById('rc_timemode').value;
+  const hora=document.getElementById('rc_hora')?.value||'09:00';
+  const techId=document.getElementById('rc_tech')?.value||technicians[0]?.id;
+  const svcType=document.getElementById('rc_svctype')?.value||'Servicio';
+  const base={tipo,frecuencia,timeMode,hora,techId,svcType};
+  if(tipo==='dia_n'){
+    const dias=(document.getElementById('rc_dias').value||'1').split(',').map(x=>parseInt(x.trim())).filter(n=>n>0&&n<=31);
+    return {...base,dias,margen:parseInt(document.getElementById('rc_margen').value)||0};
+  }
+  if(tipo==='nth_dow') return {...base,dow:parseInt(document.getElementById('rc_dow').value),nth:parseInt(document.getElementById('rc_nth').value)};
+  if(tipo==='dia_habil') return {...base,nhabil:parseInt(document.getElementById('rc_nhabil').value)||5,desde_fin:document.getElementById('rc_desde_fin').value==='1'};
+  if(tipo==='rango_mes') return {...base,dmin:parseInt(document.getElementById('rc_dmin').value)||1,dmax:parseInt(document.getElementById('rc_dmax').value)||7};
+  return base;
+}
+
+window.previewRecurrence=function(clientId){
+  const patron=buildPatronFromUI();
+  const desde=document.getElementById('rc_desde').value+'-01';
+  const hasta=document.getElementById('rc_hasta').value+'-28';
+  const fechas=generarFechas(patron,desde,hasta);
+  const el=document.getElementById('rc_preview');if(!el)return;
+  if(!fechas.length){el.innerHTML='<p style="color:var(--text2);font-size:12px">Sin fechas para este período.</p>';return;}
+  el.innerHTML=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
+    <div style="font-weight:500;font-size:12px;margin-bottom:8px;color:#a855f7">📅 ${fechas.length} fechas:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${fechas.map(f=>{
+        const dd=new Date(f+'T12:00'),dow=DOW_LABELS[dd.getDay()===0?6:dd.getDay()-1],isFer=esFeriado(f);
+        return`<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${isFer?'rgba(239,68,68,.15)':'rgba(168,85,247,.15)'};color:${isFer?'#ef4444':'#a855f7'}">${dow} ${f.slice(8)}/${f.slice(5,7)}${isFer?' 🚫':''}</span>`;
+      }).join('')}
+    </div>
+    ${fechas.some(f=>esFeriado(f))?'<p style="font-size:11px;color:#ef4444;margin-top:4px">🚫 Coincide con feriados</p>':''}
+  </div>`;
+};
+
+window.saveAndGenerateRecurrence=function(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  const patron=buildPatronFromUI();
+  const desde=document.getElementById('rc_desde').value+'-01';
+  const hasta=document.getElementById('rc_hasta').value+'-28';
+  const fechas=generarFechas(patron,desde,hasta);
+  if(!fechas.length){showToast('Sin fechas para generar','error');return;}
+  const idx=clients.findIndex(x=>x.id===clientId);
+  clients[idx]={...c,recurrence:patron};
+  const existentes=new Set(services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase()).map(s=>s.date));
+  let creados=0;
+  fechas.forEach(fecha=>{
+    if(existentes.has(fecha))return;
+    const [sH,sM]=patron.timeMode==='defined'?(patron.hora||'09:00').split(':').map(Number):[patron.timeMode==='pm'?13:8,0];
+    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:patron.techId||technicians[0]?.id||'',
+      status:'Programado',date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,
+      address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,
+      recurrenceId:clientId,createdAt:Date.now()});
+    creados++;
+  });
+  addHistory('Recurrencia generada',`${c.name}: ${creados} servicios`);
+  saveData(); closeModal(); renderClients();
+  showToast(`✓ ${creados} servicios generados para ${c.name}`,'success');
+};
+
+window.deleteRecurrence=function(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  const today=fmtKey(new Date());
+  if(!confirm(`¿Quitar recurrencia de ${c.name}?\n\nSe eliminarán servicios FUTUROS desde ${today}.\nLos pasados no se modifican.`))return;
+  const antes=services.length;
+  services=services.filter(s=>!(s.recurrenceId===clientId&&s.date>=today));
+  const elim=antes-services.length;
+  const ix=clients.findIndex(x=>x.id===clientId);
+  if(ix>=0){const {recurrence,...rest}=clients[ix];clients[ix]=rest;}
+  addHistory('Recurrencia eliminada',`${c.name}: ${elim} servicios futuros eliminados`);
+  saveData(); closeModal(); renderClients();
+  showToast(`Recurrencia eliminada — ${elim} servicios futuros borrados`,'success');
+};
+
 </script>
 </body>
 </html>
