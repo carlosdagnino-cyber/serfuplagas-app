@@ -416,6 +416,15 @@ header {
   display:flex; gap:14px; flex-wrap:wrap;
 }
 .route-summary span { display:flex; align-items:center; gap:4px; }
+.extra-stop {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px; border-bottom:1px solid var(--border);
+  background:var(--bg3);
+}
+.extra-stop-icon { font-size:16px; flex-shrink:0; }
+.extra-stop-info { flex:1; min-width:0; }
+.extra-stop-label { font-size:11px; color:var(--text3); font-weight:500; text-transform:uppercase; letter-spacing:.04em; }
+.extra-stop-addr  { font-size:12px; color:var(--text2); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .no-maps-banner {
   background:var(--warning-dim); border:1px solid rgba(245,158,11,.3);
   border-radius:var(--radius); padding:10px 14px;
@@ -616,6 +625,7 @@ header {
           </select>
         </div>
         <div class="toolbar-right">
+          <button class="btn btn-sm" onclick="openExtraStopsModal()">📍 Paradas extra</button>
           <button class="btn btn-sm" id="btnOptimize" onclick="optimizeRoutes()">⚡ Optimizar rutas</button>
           <button class="btn btn-primary btn-sm" onclick="generateRoutes()">🗺️ Generar mapa</button>
         </div>
@@ -1567,6 +1577,7 @@ window.openAddTechModal=function(){
       <div class="form-group"><label>Color</label><select id="ft_color">${colorOpts()}</select></div>
     </div>
     <div class="form-group"><label>Teléfono</label><input id="ft_phone" placeholder="+56 9 …"></div>
+    <div class="form-group"><label>🏠 Dirección de salida (casa)</label><input id="ft_home" placeholder="Calle, número, comuna"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveTech()">Agregar</button>
@@ -1581,6 +1592,7 @@ window.openEditTechModal=function(id){
       <div class="form-group"><label>Color</label><select id="ft_color">${colorOpts(t.colorIdx||0)}</select></div>
     </div>
     <div class="form-group"><label>Teléfono</label><input id="ft_phone" value="${t.phone||''}"></div>
+    <div class="form-group"><label>🏠 Dirección de salida (casa)</label><input id="ft_home" placeholder="Calle, número, comuna" value="${t.homeAddress||''}"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveTech('${id}')">Guardar</button>
@@ -1591,9 +1603,10 @@ window.saveTech=function(id){
   const inits=document.getElementById('ft_init').value.trim().toUpperCase();
   const cidx=parseInt(document.getElementById('ft_color').value);
   const phone=document.getElementById('ft_phone').value.trim();
+  const homeAddress=document.getElementById('ft_home').value.trim();
   if(!name||!inits){showToast('Completa todos los campos','error');return;}
-  if(id){const idx=technicians.findIndex(t=>t.id===id);if(idx>=0)technicians[idx]={...technicians[idx],name,initials:inits,colorIdx:cidx,phone};addHistory('Técnico editado',name);showToast('Técnico actualizado','success');}
-  else{technicians.push({id:uid(),name,initials:inits,colorIdx:cidx,phone,createdAt:Date.now()});addHistory('Técnico agregado',name);showToast('Técnico agregado','success');}
+  if(id){const idx=technicians.findIndex(t=>t.id===id);if(idx>=0)technicians[idx]={...technicians[idx],name,initials:inits,colorIdx:cidx,phone,homeAddress};addHistory('Técnico editado',name);showToast('Técnico actualizado','success');}
+  else{technicians.push({id:uid(),name,initials:inits,colorIdx:cidx,phone,homeAddress,createdAt:Date.now()});addHistory('Técnico agregado',name);showToast('Técnico agregado','success');}
   closeModal(); saveData();
 };
 window.deleteTech=function(id){
@@ -1699,6 +1712,84 @@ function renderRouteSelects(){
   renderFilterSelect();
 }
 
+// Paradas extra por técnico: {techId, stops:[{type:'lunch'|'return'|'extra', address, hour, label}]}
+let extraStops={};
+
+window.openExtraStopsModal=function(){
+  const date=document.getElementById('routeDate').value||fmtKey(new Date());
+  const techFilter=document.getElementById('routeTech').value;
+  const techs=techFilter==='all'?technicians:technicians.filter(t=>t.id===techFilter);
+
+  const stopsHTML=techs.map(t=>{
+    const ex=extraStops[t.id]||[];
+    const pal=getPalette(t.colorIdx||0);
+    return`<div style="margin-bottom:1rem">
+      <div style="font-size:13px;font-weight:600;color:${pal.bd};margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span style="background:${pal.av};color:${pal.bd};border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">${t.initials}</span>
+        ${t.name}
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">🏠 Salida desde: <b style="color:var(--text)">${t.homeAddress||'Sin dirección configurada'}</b></div>
+      <div id="extra_list_${t.id}" style="margin-bottom:8px">
+        ${ex.map((s,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:16px">${s.type==='lunch'?'🍽️':s.type==='return'?'🏠':'📍'}</span>
+          <span style="flex:1;font-size:12px;color:var(--text2)">${s.label} — ${s.address}${s.hour?' · '+s.hour:''}</span>
+          <button class="btn btn-sm btn-danger" onclick="removeExtraStop('${t.id}',${i})">✕</button>
+        </div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end">
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Tipo</label>
+          <select id="et_type_${t.id}" class="btn btn-sm" style="width:100%">
+            <option value="lunch">🍽️ Almuerzo</option>
+            <option value="return">🏠 Regreso a casa</option>
+            <option value="extra">📍 Parada extra</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label style="font-size:11px">Dirección</label>
+          <input id="et_addr_${t.id}" class="btn btn-sm" style="width:100%;cursor:text;text-align:left" placeholder="Dirección o 'casa'">
+        </div>
+        <div style="display:flex;gap:4px;align-items:end">
+          <div class="form-group" style="margin:0">
+            <label style="font-size:11px">Hora</label>
+            <input type="time" id="et_hour_${t.id}" class="btn btn-sm" style="cursor:text">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addExtraStop('${t.id}')" style="margin-bottom:0;height:32px">+</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:1rem 0">');
+
+  showModal(`<h3>📍 Paradas extra y origen</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:1rem">Configura el punto de origen y paradas adicionales para cada técnico (almuerzos, regresos, visitas extra).</p>
+    ${stopsHTML}
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cerrar</button>
+      <button class="btn btn-primary" onclick="closeModal();generateRoutes()">Generar mapa</button>
+    </div>`);
+};
+
+window.addExtraStop=function(techId){
+  const type=document.getElementById('et_type_'+techId)?.value||'extra';
+  let addr=document.getElementById('et_addr_'+techId)?.value.trim();
+  const hour=document.getElementById('et_hour_'+techId)?.value;
+  if(!addr){ showToast('Ingresa una dirección','error'); return; }
+  // Si dice "casa" usar homeAddress del técnico
+  if(addr.toLowerCase()==='casa'){
+    const t=technicians.find(x=>x.id===techId);
+    addr=t?.homeAddress||addr;
+  }
+  if(!extraStops[techId]) extraStops[techId]=[];
+  const labels={'lunch':'Almuerzo','return':'Regreso a casa','extra':'Parada extra'};
+  extraStops[techId].push({type, address:addr, hour, label:labels[type]||'Parada'});
+  openExtraStopsModal(); // refrescar
+};
+
+window.removeExtraStop=function(techId,idx){
+  if(extraStops[techId]) extraStops[techId].splice(idx,1);
+  openExtraStopsModal();
+};
+
 window.optimizeRoutes=async function(){
   const date=document.getElementById('routeDate').value||fmtKey(new Date());
   const techFilter=document.getElementById('routeTech').value;
@@ -1735,34 +1826,58 @@ window.optimizeRoutes=async function(){
   generateRoutes();
 };
 
+// Estado de paradas extra por técnico (en memoria)
+let extraStops={};
+
+window.addExtraStop=function(techId){
+  const addr=prompt('Dirección de la parada extra\n(ej: Av. Principal 123, La Granja):');
+  if(!addr||!addr.trim())return;
+  const hour=prompt('Hora de la parada (ej: 13:00):','13:00');
+  if(!hour)return;
+  const label=prompt('Descripción (ej: Almuerzo, Base, Desvío):','Parada extra');
+  if(!extraStops[techId])extraStops[techId]=[];
+  extraStops[techId].push({id:uid(),address:addr.trim(),hour,label:label||'Parada extra'});
+  generateRoutes();
+};
+window.removeExtraStop=function(techId,stopId){
+  if(!extraStops[techId])return;
+  extraStops[techId]=extraStops[techId].filter(s=>s.id!==stopId);
+  generateRoutes();
+};
+
 window.generateRoutes=function(){
   const date=document.getElementById('routeDate').value||fmtKey(new Date());
   const techFilter=document.getElementById('routeTech').value;
+  if(window._lastRouteDate&&window._lastRouteDate!==date)extraStops={};
+  window._lastRouteDate=date;
   const daySvcs=services.filter(s=>s.date===date&&(techFilter==='all'||s.techId===techFilter))
-    .sort((a,b)=>((a.routeOrder??99)*10+a.startH*60+(a.startM||0))-(( b.routeOrder??99)*10+b.startH*60+(b.startM||0)));
-
+    .sort((a,b)=>((a.routeOrder??99)*10+a.startH*60+(a.startM||0))-((b.routeOrder??99)*10+b.startH*60+(b.startM||0)));
   if(!daySvcs.length){
-    document.getElementById('routesSidebar').innerHTML=`
-      <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">Sin servicios para esta fecha.</div>`;
+    document.getElementById('routesSidebar').innerHTML=`<div style="padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)">Sin servicios para esta fecha.</div>`;
     return;
   }
-
-  // Agrupar por técnico
   const byTech={};
   daySvcs.forEach(s=>{
     const t=getTech(s.techId);
-    if(!byTech[s.techId]) byTech[s.techId]={tech:t,svcs:[]};
+    if(!byTech[s.techId])byTech[s.techId]={tech:t,svcs:[]};
     byTech[s.techId].svcs.push(s);
   });
-
-  // Renderizar sidebar
   let sidebarHtml='';
   Object.values(byTech).forEach((group,gi)=>{
     const pal=getPalette(group.tech.colorIdx||gi);
     const totalMin=group.svcs.reduce((acc,s)=>(s.endH-s.startH)*60+((s.endM||0)-(s.startM||0))+acc,0);
+    const extras=extraStops[group.tech.id]||[];
+    const hasHome=!!group.tech.homeAddress;
     sidebarHtml+=`
       <div class="route-tech-panel" style="border-left:3px solid ${pal.bd}">
         <div class="route-tech-title" style="color:${pal.bd}">${group.tech.name}</div>
+        ${hasHome?`<div class="route-stop" style="opacity:.7">
+          <div class="stop-num" style="background:#6b7280;color:#fff;font-size:13px">🏠</div>
+          <div class="stop-info">
+            <div class="stop-client" style="color:var(--text2);font-size:11px">Origen</div>
+            <div class="stop-addr">${group.tech.homeAddress}</div>
+          </div>
+        </div>`:''}
         ${group.svcs.map((s,i)=>`
           <div class="route-stop">
             <div class="stop-num" style="background:${pal.av};color:${pal.bd}">${i+1}</div>
@@ -1773,36 +1888,28 @@ window.generateRoutes=function(){
               ${s.address?`<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}" target="_blank" style="font-size:10px;color:var(--accent)">Ver en Maps →</a>`:''}
             </div>
           </div>`).join('')}
+        ${extras.map(ex=>`
+          <div class="route-stop" style="background:rgba(245,158,11,0.06);border-radius:6px">
+            <div class="stop-num" style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:13px">📍</div>
+            <div class="stop-info" style="flex:1">
+              <div class="stop-client" style="color:#f59e0b">${ex.label} · ${ex.hour}</div>
+              <div class="stop-addr">${ex.address}</div>
+            </div>
+            <button onclick="removeExtraStop('${group.tech.id}','${ex.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 4px" title="Eliminar">✕</button>
+          </div>`).join('')}
         <div class="route-summary">
           <span>🛑 ${group.svcs.length} paradas</span>
-          <span>⏱ ${Math.floor(totalMin/60)}h ${totalMin%60}m de servicio</span>
+          <span>⏱ ${Math.floor(totalMin/60)}h ${totalMin%60}m</span>
+        </div>
+        <div style="padding:6px 12px 10px">
+          <button class="btn btn-sm" style="width:100%;justify-content:center;border-style:dashed;font-size:12px" onclick="addExtraStop('${group.tech.id}')">+ Agregar parada extra</button>
         </div>
       </div>`;
   });
   document.getElementById('routesSidebar').innerHTML=sidebarHtml;
-
-  // Mapa
-  if(mapsKey){
-    loadGoogleMap(byTech, date);
-  } else {
-    document.getElementById('routes-map').innerHTML=`
-      <div class="map-placeholder">
-        <div style="font-size:32px">🗺️</div>
-        <div style="font-size:13px;font-weight:500;margin-bottom:8px">${daySvcs.length} servicios para ${date}</div>
-        <div style="font-size:12px;color:var(--text2);text-align:center;max-width:280px">
-          Configura la API Key de Google Maps en ⚙️ Colores para ver el mapa interactivo con tráfico en tiempo real.
-        </div>
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;width:100%;max-width:280px">
-          ${daySvcs.map((s,i)=>`<div style="display:flex;gap:8px;align-items:center;font-size:12px;background:var(--bg3);border-radius:8px;padding:7px 10px">
-            <span style="width:20px;height:20px;border-radius:50%;background:${ROUTE_COLORS[technicians.findIndex(t=>t.id===s.techId)%ROUTE_COLORS.length]}22;color:${ROUTE_COLORS[technicians.findIndex(t=>t.id===s.techId)%ROUTE_COLORS.length]};font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</span>
-            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.client}</span>
-            <span style="color:var(--text3);font-family:var(--mono);font-size:10px">${fmtTime(s.startH,s.startM||0)}</span>
-          </div>`).join('')}
-        </div>
-      </div>`;
-  }
+  if(mapsKey) loadGoogleMap(byTech,date);
+  else document.getElementById('routes-map').innerHTML=`<div class="map-placeholder"><div style="font-size:32px">🗺️</div><div style="font-size:13px;font-weight:500">${daySvcs.length} servicios para ${date}</div><div style="font-size:12px;color:var(--text2)">Configura la API Key de Google Maps en ⚙️ Colores.</div></div>`;
 };
-
 function loadGoogleMap(byTech, date){
   const mapDiv=document.getElementById('routes-map');
   mapDiv.innerHTML='<div style="width:100%;height:100%;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text2)">Cargando mapa…</div>';
@@ -1832,10 +1939,11 @@ window.renderGoogleMap=function(byTech,mapDiv){
     streetViewControl:false,
     fullscreenControl:true,
     zoomControl:true,
-    gestureHandling:'cooperative',
-    styles:[] // Sin estilos custom — mapa normal de Google
+    gestureHandling:'greedy',
+    styles:[]
   });
   mapInstance=map;
+  let activeIW=null;
   setTimeout(()=>{ google.maps.event.trigger(map,'resize'); map.setCenter({lat:-33.5928,lng:-70.7009}); }, 300);
 
   // Limpiar renderers anteriores
@@ -1903,29 +2011,133 @@ window.renderGoogleMap=function(byTech,mapDiv){
             (svc.notes?'<div style="font-size:11px;color:#888;margin-top:3px;font-style:italic">'+svc.notes+'</div>':'')+
             '</div>'
           });
-          marker.addListener('click',()=>iw.open(map,marker));
-          map.fitBounds(bounds);
+          marker.addListener('click',()=>{
+            if(activeIW){ activeIW.close(); }
+            iw.open(map,marker);
+            activeIW=iw;
+          });
+          // Zoom centrado sobre todos los pins al actualizar bounds
+          // Zoom centrado — delay para esperar todos los geocodes
+          clearTimeout(window._fitBoundsTimer);
+          window._fitBoundsTimer=setTimeout(()=>{
+            if(!bounds.isEmpty()){map.fitBounds(bounds,{padding:60});google.maps.event.addListenerOnce(map,"bounds_changed",()=>{if(map.getZoom()>15)map.setZoom(15);});}
+          },800);
+          // Padding para no quedar pegado a los bordes
+          map.setOptions({padding:{top:60,right:60,bottom:60,left:60}});
         }
       });
     });
 
-    // Ruta con tráfico entre paradas
-    if(group.svcs.length>=2){
-      const validSvcs=group.svcs.filter(s=>s.address);
-      if(validSvcs.length>=2){
+    // Ruta con origen desde casa del técnico + paradas extra
+    const validSvcs=group.svcs.filter(s=>s.address);
+    if(validSvcs.length>=1){
+      const tech=getTech(group.tech?.id||group.svcs[0]?.techId);
+      const homeAddr=tech.homeAddress;
+      const extras=extraStops[tech.id]||[];
+
+      // Construir lista completa de puntos: casa → servicios + extras → último destino
+      // Intercalar extras según hora si tienen hora definida
+      const allPoints=[];
+
+      // Agregar servicios
+      validSvcs.forEach(s=>allPoints.push({address:s.address,hour:s.startH*60+(s.startM||0),type:'svc'}));
+
+      // Agregar paradas extra con hora
+      extras.forEach(e=>{
+        if(e.address){
+          const hm=e.hour?e.hour.split(':').map(Number):[12,0];
+          allPoints.push({address:e.address,hour:hm[0]*60+(hm[1]||0),type:e.type,label:e.label});
+        }
+      });
+
+      // Ordenar por hora
+      allPoints.sort((a,b)=>a.hour-b.hour);
+
+      // Agregar marcador especial para paradas extra
+      extras.forEach(e=>{
+        if(!e.address)return;
+        geocoder.geocode({address:e.address+', Santiago, Chile'},(res,st)=>{
+          if(st==='OK'&&res[0]){
+            const pos=res[0].geometry.location;
+            bounds.extend(pos);
+            const icon=e.type==='lunch'?'🍽️':e.type==='return'?'🏠':'📍';
+            const extraMarker=new google.maps.Marker({
+              position:pos, map,
+              icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:'#6b7280',fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
+              title:e.label+(e.hour?' · '+e.hour:''),
+              zIndex:50,
+            });
+            const extraLbl=document.createElement('div');
+            extraLbl.innerHTML='<span style="font-size:14px">'+icon+'</span> <span style="font-size:11px;color:#374151;font-weight:600">'+e.label+(e.hour?' '+e.hour:'')+'</span>';
+            extraLbl.style.cssText='position:absolute;background:#fff;border-left:3px solid #6b7280;border-radius:4px;padding:3px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-165%);pointer-events:none;z-index:998;';
+            const exOverlay=new google.maps.OverlayView();
+            exOverlay.onAdd=function(){ this.getPanes().floatPane.appendChild(extraLbl); };
+            exOverlay.draw=function(){ const proj=this.getProjection();if(!proj)return;const pt=proj.fromLatLngToDivPixel(pos);if(pt){extraLbl.style.left=pt.x+'px';extraLbl.style.top=pt.y+'px';} };
+            exOverlay.onRemove=function(){ extraLbl.parentNode?.removeChild(extraLbl); };
+            exOverlay.setMap(map);
+            const exIW=new google.maps.InfoWindow({content:'<div style="font-family:sans-serif;padding:4px"><b>'+icon+' '+e.label+'</b>'+(e.hour?'<br><span style="color:#1a73e8">'+e.hour+'</span>':'')+'<br><span style="color:#555;font-size:12px">'+e.address+'</span></div>'});
+            extraMarker.addListener('click',()=>{ if(activeIW)activeIW.close(); exIW.open(map,extraMarker); activeIW=exIW; });
+            clearTimeout(window._fitBoundsTimer);
+            window._fitBoundsTimer=setTimeout(()=>{
+              if(!bounds.isEmpty()){map.fitBounds(bounds,{padding:60});google.maps.event.addListenerOnce(map,"bounds_changed",()=>{if(map.getZoom()>15)map.setZoom(15);});}
+            },800);
+          }
+        });
+      });
+
+      if(allPoints.length>=2){
+        const origin=homeAddr?homeAddr+', Santiago, Chile':allPoints[0].address+', Santiago, Chile';
+        const destination=allPoints[allPoints.length-1].address+', Santiago, Chile';
+        const waypoints=[];
+        // Si hay homeAddr, primer servicio es waypoint; si no, es origin
+        const midPoints=homeAddr?allPoints:allPoints.slice(1,-1);
+        midPoints.forEach(p=>waypoints.push({location:p.address+', Santiago, Chile',stopover:true}));
         const ds=new google.maps.DirectionsService();
         const dr=new google.maps.DirectionsRenderer({
           map,suppressMarkers:true,
-          polylineOptions:{strokeColor:color,strokeOpacity:0.8,strokeWeight:5}
+          polylineOptions:{strokeColor:color,strokeOpacity:0.85,strokeWeight:5}
         });
         directionsRenderer.push(dr);
         ds.route({
-          origin:validSvcs[0].address+', Santiago, Chile',
-          destination:validSvcs[validSvcs.length-1].address+', Santiago, Chile',
-          waypoints:validSvcs.slice(1,-1).map(s=>({location:s.address+', Santiago, Chile',stopover:true})),
+          origin,destination,waypoints,
           travelMode:google.maps.TravelMode.DRIVING,
           drivingOptions:{departureTime:new Date(),trafficModel:google.maps.TrafficModel.BEST_GUESS}
         },(result,status)=>{ if(status==='OK') dr.setDirections(result); });
+
+        // Si hay homeAddress, agregar pin de origen (casa)
+        if(homeAddr){
+          geocoder.geocode({address:homeAddr+', Santiago, Chile'},(res,st)=>{
+            if(st==='OK'&&res[0]){
+              const pos=res[0].geometry.location;
+              bounds.extend(pos);
+              new google.maps.Marker({
+                position:pos,map,
+                icon:{path:google.maps.SymbolPath.CIRCLE,scale:16,fillColor:'#10b981',fillOpacity:1,strokeColor:'#fff',strokeWeight:2.5},
+                title:'Inicio: '+tech.name,zIndex:200,
+              });
+              const homeLbl=document.createElement('div');
+              homeLbl.innerHTML='<span style="font-size:13px">🏠</span> <b style="font-size:11px;color:#065f46">Inicio '+tech.initials+'</b>';
+              homeLbl.style.cssText='position:absolute;background:#ecfdf5;border-left:3px solid #10b981;border-radius:4px;padding:3px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-165%);pointer-events:none;z-index:1000;';
+              const homeOv=new google.maps.OverlayView();
+              homeOv.onAdd=function(){ this.getPanes().floatPane.appendChild(homeLbl); };
+              homeOv.draw=function(){ const proj=this.getProjection();if(!proj)return;const pt=proj.fromLatLngToDivPixel(pos);if(pt){homeLbl.style.left=pt.x+'px';homeLbl.style.top=pt.y+'px';} };
+              homeOv.onRemove=function(){ homeLbl.parentNode?.removeChild(homeLbl); };
+              homeOv.setMap(map);
+              clearTimeout(window._fitBoundsTimer);
+              window._fitBoundsTimer=setTimeout(()=>{
+                if(!bounds.isEmpty()){map.fitBounds(bounds,{padding:60});google.maps.event.addListenerOnce(map,"bounds_changed",()=>{if(map.getZoom()>15)map.setZoom(15);});}
+              },800);
+            }
+          });
+        }
+      } else if(allPoints.length===1){
+        // Solo un servicio — trazar igual desde casa si existe
+        if(homeAddr){
+          const ds2=new google.maps.DirectionsService();
+          const dr2=new google.maps.DirectionsRenderer({map,suppressMarkers:true,polylineOptions:{strokeColor:color,strokeOpacity:0.85,strokeWeight:5}});
+          directionsRenderer.push(dr2);
+          ds2.route({origin:homeAddr+', Santiago, Chile',destination:allPoints[0].address+', Santiago, Chile',waypoints:[],travelMode:google.maps.TravelMode.DRIVING},(result,status)=>{ if(status==='OK') dr2.setDirections(result); });
+        }
       }
     }
   });
