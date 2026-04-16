@@ -1734,124 +1734,373 @@ window.completeSvc=function(id){
 /* ═══════════════ CLIENTS ═══════════════ */
 window.renderClients=function(){
   const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
-  const list=q?clients.filter(c=>c.name.toLowerCase().includes(q)||(c.address||'').toLowerCase().includes(q)):clients;
+  const list=q?clients.filter(c=>c.name.toLowerCase().includes(q)||(c.address||'').toLowerCase().includes(q)||(c.ciudad||'').toLowerCase().includes(q)):clients;
   const el=document.getElementById('clientsList');if(!el)return;
   if(!list.length){
     el.innerHTML='<p style="color:var(--text2);font-size:13px">Sin clientes. Importa un Excel o agrega uno manualmente.</p>';
     return;
   }
   const canEdit=hasPerm('edit_clients');
-  el.innerHTML=list.map(c=>`
-    <div class="card card-row">
-      <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
-      <div style="flex:1;min-width:0">
-        <div class="info-primary">${c.name} ${c.contactChannel==='whatsapp'?'<span style="color:#25d366;font-size:11px">📱 WhatsApp</span>':c.contactChannel==='correo'?'<span style="color:#3b82f6;font-size:11px">✉️ Correo</span>':c.contactChannel==='telefono'?'<span style="color:#6b7280;font-size:11px">📞 Teléfono</span>':''} ${c.emailTemplate?'<span style="color:#0078d4;font-size:10px">✉ plantilla</span>':''} ${c.recurrence?'<span style="color:#a855f7;font-size:10px">🔁 recurrente</span>':''} ${c.linkedGroup?'<span style="color:#10b981;font-size:10px">🔗 vinculado</span>':''}</div>
-        <div class="info-secondary">${[c.whatsappName?'👤 '+c.whatsappName:null,c.phone,c.email,c.address].filter(Boolean).join(' · ')||'Sin datos'}</div>
+  el.innerHTML=list.map(c=>{
+    // Badges informativos
+    const badges=[];
+    if(c.contactChannel==='whatsapp') badges.push('<span style="color:#25d366;font-size:10px;background:rgba(37,211,102,.12);padding:1px 6px;border-radius:8px">📱 WhatsApp</span>');
+    else if(c.contactChannel==='correo') badges.push('<span style="color:#3b82f6;font-size:10px;background:rgba(59,130,246,.12);padding:1px 6px;border-radius:8px">✉️ Correo</span>');
+    else if(c.contactChannel==='telefono') badges.push('<span style="color:#6b7280;font-size:10px;background:rgba(107,114,128,.12);padding:1px 6px;border-radius:8px">📞 Tel</span>');
+    if(c.emailTemplate) badges.push('<span style="color:#0078d4;font-size:10px;background:rgba(0,120,212,.1);padding:1px 6px;border-radius:8px">✉ plantilla</span>');
+    if(c.recurrence)    badges.push('<span style="color:#a855f7;font-size:10px;background:rgba(168,85,247,.1);padding:1px 6px;border-radius:8px">🔁 rec.</span>');
+    if(c.es_sucursal==='Sí') badges.push('<span style="color:#7c3aed;font-size:10px;background:rgba(124,58,237,.1);padding:1px 6px;border-radius:8px">🏢 sucursal</span>');
+    if(c.grupo_cliente) badges.push(`<span style="color:#065f46;font-size:10px;background:rgba(6,95,70,.1);padding:1px 6px;border-radius:8px" title="Grupo: ${c.grupo_cliente}">🔗 ${c.grupo_cliente}</span>`);
+
+    // Info secundaria
+    const infoItems=[
+      c.whatsappName?'👤 '+c.whatsappName:null,
+      c.phone||null,
+      c.email||null,
+      c.ciudad?c.ciudad+(c.region?' · '+c.region.replace('Región ','').replace('de ','').replace('del ',''):''):'',
+      c.frecuencia||null,
+    ].filter(Boolean);
+
+    return`<div class="card" style="margin-bottom:6px;padding:10px 14px">
+      <div class="card-row">
+        <div class="avatar" style="background:var(--accent-dim);color:var(--accent)">${initials(c.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div class="info-primary" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span>${c.name}</span>
+            ${c.rut?`<span style="font-size:10px;color:var(--text3);font-family:var(--mono)">${c.rut}</span>`:''}
+            ${badges.join('')}
+          </div>
+          <div class="info-secondary" style="margin-top:3px">${infoItems.join(' · ')||'Sin datos'}</div>
+          ${c.address?`<div style="font-size:11px;color:var(--text3);margin-top:1px">📍 ${c.address}</div>`:''}
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-sm" style="background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)" onclick="openEmailTemplateModal('${c.id}')">✉</button>
+          <button class="btn btn-sm" style="background:rgba(168,85,247,.15);color:#a855f7;border-color:rgba(168,85,247,.3)" onclick="openRecurrenceModal('${c.id}')">🔁</button>
+          ${canEdit?`<button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>`:''}
+        </div>
       </div>
-      <div class="card-actions">
-        <button class="btn btn-sm" style="background:var(--accent-dim);color:var(--accent);border-color:var(--accent-dim)" onclick="openEmailTemplateModal('${c.id}')">✉ Plantilla</button>
-        <button class="btn btn-sm" style="background:rgba(168,85,247,.15);color:#a855f7;border-color:rgba(168,85,247,.3)" onclick="openRecurrenceModal('${c.id}')">🔁 Recurrencia</button>
-        <button class="btn btn-sm" style="background:rgba(16,185,129,.15);color:#10b981;border-color:rgba(16,185,129,.3)" onclick="openLinkedModal('${c.id}')">🔗 Vincular</button>
-        ${canEdit?`<button class="btn btn-sm" onclick="openEditClientModal('${c.id}')">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">✕</button>`:''}
-      </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 };
 
-window.openAddClientModal=function(){
-  showModal(`<h3>Agregar cliente</h3>
-    <div class="form-group"><label>Nombre del cliente / empresa</label><input id="fc_name" placeholder="Nombre del cliente"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Nombre contacto WhatsApp</label><input id="fc_wname" placeholder="Persona de contacto"></div>
-      <div class="form-group"><label>Teléfono / WhatsApp</label><input id="fc_phone" placeholder="+56 9 …"></div>
-    </div>
-    <div class="form-group"><label>Dirección</label><input id="fc_address" placeholder="Dirección"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Correo electrónico</label><input id="fc_email" placeholder="correo@ejemplo.cl"></div>
-      <div class="form-group"><label>Canal de contacto preferido</label>
-        <select id="fc_contact">
-          <option value="">Sin definir</option>
-          <option value="whatsapp">📱 WhatsApp</option>
-          <option value="correo">✉️ Correo</option>
-          <option value="telefono">📞 Teléfono</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group"><label>Comentarios / Notas internas</label><textarea id="fc_notes" rows="2"></textarea></div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveClient()">Agregar</button>
-    </div>`);
+/* ═══════════════════════════════════════════════════════
+   DATOS GEOGRÁFICOS CHILE
+═══════════════════════════════════════════════════════ */
+const REGIONES_COMUNAS = {
+  'Región Metropolitana de Santiago': ['Alhué','Buin','Calera de Tango','Cerrillos','Cerro Navia','Colina','Conchalí','El Bosque','El Monte','Estación Central','Huechuraba','Independencia','Isla de Maipo','La Cisterna','La Florida','La Granja','La Pintana','La Reina','Lampa','Las Condes','Lo Barnechea','Lo Espejo','Lo Prado','Macul','Maipú','María Pinto','Melipilla','Padre Hurtado','Paine','Pedro Aguirre Cerda','Peñaflor','Peñalolén','Pirque','Providencia','Pudahuel','Puente Alto','Quilicura','Quinta Normal','Recoleta','Renca','San Bernardo','San Joaquín','San José de Maipo','San Miguel','San Pedro','San Ramón','Santiago','Talagante','Tiltil','Vitacura'],
+  'Región de Valparaíso': ['Algarrobo','Cabildo','Calera','Calle Larga','Cartagena','Casablanca','Catemu','Concón','El Quisco','El Tabo','Hijuelas','Isla de Pascua','Juan Fernández','La Cruz','La Ligua','Limache','Llay-Llay','Los Andes','Nogales','Olmué','Panquehue','Papudo','Petorca','Puchuncaví','Putaendo','Quillota','Quilpué','Quintero','Rinconada','San Antonio','San Esteban','San Felipe','Santa María','Santo Domingo','Valparaíso','Villa Alemana','Viña del Mar','Zapallar'],
+  "Región del Biobío": ['Alto Biobío','Antuco','Arauco','Cabrero','Cañete','Chiguayante','Cobquecura','Coelemu','Coihueco','Concepción','Contulmo','Coronel','Curanilahue','Florida','Hualpén','Hualqui','Laja','Lebu','Los Álamos','Los Ángeles','Lota','Mulchén','Nacimiento','Negrete','Penco','Quilaco','Quilleco','San Pedro de la Paz','San Rosendo','Santa Bárbara','Santa Juana','Talcahuano','Tirúa','Tomé','Tucapel','Yumbel'],
+  'Región de La Araucanía': ['Angol','Carahue','Cholchol','Collipulli','Cunco','Curacautín','Curarrehue','Ercilla','Freire','Galvarino','Gorbea','Lautaro','Loncoche','Lonquimay','Los Sauces','Lumaco','Melipeuco','Nueva Imperial','Padre Las Casas','Perquenco','Pitrufquén','Pucón','Purén','Renaico','Saavedra','Temuco','Teodoro Schmidt','Toltén','Traiguén','Victoria','Vilcún','Villarrica'],
+  'Región del Maule': ['Cauquenes','Chanco','Colbún','Constitución','Curepto','Curicó','Empedrado','Hualañé','Licantén','Linares','Longaví','Maule','Molina','Parral','Pelarco','Pelluhue','Pencahue','Rauco','Retiro','Río Claro','Romeral','Sagrada Familia','San Clemente','San Javier','San Rafael','Talca','Teno','Vichuquén','Villa Alegre','Yerbas Buenas'],
+  "Región de O'Higgins": ['Chépica','Chimbarongo','Codegua','Coinco','Coltauco','Doñihue','Graneros','La Estrella','Las Cabras','Litueche','Lolol','Machalí','Malloa','Marchigüe','Nancagua','Navidad','Olivar','Palmilla','Paredones','Peralillo','Peumo','Pichidegua','Pichilemu','Placilla','Pumanque','Quinta de Tilcoco','Rancagua','Rengo','Requínoa','San Fernando','San Francisco de Mostazal','San Vicente','Santa Cruz'],
+  'Región del Libertador Bernardo OHiggins': ["Chépica","Chimbarongo","Codegua","Coinco","Coltauco","Doñihue","Graneros","La Estrella","Las Cabras","Litueche","Lolol","Machalí","Malloa","Marchigüe","Nancagua","Navidad","Olivar","Palmilla","Paredones","Peralillo","Peumo","Pichidegua","Pichilemu","Placilla","Pumanque","Quinta de Tilcoco","Rancagua","Rengo","Requínoa","San Fernando","San Francisco de Mostazal","San Vicente","Santa Cruz"],
+  'Región de Los Lagos': ['Ancud','Calbuco','Castro','Chaitén','Chonchi','Cochamó','Curaco de Vélez','Dalcahue','Fresia','Frutillar','Futaleufú','Hualaihué','Llanquihue','Los Muermos','Maullín','Osorno','Palena','Puerto Montt','Puerto Octay','Puerto Varas','Puqueldón','Purranque','Puyehue','Queilén','Quellón','Quemchi','Quinchao','Río Negro','San Juan de la Costa','San Pablo'],
+  'Región de Los Ríos': ['Corral','Futrono','La Unión','Lago Ranco','Lanco','Los Lagos','Máfil','Mariquina','Paillaco','Panguipulli','Río Bueno','Valdivia'],
+  'Región de Aysén': ['Aysén','Chile Chico','Cisnes','Cochrane','Coyhaique','Guaitecas','Lago Verde','O\'Higgins','Río Ibáñez','Tortel'],
+  'Región de Magallanes': ['Antártica','cabo de Hornos','Laguna Blanca','Natales','Porvenir','Primavera','Punta Arenas','Río Verde','San Gregorio','Timaukel','Torres del Paine'],
+  'Región de Atacama': ['Alto del Carmen','Caldera','Chañaral','Copiapó','Diego de Almagro','Freirina','Huasco','Tierra Amarilla','Vallenar'],
+  'Región de Antofagasta': ['Antofagasta','Calama','María Elena','Mejillones','Ollagüe','San Pedro de Atacama','Sierra Gorda','Taltal','Tocopilla'],
+  'Región de Arica y Parinacota': ['Arica','Camarones','General Lagos','Putre'],
+  'Región de Tarapacá': ['Alto Hospicio','Camiña','Colchane','Huara','Iquique','Pica','Pozo Almonte'],
+  'Región de Coquimbo': ['Andacollo','Canela','Combarbalá','Coquimbo','Illapel','La Higuera','La Serena','Los Vilos','Monte Patria','Ovalle','Paiguano','Punitaqui','Río Hurtado','Salamanca','Vicuña'],
+  'Región de Ñuble': ['Bulnes','Chillán','Chillán Viejo','Cobquecura','Coelemu','Coihueco','El Carmen','Ninhue','Ñiquén','Pemuco','Pinto','Portezuelo','Quillón','Quirihue','Ranquil','San Carlos','San Fabián','San Ignacio','San Nicolás','Treguaco','Yungay'],
+  'Región de La Araucanía': ['Angol','Carahue','Cholchol','Collipulli','Cunco','Curacautín','Curarrehue','Ercilla','Freire','Galvarino','Gorbea','Lautaro','Loncoche','Lonquimay','Los Sauces','Lumaco','Melipeuco','Nueva Imperial','Padre Las Casas','Perquenco','Pitrufquén','Pucón','Purén','Renaico','Saavedra','Temuco','Teodoro Schmidt','Toltén','Traiguén','Victoria','Vilcún','Villarrica'],
 };
-window.openEditClientModal=function(id){
-  const c=clients.find(x=>x.id===id);if(!c)return;
-  showModal(`<h3>Editar cliente</h3>
-    <div class="form-group"><label>Nombre del cliente / empresa</label><input id="fc_name" value="${c.name}"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Nombre contacto WhatsApp</label><input id="fc_wname" value="${c.whatsappName||''}"></div>
-      <div class="form-group"><label>Teléfono / WhatsApp</label><input id="fc_phone" value="${c.phone||''}"></div>
-    </div>
-    <div class="form-group"><label>Dirección</label><input id="fc_address" value="${c.address||''}"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Correo electrónico</label><input id="fc_email" value="${c.email||''}"></div>
-      <div class="form-group"><label>Canal de contacto preferido</label>
-        <select id="fc_contact">
-          <option value="">Sin definir</option>
-          <option value="whatsapp" ${c.contactChannel==='whatsapp'?'selected':''}>📱 WhatsApp</option>
-          <option value="correo"   ${c.contactChannel==='correo'  ?'selected':''}>✉️ Correo</option>
-          <option value="telefono" ${c.contactChannel==='telefono'?'selected':''}>📞 Teléfono</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-group"><label>Comentarios / Notas internas</label><textarea id="fc_notes" rows="2">${c.notes||''}</textarea></div>
-    ${(()=>{
-      const cSvcs=services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date));
-      if(!cSvcs.length) return '';
-      const total=cSvcs.length, last=cSvcs[0], completed=cSvcs.filter(s=>s.status==='Completado').length;
-      return`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:4px">
-        <div style="font-weight:600;font-size:12px;margin-bottom:8px;color:var(--text2)">📋 Historial de servicios</div>
-        <div style="display:flex;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-          <span style="font-size:11px;background:var(--bg4);padding:3px 8px;border-radius:10px">${total} servicios</span>
-          <span style="font-size:11px;background:var(--bg4);padding:3px 8px;border-radius:10px">${completed} completados</span>
-          <span style="font-size:11px;background:var(--bg4);padding:3px 8px;border-radius:10px">Último: ${last.date}</span>
+
+const REGIONES_LIST = Object.keys(REGIONES_COMUNAS);
+const DEFAULT_REGION = 'Región Metropolitana de Santiago';
+const DEFAULT_CIUDAD = 'Santiago';
+
+function regionOpts(sel=''){
+  return REGIONES_LIST.map(r=>`<option value="${r}"${r===sel?' selected':''}>${r}</option>`).join('');
+}
+function comunaOpts(region, sel=''){
+  const comunas = REGIONES_COMUNAS[region] || [];
+  return comunas.map(c=>`<option value="${c}"${c===sel?' selected':''}>${c}</option>`).join('');
+}
+window.onRegionChange = function(selectEl, ciudadId){
+  const region = selectEl.value;
+  const ciudadSel = document.getElementById(ciudadId);
+  if(!ciudadSel) return;
+  ciudadSel.innerHTML = `<option value="">Selecciona ciudad…</option>` + comunaOpts(region);
+  ciudadSel.value = '';
+};
+
+/* ═══════════════════════════════════════════════════════
+   MODAL CLIENTE — HELPER HTML
+═══════════════════════════════════════════════════════ */
+function clientModalHTML(c={}, isEdit=false){
+  const reg  = c.region  || DEFAULT_REGION;
+  const ciu  = c.ciudad  || DEFAULT_CIUDAD;
+  const title = isEdit ? 'Editar cliente' : 'Nuevo cliente';
+
+  // Historial de servicios (solo en edición)
+  let histHTML = '';
+  if(isEdit && c.name){
+    const cSvcs = services.filter(s=>s.client.toLowerCase()===c.name.toLowerCase())
+                          .sort((a,b)=>b.date.localeCompare(a.date));
+    if(cSvcs.length){
+      const total=cSvcs.length, comp=cSvcs.filter(s=>s.status==='Completado').length;
+      histHTML=`<div style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <div style="padding:8px 12px;background:var(--bg4);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text2);display:flex;gap:12px">
+          <span>📋 Historial</span>
+          <span style="color:var(--accent)">${total} servicio${total!==1?'s':''}</span>
+          <span style="color:var(--success)">${comp} completado${comp!==1?'s':''}</span>
+          <span style="color:var(--text3)">Último: ${cSvcs[0].date}</span>
         </div>
-        <div style="max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">
-          ${cSvcs.slice(0,10).map(s=>{const sc=getSC(s.status||'Programado');return`<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 6px;border-radius:4px;background:var(--bg4)">
+        <div style="max-height:120px;overflow-y:auto;padding:4px 8px">
+          ${cSvcs.slice(0,8).map(s=>{const sc=getSC(s.status||'Programado');return`<div style="display:flex;align-items:center;gap:8px;padding:3px 4px;font-size:11px;border-bottom:1px solid var(--border)">
             <span style="color:var(--text3);font-family:var(--mono);flex-shrink:0">${s.date}</span>
-            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.type}</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${s.type}</span>
             <span style="padding:1px 6px;border-radius:8px;background:${sc.bg};color:${sc.tx};font-size:10px;flex-shrink:0">${s.status}</span>
           </div>`;}).join('')}
-          ${cSvcs.length>10?`<div style="font-size:10px;color:var(--text3);text-align:center;padding:4px">…y ${cSvcs.length-10} más</div>`:''}
+          ${cSvcs.length>8?`<div style="font-size:10px;color:var(--text3);text-align:center;padding:4px">…y ${cSvcs.length-8} más</div>`:''}
         </div>
       </div>`;
-    })()}
-    <div class="modal-footer">
-      <button class="btn btn-danger" onclick="deleteClient('${id}')">Eliminar</button>
-      <button class="btn" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveClient('${id}')">Guardar</button>
-    </div>`);
+    }
+  }
+
+  return `
+  <h3 style="margin-bottom:1.25rem;display:flex;align-items:center;gap:8px">
+    <span style="font-size:20px">🏢</span> ${title}
+  </h3>
+
+  <!-- IDENTIFICACIÓN -->
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Identificación</div>
+    <div class="form-row" style="grid-template-columns:90px 1fr 1fr">
+      <div class="form-group" style="margin:0">
+        <label>Código</label>
+        <input id="fc_codigo" maxlength="7" placeholder="SF-001" value="${c.codigo_cmip||''}" style="font-family:var(--mono);font-size:12px">
+        <div style="font-size:9px;color:var(--text3);margin-top:2px">máx 7 car.</div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Nombre cliente / empresa *</label>
+        <input id="fc_name" placeholder="Nombre del cliente" value="${c.name||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>RUT empresa</label>
+        <input id="fc_rut" placeholder="12.345.678-9" value="${c.rut||''}" style="font-family:var(--mono)">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:8px">
+      <div class="form-group" style="margin:0">
+        <label>Razón Social</label>
+        <input id="fc_razon" placeholder="Razón social legal" value="${c.razon_social||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Grupo / Holding</label>
+        <input id="fc_grupo" placeholder="ej: La Araucana C.C.A.F." value="${c.grupo_cliente||''}">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:8px;grid-template-columns:1fr 1fr 1fr">
+      <div class="form-group" style="margin:0">
+        <label>Cartera</label>
+        <select id="fc_cartera">
+          <option value="">Sin definir</option>
+          ${['Cartera Principal','Cartera Secundaria','Licitación','Gobierno','Particular'].map(v=>`<option${(c.cartera||'')==v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Rubro</label>
+        <select id="fc_rubro">
+          <option value="">Sin definir</option>
+          ${['Empresa','Institución','Comercio','Salud','Educación','Gobierno','Condominio','Particular','Otro'].map(v=>`<option${(c.rubro||'')==v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>¿Es sucursal?</label>
+        <select id="fc_sucursal">
+          <option value="No"${(c.es_sucursal||'No')==='No'?' selected':''}>No — cliente independiente</option>
+          <option value="Sí"${c.es_sucursal==='Sí'?' selected':''}>Sí — pertenece a un grupo</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACTO -->
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Contacto</div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr">
+      <div class="form-group" style="margin:0">
+        <label>Persona de contacto</label>
+        <input id="fc_wname" placeholder="Nombre de la persona" value="${c.whatsappName||c.contacto||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>RUT contacto</label>
+        <input id="fc_rut_contacto" placeholder="12.345.678-9" value="${c.rut_contacto||''}" style="font-family:var(--mono)">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:8px;grid-template-columns:1fr 1fr 1fr">
+      <div class="form-group" style="margin:0">
+        <label>Celular / WhatsApp</label>
+        <input id="fc_phone" placeholder="+56 9 …" value="${c.phone||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Teléfono fijo</label>
+        <input id="fc_telefono" placeholder="Fono fijo" value="${c.telefono||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Canal preferido</label>
+        <select id="fc_contact">
+          <option value="">Sin definir</option>
+          <option value="whatsapp"${c.contactChannel==='whatsapp'?' selected':''}>📱 WhatsApp</option>
+          <option value="correo"${c.contactChannel==='correo'?' selected':''}>✉️ Correo</option>
+          <option value="telefono"${c.contactChannel==='telefono'?' selected':''}>📞 Teléfono</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:8px">
+      <div class="form-group" style="margin:0">
+        <label>Correo electrónico</label>
+        <input id="fc_email" type="email" placeholder="correo@empresa.cl" value="${c.email||''}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Correo corporativo / facturación</label>
+        <input id="fc_email_corp" type="email" placeholder="admin@empresa.cl" value="${c.emailCorp||''}">
+      </div>
+    </div>
+  </div>
+
+  <!-- UBICACIÓN -->
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ubicación</div>
+    <div class="form-group" style="margin:0 0 8px">
+      <label>Dirección del servicio *</label>
+      <input id="fc_address" placeholder="Calle, número, comuna" value="${c.address||''}">
+    </div>
+    <div class="form-row" style="margin-bottom:8px">
+      <div class="form-group" style="margin:0">
+        <label>Región</label>
+        <select id="fc_region" onchange="onRegionChange(this,'fc_ciudad')">
+          <option value="">Selecciona región…</option>
+          ${regionOpts(reg)}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Ciudad / Comuna</label>
+        <select id="fc_ciudad">
+          <option value="">Selecciona ciudad…</option>
+          ${comunaOpts(reg, ciu)}
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin:0 0 8px">
+      <label>Dirección tributaria</label>
+      <input id="fc_dir_trib" placeholder="Dirección legal (puede ser casa matriz)" value="${c.direccion_tributaria||''}">
+    </div>
+    <div class="form-group" style="margin:0">
+      <label>Localización GPS <span style="font-size:10px;color:var(--text3)">(lat, lng — para rutas precisas)</span></label>
+      <input id="fc_gps" placeholder="ej: -33.4569, -70.6483" value="${c.gps||''}" style="font-family:var(--mono);font-size:12px">
+    </div>
+  </div>
+
+  <!-- SERVICIO -->
+  <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Servicio</div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr 80px">
+      <div class="form-group" style="margin:0">
+        <label>Frecuencia</label>
+        <select id="fc_frecuencia">
+          <option value="">Sin definir</option>
+          ${['Mensual','Bimestral','Trimestral','Semestral','Anual','Quincenal','Puntual','Personalizada'].map(v=>`<option${(c.frecuencia||'')==v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Horario preferido</label>
+        <select id="fc_horario">
+          <option value="">Sin definir</option>
+          <option value="am"${c.horario==='am'?' selected':''}>AM</option>
+          <option value="pm"${c.horario==='pm'?' selected':''}>PM</option>
+          <option value="dia"${c.horario==='dia'?' selected':''}>Todo el día</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>¿Intranet?</label>
+        <select id="fc_intranet">
+          <option value="No"${(c.intranet||'No')==='No'?' selected':''}>No</option>
+          <option value="Sí"${c.intranet==='Sí'?' selected':''}>Sí</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTAS -->
+  <div class="form-group">
+    <label>Notas internas</label>
+    <textarea id="fc_notes" rows="2" placeholder="Acceso, horarios especiales, instrucciones…">${c.notes||''}</textarea>
+  </div>
+
+  ${histHTML}
+
+  <div class="modal-footer">
+    ${isEdit?`<button class="btn btn-danger" onclick="deleteClient('${c.id}')">Eliminar</button>`:''}
+    <button class="btn" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="saveClient(${isEdit?`'${c.id}'`:''})">${isEdit?'Guardar':'Agregar'}</button>
+  </div>`;
+}
+
+window.openAddClientModal = function(){
+  showModal(clientModalHTML({}, false));
+  // Preseleccionar región y poblar comunas
+  const regSel = document.getElementById('fc_region');
+  if(regSel){ regSel.value = DEFAULT_REGION; onRegionChange(regSel,'fc_ciudad'); }
+  setTimeout(()=>{
+    const ciudadSel = document.getElementById('fc_ciudad');
+    if(ciudadSel) ciudadSel.value = DEFAULT_CIUDAD;
+  }, 50);
 };
-window.saveClient=function(id){
-  const name=document.getElementById('fc_name').value.trim();
-  if(!name){showToast('Ingresa el nombre','error');return;}
-  const address=document.getElementById('fc_address').value.trim();
-  const phone  =document.getElementById('fc_phone').value.trim();
-  const whatsappName=document.getElementById('fc_wname')?.value.trim()||'';
-  const email  =document.getElementById('fc_email')?.value.trim()||'';
-  const contactChannel=document.getElementById('fc_contact')?.value||'';
-  const notes  =document.getElementById('fc_notes').value.trim();
+
+window.openEditClientModal = function(id){
+  const c = clients.find(x=>x.id===id); if(!c) return;
+  showModal(clientModalHTML(c, true));
+};
+
+window.saveClient = function(id){
+  const name = document.getElementById('fc_name').value.trim();
+  if(!name){ showToast('Ingresa el nombre del cliente','error'); return; }
+
+  const data = {
+    name,
+    codigo_cmip:          document.getElementById('fc_codigo')?.value.trim()||'',
+    rut:                  document.getElementById('fc_rut')?.value.trim()||'',
+    razon_social:         document.getElementById('fc_razon')?.value.trim()||'',
+    grupo_cliente:        document.getElementById('fc_grupo')?.value.trim()||'',
+    es_sucursal:          document.getElementById('fc_sucursal')?.value||'No',
+    cartera:              document.getElementById('fc_cartera')?.value||'',
+    rubro:                document.getElementById('fc_rubro')?.value||'',
+    whatsappName:         document.getElementById('fc_wname')?.value.trim()||'',
+    rut_contacto:         document.getElementById('fc_rut_contacto')?.value.trim()||'',
+    phone:                document.getElementById('fc_phone')?.value.trim()||'',
+    telefono:             document.getElementById('fc_telefono')?.value.trim()||'',
+    email:                document.getElementById('fc_email')?.value.trim()||'',
+    emailCorp:            document.getElementById('fc_email_corp')?.value.trim()||'',
+    contactChannel:       document.getElementById('fc_contact')?.value||'',
+    address:              document.getElementById('fc_address')?.value.trim()||'',
+    region:               document.getElementById('fc_region')?.value||'',
+    ciudad:               document.getElementById('fc_ciudad')?.value||'',
+    direccion_tributaria: document.getElementById('fc_dir_trib')?.value.trim()||'',
+    gps:                  document.getElementById('fc_gps')?.value.trim()||'',
+    frecuencia:           document.getElementById('fc_frecuencia')?.value||'',
+    horario:              document.getElementById('fc_horario')?.value||'',
+    intranet:             document.getElementById('fc_intranet')?.value||'No',
+    notes:                document.getElementById('fc_notes')?.value.trim()||'',
+  };
+
   if(id){
-    const idx=clients.findIndex(c=>c.id===id);
-    if(idx>=0) clients[idx]={...clients[idx],name,address,phone,whatsappName,email,contactChannel,notes};
-    addHistory('Cliente editado',name);
+    const idx = clients.findIndex(c=>c.id===id);
+    if(idx>=0) clients[idx] = {...clients[idx], ...data, updatedAt:Date.now()};
+    addHistory('Cliente editado', name);
     showToast('Cliente actualizado','success');
   } else {
-    clients.push({id:uid(),name,address,phone,whatsappName,email,contactChannel,notes,createdAt:Date.now()});
-    addHistory('Cliente agregado',name);
+    clients.push({id:uid(), ...data, createdAt:Date.now()});
+    addHistory('Cliente agregado', name);
     showToast('Cliente agregado','success');
   }
   closeModal(); saveData();
 };
+
 // ═══ EMAIL TEMPLATE ═══
 window.openEmailTemplateModal=function(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c)return;
