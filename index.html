@@ -216,8 +216,8 @@ header {
 }
 @media(max-width:640px){
   .calendar-grid {
-    grid-template-columns: 36px repeat(7, minmax(120px,1fr));
-    min-width: 876px;
+    grid-template-columns: 36px repeat(7, minmax(160px,1fr));
+    min-width: 1156px;
   }
 }
 .cal-corner { background:var(--bg3); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0428 · 17/04/2026 04:28</p>
+    <p class="login-footer">v2026.04.17.0435 · 17/04/2026 04:35</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 16/04/2026 22:20"
+      <div id="versionBadge" title="Build: 17/04/2026 04:35"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.16.2220
+        v2026.04.17.0435
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0428</span><span>17/04/2026 04:28</span>
+          <span>v2026.04.17.0435</span><span>17/04/2026 04:35</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1303,8 +1303,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0428';
-const APP_BUILD  = '17/04/2026 04:28';
+const APP_VERSION = 'v2026.04.17.0435';
+const APP_BUILD  = '17/04/2026 04:35';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1745,20 +1745,14 @@ window.openEditSvcModal=function(id){
           </div>`:''}
         </div>
       </div>
-      ${s.notes?`<div style="background:var(--warning-dim);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;color:var(--warning);margin-bottom:4px">📋 NOTAS DE COORDINACIÓN</div>
-        <div style="font-size:13px;color:var(--text);white-space:pre-line">${s.notes}</div>
-      </div>`:''}
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">🔧 NOTAS TÉCNICO</div>
-        <textarea id="f_notes_tech" rows="3" placeholder="Observaciones del técnico para esta visita…"
-          style="width:100%;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;resize:vertical">${s.notesTech||''}</textarea>
-      </div>
+      ${s.notesTech?`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:4px">🔧 NOTAS TÉCNICO</div>
+        <div style="font-size:13px;color:var(--text);white-space:pre-line">${s.notesTech}</div>
+      </div>`:'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text3)">Sin notas técnico para este servicio.</div>'}
       <div class="modal-footer">
         <button class="btn" onclick="closeModal()">Cerrar</button>
         ${cs==='sin_inicio'?`<button class="btn btn-primary" onclick="closeModal();abrirFlujoTecnico('${id}')">📍 Iniciar servicio</button>`:
           cs==='en_curso'?`<button class="btn btn-primary" onclick="closeModal();abrirFlujoTecnico('${id}')">📋 Continuar</button>`:''}
-        <button class="btn btn-success" onclick="saveTechNotes('${id}')">💾 Guardar notas</button>
       </div>`);
     return;
   }
@@ -1813,8 +1807,8 @@ window.openEditSvcModal=function(id){
       <textarea id="f_notes" rows="2">${s.notes||''}</textarea>
     </div>
     <div class="form-group">
-      <label>🔧 Notas técnico <span style="font-size:10px;color:var(--text3)">(técnico edita, admin lee)</span></label>
-      <textarea id="f_notes_tech" rows="2" style="background:var(--bg3);border-color:rgba(34,197,94,.3)">${s.notesTech||''}</textarea>
+      <label>🔧 Notas técnico <span style="font-size:10px;color:var(--text3)">(solo lectura — el técnico las escribe en el flujo de certificados)</span></label>
+      <textarea id="f_notes_tech" rows="2" readonly style="background:var(--bg3);border-color:rgba(34,197,94,.3);opacity:.8;cursor:default">${s.notesTech||''}</textarea>
     </div>
     <div class="status-bar" id="sbar" style="background:${sc.bd}"></div>
     <div class="modal-footer">
