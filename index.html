@@ -672,7 +672,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.16.2220 · 16/04/2026 22:20</p>
+    <p class="login-footer">v2026.04.17.1524 · 17/04/2026 15:24</p>
   </div>
 </div>
 
@@ -1000,7 +1000,7 @@ const ROLES_DEF={
 
 /* ═══════════════ UTILS ═══════════════ */
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function fmtKey(d){ return d.toISOString().slice(0,10); }
+function fmtKey(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+day; }
 function fmtTime(h,m=0){ return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
 function isToday(d){ const t=new Date(); return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear(); }
 function getWeekDays(off=0){
@@ -1099,7 +1099,7 @@ function startDataSync(){
   if(!db||!fbOk)return;
   onValue(tenantRef('data'), snap=>{
     const d=snap.val()||{};
-    services    = d.services    ? Object.values(d.services)    : [];
+    services    = d.services    ? Object.values(d.services).map(s=>({...s, date:String(s.date||'').slice(0,10)}))   : [];
     technicians = d.technicians ? Object.values(d.technicians) : getDefaultTechs();
     clients     = d.clients     ? Object.values(d.clients)     : [];
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
@@ -1133,7 +1133,7 @@ async function saveData(){
 function loadLocal(){
   try{
     const d=JSON.parse(localStorage.getItem(`serfup_${TENANT_ID}`)||'{}');
-    services    =d.services    ?Object.values(d.services)    :[];
+    services    =d.services    ?Object.values(d.services).map(s=>({...s,date:String(s.date||'').slice(0,10)})):[];
     technicians =d.technicians ?Object.values(d.technicians) :getDefaultTechs();
     clients     =d.clients     ?Object.values(d.clients)     :[];
     history     =d.history     ?Object.values(d.history)     :[];
@@ -1211,7 +1211,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.16.2220';
+const APP_VERSION = 'v2026.04.17.1524';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
