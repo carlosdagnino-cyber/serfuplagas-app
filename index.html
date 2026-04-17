@@ -251,6 +251,14 @@ header {
   overflow:hidden; transition:filter .1s; user-select:none;
   display:flex; align-items:center; gap:4px;
 }
+@media(max-width:640px){
+  .svc-block { flex-direction:column; align-items:flex-start; gap:2px; padding:4px 6px; height:auto !important; }
+  .sb-actions { width:100%; display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
+  .sb-left { width:100%; }
+  .sb-client { font-size:11px; }
+  .sb-time { font-size:10px; }
+  .sb-btn-status { font-size:9px; padding:2px 6px; }
+}
 .svc-block:hover { filter:brightness(1.15); z-index:10; }
 .svc-block.dragging { opacity:.2; cursor:grabbing; }
 .sb-left { flex:1; min-width:0; overflow:hidden; }
@@ -672,7 +680,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.16.2331 · 16/04/2026 23:31</p>
+    <p class="login-footer">v2026.04.17.0420 · 17/04/2026 04:20</p>
   </div>
 </div>
 
@@ -713,7 +721,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.16.2331</span><span>16/04/2026 23:31</span>
+          <span>v2026.04.17.0420</span><span>17/04/2026 04:20</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1289,8 +1297,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.16.2331';
-const APP_BUILD  = '16/04/2026 23:31';
+const APP_VERSION = 'v2026.04.17.0420';
+const APP_BUILD  = '17/04/2026 04:20';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1543,12 +1551,12 @@ window.renderCalendar=function(){
           ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
         </div>
         <div class="sb-actions">
-          ${svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
+          ${hasPerm('edit_calendar')&&svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
             title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
-          ${(()=>{ const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase()); return (_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo de confirmación" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:''; })()}
-          ${(()=>{ const _cs=certStatus(svc.id); return _cs==='pendiente_revision'?`<button class="sb-btn-contact" style="background:#f59e0b" title="Pend. revisión" onclick="event.stopPropagation();switchTab('certs')">📋</button>`:_cs==='en_curso'?`<button class="sb-btn-contact" style="background:#22c55e" title="En curso" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">📍</button>`:_cs==='sin_inicio'?`<button class="sb-btn-contact" style="background:var(--accent)" title="Iniciar servicio" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">▶</button>`:_cs==='validado'?`<button class="sb-btn-contact" style="background:#a855f7" title="Ver certificado" onclick="event.stopPropagation();openRevisionAdmin('${svc.id}')">📄</button>`:''; })()}
+          ${hasPerm('edit_calendar')?(()=>{ const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase()); return (_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo de confirmación" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:''; })():''}
+          ${(()=>{ const _cs=certStatus(svc.id); return _cs==='pendiente_revision'&&hasPerm('edit_calendar')?`<button class="sb-btn-contact" style="background:#f59e0b" title="Pend. revisión" onclick="event.stopPropagation();switchTab('certs')">📋</button>`:_cs==='en_curso'?`<button class="sb-btn-contact" style="background:#22c55e" title="En curso" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">📍</button>`:_cs==='sin_inicio'?`<button class="sb-btn-contact" style="background:var(--accent)" title="Iniciar servicio" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">▶</button>`:_cs==='validado'&&hasPerm('edit_calendar')?`<button class="sb-btn-contact" style="background:#a855f7" title="Ver certificado" onclick="event.stopPropagation();openRevisionAdmin('${svc.id}')">📄</button>`:''; })()}
           <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
-            onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
+            onclick="${hasPerm('edit_calendar')?`cycleStatus(event,'${svc.id}')`:'event.stopPropagation()'}">${svcStatus}</button>
         </div>`;
 
       let mouseDownX=0, mouseDownY=0, isDragging=false;
@@ -1691,57 +1699,132 @@ window.openEditSvcModal=function(id){
   const canComplete=hasPerm('complete_service');
   editingId=id;
   const sc=getSC(s.status||'Pendiente');
-  showModal(`<h3>${canEdit?'Editar':'Ver'} servicio</h3>
+  const tech=getTech(s.techId);
+  const mapsUrl=s.address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}`:'';
+
+  // Vista técnico — solo info operativa
+  if(!canEdit){
+    const cs=certStatus(id);
+    showModal(`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
+        <div style="flex:1">
+          <h3 style="margin:0">${s.client}</h3>
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${sc.bg};color:${sc.tx};font-weight:600">${s.status}</span>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text2);width:80px;flex-shrink:0">📅 Fecha</span>
+            <span style="font-weight:500">${s.date}</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text2);width:80px;flex-shrink:0">🕐 Horario</span>
+            <span style="font-weight:500">${s.timeMode==='defined'?fmtTime(s.startH,s.startM||0)+' – '+fmtTime(s.endH,s.endM||0):s.timeMode==='pm'?'PM':s.timeMode==='dia'?'Todo el día':'AM'}</span>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span style="color:var(--text2);width:80px;flex-shrink:0">🔧 Servicio</span>
+            <span style="font-weight:500">${s.type}</span>
+          </div>
+          ${s.address?`<div style="display:flex;gap:8px">
+            <span style="color:var(--text2);width:80px;flex-shrink:0">📍 Dirección</span>
+            <div>
+              <div style="font-weight:500">${s.address}</div>
+              ${mapsUrl?`<a href="${mapsUrl}" target="_blank" style="font-size:11px;color:var(--accent);display:inline-flex;align-items:center;gap:3px;margin-top:3px">🧭 Abrir en Google Maps</a>`:''}
+            </div>
+          </div>`:''}
+          ${s.phone?`<div style="display:flex;gap:8px">
+            <span style="color:var(--text2);width:80px;flex-shrink:0">📞 Teléfono</span>
+            <a href="tel:${s.phone}" style="color:var(--accent);font-weight:500">${s.phone}</a>
+          </div>`:''}
+        </div>
+      </div>
+      ${s.notes?`<div style="background:var(--warning-dim);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--warning);margin-bottom:4px">📋 NOTAS DE COORDINACIÓN</div>
+        <div style="font-size:13px;color:var(--text);white-space:pre-line">${s.notes}</div>
+      </div>`:''}
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">🔧 NOTAS TÉCNICO</div>
+        <textarea id="f_notes_tech" rows="3" placeholder="Observaciones del técnico para esta visita…"
+          style="width:100%;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px;font-size:13px;resize:vertical">${s.notesTech||''}</textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cerrar</button>
+        ${cs==='sin_inicio'?`<button class="btn btn-primary" onclick="closeModal();abrirFlujoTecnico('${id}')">📍 Iniciar servicio</button>`:
+          cs==='en_curso'?`<button class="btn btn-primary" onclick="closeModal();abrirFlujoTecnico('${id}')">📋 Continuar</button>`:''}
+        <button class="btn btn-success" onclick="saveTechNotes('${id}')">💾 Guardar notas</button>
+      </div>`);
+    return;
+  }
+
+  // Vista admin — formulario completo
+  showModal(`<h3>Editar servicio</h3>
     <div class="form-group ac-wrap">
       <label>Cliente</label>
-      <input id="f_client" value="${s.client}" ${canEdit?'autocomplete="off" oninput="acSearch()"':'readonly'} onblur="setTimeout(()=>{const l=document.getElementById('ac_list');if(l)l.classList.remove('open')},200)">
+      <input id="f_client" value="${s.client}" autocomplete="off" oninput="acSearch()" onblur="setTimeout(()=>{const l=document.getElementById('ac_list');if(l)l.classList.remove('open')},200)">
       <div id="ac_list" class="ac-list"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Dirección</label><input id="f_address" value="${s.address||''}" ${canEdit?'':'readonly'}></div>
-      <div class="form-group"><label>Teléfono</label><input id="f_phone" value="${s.phone||''}" ${canEdit?'':'readonly'}></div>
+      <div class="form-group"><label>Dirección</label><input id="f_address" value="${s.address||''}"></div>
+      <div class="form-group"><label>Teléfono</label><input id="f_phone" value="${s.phone||''}"></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Tipo</label><select id="f_type" ${canEdit?'':'disabled'}>${typeOpts(s.type)}</select></div>
-      <div class="form-group"><label>Técnico</label><select id="f_tech" ${canEdit?'':'disabled'}>${techOpts(s.techId)}</select></div>
+      <div class="form-group"><label>Tipo</label><select id="f_type">${typeOpts(s.type)}</select></div>
+      <div class="form-group"><label>Técnico</label><select id="f_tech">${techOpts(s.techId)}</select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Estado</label><select id="f_status" ${canEdit||canComplete?'':'disabled'} onchange="liveBar()">${statusOpts(s.status||'Pendiente')}</select></div>
-      <div class="form-group"><label>Fecha</label><input type="date" id="f_date" value="${s.date}" ${canEdit?'':'readonly'}></div>
+      <div class="form-group"><label>Estado</label><select id="f_status" onchange="liveBar()">${statusOpts(s.status||'Pendiente')}</select></div>
+      <div class="form-group"><label>Fecha</label><input type="date" id="f_date" value="${s.date}"></div>
     </div>
     <div class="form-group" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px">
-        <input type="checkbox" id="f_timedef" ${s.timeMode==='defined'?'checked':''} ${canEdit?'onchange="toggleTimeDef()"':''} style="width:15px;height:15px" ${canEdit?'':'disabled'}>
+        <input type="checkbox" id="f_timedef" ${s.timeMode==='defined'?'checked':''} onchange="toggleTimeDef()" style="width:15px;height:15px">
         <span style="font-weight:500">Hora definida</span>
       </label>
       <div id="f_timedef_row" style="display:${s.timeMode==='defined'?'block':'none'}">
         <div class="form-row">
-          <div class="form-group"><label>Hora inicio</label><input type="time" id="f_start" value="${fmtTime(s.startH,s.startM||0)}" ${canEdit?'oninput="autoEnd()"':'readonly'}></div>
-          <div class="form-group"><label>Hora fin</label><input type="time" id="f_end" value="${fmtTime(s.endH,s.endM||0)}" ${canEdit?'':'readonly'}></div>
+          <div class="form-group"><label>Hora inicio</label><input type="time" id="f_start" value="${fmtTime(s.startH,s.startM||0)}" oninput="autoEnd()"></div>
+          <div class="form-group"><label>Hora fin</label><input type="time" id="f_end" value="${fmtTime(s.endH,s.endM||0)}"></div>
         </div>
       </div>
       <div id="f_franja_row" style="display:${s.timeMode!=='defined'?'block':'none'}">
         <label style="font-size:12px;color:var(--text2);margin-bottom:6px;display:block">Franja horaria</label>
         <div style="display:flex;gap:8px">
           <label style="flex:1;display:flex;align-items:center;gap:6px;background:var(--bg4);border-radius:8px;padding:7px 10px;cursor:pointer">
-            <input type="radio" name="f_franja" value="am" ${(s.timeMode||'am')==='am'?'checked':''} ${canEdit?'':'disabled'} style="accent-color:var(--accent)"> AM
+            <input type="radio" name="f_franja" value="am" ${(s.timeMode||'am')==='am'?'checked':''} style="accent-color:var(--accent)"> AM
           </label>
           <label style="flex:1;display:flex;align-items:center;gap:6px;background:var(--bg4);border-radius:8px;padding:7px 10px;cursor:pointer">
-            <input type="radio" name="f_franja" value="pm" ${s.timeMode==='pm'?'checked':''} ${canEdit?'':'disabled'} style="accent-color:var(--accent)"> PM
+            <input type="radio" name="f_franja" value="pm" ${s.timeMode==='pm'?'checked':''} style="accent-color:var(--accent)"> PM
           </label>
           <label style="flex:1;display:flex;align-items:center;gap:6px;background:var(--bg4);border-radius:8px;padding:7px 10px;cursor:pointer">
-            <input type="radio" name="f_franja" value="dia" ${s.timeMode==='dia'?'checked':''} ${canEdit?'':'disabled'} style="accent-color:var(--accent)"> Todo el día
+            <input type="radio" name="f_franja" value="dia" ${s.timeMode==='dia'?'checked':''} style="accent-color:var(--accent)"> Todo el día
           </label>
         </div>
       </div>
     </div>
-    <div class="form-group"><label>Notas</label><textarea id="f_notes" rows="2" ${canEdit?'':'readonly'}>${s.notes||''}</textarea></div>
+    <div class="form-group">
+      <label>📋 Notas de coordinación <span style="font-size:10px;color:var(--text3)">(solo admin edita, técnico lee)</span></label>
+      <textarea id="f_notes" rows="2">${s.notes||''}</textarea>
+    </div>
+    <div class="form-group">
+      <label>🔧 Notas técnico <span style="font-size:10px;color:var(--text3)">(técnico edita, admin lee)</span></label>
+      <textarea id="f_notes_tech" rows="2" style="background:var(--bg3);border-color:rgba(34,197,94,.3)">${s.notesTech||''}</textarea>
+    </div>
     <div class="status-bar" id="sbar" style="background:${sc.bd}"></div>
     <div class="modal-footer">
-      ${canEdit?`<button class="btn btn-danger" onclick="deleteSvc('${id}')">Eliminar</button>`:''}
+      <button class="btn btn-danger" onclick="deleteSvc('${id}')">Eliminar</button>
       <button class="btn" onclick="closeModal()">Cerrar</button>
-      ${canEdit||canComplete?`<button class="btn btn-primary" onclick="saveSvc()">Guardar</button>`:''}
+      <button class="btn btn-primary" onclick="saveSvc()">Guardar</button>
     </div>`);
+};
+
+window.saveTechNotes = function(svcId){
+  const idx=services.findIndex(s=>s.id===svcId); if(idx<0) return;
+  const val=document.getElementById('f_notes_tech')?.value.trim()||'';
+  services[idx]={...services[idx], notesTech:val, updatedAt:Date.now()};
+  addHistory('Notas técnico',`${services[idx].client} — actualizado`);
+  saveData(); closeModal();
+  showToast('Notas guardadas','success');
 };
 
 window.liveBar=function(){
@@ -1804,7 +1887,8 @@ window.saveSvc=function(){
   const eM = timeDef ? parseInt((endStr||'09:00').split(':')[1])   : 0;
   const address=document.getElementById('f_address').value.trim();
   const phone  =document.getElementById('f_phone').value.trim();
-  const notes  =document.getElementById('f_notes').value.trim();
+  const notes     =document.getElementById('f_notes')?.value.trim()||'';
+  const notesTech =document.getElementById('f_notes_tech')?.value.trim()||services.find(s=>s.id===editingId)?.notesTech||'';
   const tech   =getTech(techId);
 
   if(!clients.find(c=>c.name.toLowerCase()===client.toLowerCase()))
@@ -1812,7 +1896,7 @@ window.saveSvc=function(){
 
   if(editingId){
     const idx=services.findIndex(s=>s.id===editingId);
-    if(idx>=0) services[idx]={...services[idx],client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,updatedAt:Date.now()};
+    if(idx>=0) services[idx]={...services[idx],client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,updatedAt:Date.now()};
     const oldSvc=services[idx-1]||services.find(s=>s.id===editingId);
     const changes=[];
     const prevSvc=services.find(s=>s.id===editingId);
@@ -1826,7 +1910,7 @@ window.saveSvc=function(){
     showToast('Servicio actualizado','success');
   } else {
     const _cli2=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
-    services.push({id:uid(),client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
+    services.push({id:uid(),client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
     addHistory('Servicio creado',`${client} (${type}) — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
     showToast('Servicio creado','success');
   }
