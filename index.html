@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0502 · 17/04/2026 05:02</p>
+    <p class="login-footer">v2026.04.17.0509 · 17/04/2026 05:09</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:02"
+      <div id="versionBadge" title="Build: 17/04/2026 05:09"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0502
+        v2026.04.17.0509
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0502</span><span>17/04/2026 05:02</span>
+          <span>v2026.04.17.0509</span><span>17/04/2026 05:09</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1311,8 +1311,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0502';
-const APP_BUILD  = '17/04/2026 05:02';
+const APP_VERSION = 'v2026.04.17.0509';
+const APP_BUILD  = '17/04/2026 05:09';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -2511,11 +2511,80 @@ function readImportFile(file){
     const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
     if(!json.length){showToast('Archivo vacío','error');return;}
     const norm=s=>s.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-    const aliases={cliente:['cliente','client','nombre','name'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje'],recurrencia:['recurrencia','recurrence','patron'],dia_ref:['dia_referencia','dia_ref','dia'],margen:['margen_dias','margen','tolerancia'],horario_rec:['horario','horario_rec','franja']};
+    const aliases={
+      cliente:        ['cliente','client','nombre','name','razon_social'],
+      direccion:      ['direccion','address','dir','direccion_comercial'],
+      telefono:       ['telefono','phone','tel','fono','movil'],
+      comentarios:    ['comentarios','notas','obs','notes'],
+      fecha:          ['fecha','date','dia'],
+      hora:           ['hora','time','inicio'],
+      correo_dest:    ['correo_destino','email_to','destinatario','correo_dest','correo','email'],
+      correo_cc:      ['correo_cc','cc','email_cc'],
+      asunto:         ['asunto','subject','asunto_correo'],
+      cuerpo:         ['cuerpo','body','cuerpo_correo','mensaje'],
+      recurrencia:    ['recurrencia','recurrence','patron','tipo_recurrencia'],
+      dia_ref:        ['dia_referencia','dia_ref','dia_recurrencia'],
+      margen:         ['margen_dias','margen','tolerancia'],
+      horario_rec:    ['horario','horario_rec','franja','franja_horaria'],
+      // Campos extendidos plantilla v3
+      codigo_cmip:    ['codigo_cmip','codigo','cod_cmip','id_cmip'],
+      rut:            ['rut','rut_empresa','rut_cliente'],
+      razon_social:   ['razon_social','razon','empresa'],
+      grupo_cliente:  ['grupo_cliente','grupo','grupo_sucursal'],
+      es_sucursal:    ['es_sucursal','sucursal'],
+      cartera:        ['cartera','zona'],
+      rubro:          ['rubro','actividad','giro'],
+      rut_contacto:   ['rut_contacto','rut_rep','rut_encargado'],
+      email_corp:     ['correo_corporativo','email_corp','emailcorp'],
+      whatsapp:       ['whatsapp','wsp','whatsapp_name'],
+      canal_contacto: ['canal_contacto','canal','medio_contacto'],
+      region:         ['region','zona_geografica'],
+      ciudad:         ['ciudad','comuna'],
+      dir_tributaria: ['direccion_tributaria','dir_tributaria','dir_trib'],
+      gps:            ['gps','coordenadas','latlong'],
+      frecuencia:     ['frecuencia','periodicidad'],
+      intranet:       ['intranet'],
+      notas_tech:     ['notas_tecnico','notes_tech','notesTech','notas_tech'],
+    };
     const colMap={};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
     if(!colMap.cliente){showToast('No encontré columna "cliente"','error');return;}
-    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:String(r[colMap.direccion]||'').trim(),phone:String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():'',recurrencia:colMap.recurrencia?String(r[colMap.recurrencia]||'').trim():'',diaRef:colMap.dia_ref?String(r[colMap.dia_ref]||'').trim():'',margen:colMap.margen?String(r[colMap.margen]||'').trim():'',horarioRec:colMap.horario_rec?String(r[colMap.horario_rec]||'').trim():''})).filter(r=>r.name);
+    const gs=k=>colMap[k]?String(r[colMap[k]]||'').trim():'';
+    importRows=json.map(r=>({
+      name:          gs('cliente'),
+      address:       gs('direccion'),
+      phone:         gs('telefono'),
+      notes:         gs('comentarios'),
+      fecha:         gs('fecha'),
+      hora:          gs('hora'),
+      emailTo:       gs('correo_dest'),
+      emailCc:       gs('correo_cc'),
+      emailSubject:  gs('asunto'),
+      emailBody:     gs('cuerpo'),
+      recurrencia:   gs('recurrencia'),
+      diaRef:        gs('dia_ref'),
+      margen:        gs('margen'),
+      horarioRec:    gs('horario_rec'),
+      // Campos extendidos
+      codigo_cmip:    gs('codigo_cmip'),
+      rut:            gs('rut'),
+      razon_social:   gs('razon_social'),
+      grupo_cliente:  gs('grupo_cliente'),
+      es_sucursal:    gs('es_sucursal')||'No',
+      cartera:        gs('cartera'),
+      rubro:          gs('rubro'),
+      rut_contacto:   gs('rut_contacto'),
+      emailCorp:      gs('email_corp'),
+      whatsappName:   gs('whatsapp'),
+      contactChannel: gs('canal_contacto'),
+      region:         gs('region'),
+      ciudad:         gs('ciudad'),
+      dir_tributaria: gs('dir_tributaria'),
+      gps:            gs('gps'),
+      frecuencia:     gs('frecuencia'),
+      intranet:       gs('intranet')||'No',
+      notesTech:      gs('notas_tech'),
+    })).filter(r=>r.name);
     document.getElementById('importPreview').innerHTML=`
       <p style="font-size:12px;color:var(--text2);margin:.75rem 0 .5rem">${importRows.length} filas · vista previa:</p>
       <div class="import-preview">
@@ -2536,7 +2605,18 @@ window.confirmImport=function(){
     if(!cli){
       const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
       const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
-      cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,
+      cli={id:uid(),
+        name:row.name, address:row.address, phone:row.phone, notes:row.notes,
+        codigo_cmip:row.codigo_cmip||'', rut:row.rut||'',
+        razon_social:row.razon_social||'', grupo_cliente:row.grupo_cliente||'',
+        es_sucursal:row.es_sucursal||'No', cartera:row.cartera||'',
+        rubro:row.rubro||'', rut_contacto:row.rut_contacto||'',
+        email:row.emailTo||'', emailCorp:row.emailCorp||'',
+        whatsappName:row.whatsappName||'', contactChannel:row.contactChannel||'',
+        region:row.region||'', ciudad:row.ciudad||'',
+        direccion_tributaria:row.dir_tributaria||'', gps:row.gps||'',
+        frecuencia:row.frecuencia||'', intranet:row.intranet||'No',
+        notesTech:row.notesTech||'',
         ...(emailTpl?{emailTemplate:emailTpl}:{}),
         ...(recPat?{recurrence:recPat}:{}),
         createdAt:Date.now()};
@@ -2550,7 +2630,7 @@ window.confirmImport=function(){
       const hm=row.hora.match(/(\d{1,2})[:\.](\d{2})/);
       let sH=8,sM=0; if(hm){sH=parseInt(hm[1]);sM=parseInt(hm[2]);}
       const tot=sH*60+sM+DEFAULT_DUR;
-      if(dk){services.push({id:uid(),client:row.name,type:'Servicio',techId:technicians[0]?.id||'',status:'Pendiente',date:dk,startH:sH,startM:sM,endH:Math.min(23,Math.floor(tot/60)),endM:tot%60,address:row.address,phone:row.phone,notes:row.notes,createdAt:Date.now()});ns++;}
+      if(dk){services.push({id:uid(),client:row.name,type:'Servicio',techId:technicians[0]?.id||'',status:'Pendiente',date:dk,startH:sH,startM:sM,endH:Math.min(23,Math.floor(tot/60)),endM:tot%60,address:row.address,phone:row.phone,notes:row.notes,notesTech:row.notesTech||'',createdAt:Date.now()});ns++;}
     }
   });
   addHistory('Importación',`${nc} clientes y ${ns} servicios importados`);
@@ -3291,7 +3371,7 @@ function renderStatusConfig(){
         const c=getSC(s);
         const isFirst=idx===0;
         // Preview del bloque calendario
-        const previewBlock=`<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;border-left:3px solid ${c.bd};background:${c.bg};font-size:10px;font-weight:600;color:${c.tx};white-space:nowrap">${s}</div>`;
+        const previewBlock=`<div id="sprv_${idx}" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;border-left:3px solid ${c.bd};background:${c.bg};font-size:10px;font-weight:600;color:${c.tx};white-space:nowrap">${s}</div>`;
         return`<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
           <div style="cursor:grab;color:var(--text3);font-size:16px;padding:0 4px">⠿</div>
           <div style="flex:1;min-width:0">
@@ -3338,10 +3418,19 @@ window.previewStatusName = function(idx, oldName){
 window.previewStatusColor = function(idx, name){
   const bdr = document.getElementById(`sbdr_${idx}`)?.value;
   const tx  = document.getElementById(`stx_${idx}`)?.value;
+  const sname = document.getElementById(`sname_${idx}`)?.value||name;
   if(!bdr||!tx) return;
-  // Actualizar preview inline
-  renderStatusConfig();
-  // Restaurar valores editados (se perdieron con el re-render)
+  // Actualizar solo el preview sin re-renderizar (evita perder los valores)
+  const previewEl = document.getElementById(`sprv_${idx}`);
+  if(previewEl){
+    previewEl.style.borderLeftColor = bdr;
+    previewEl.style.background = bdr+'26';
+    previewEl.style.color = tx;
+    previewEl.textContent = sname;
+  }
+  // Actualizar el cuadrito de color borde
+  const bdrBox = document.getElementById(`sbdr_${idx}`)?.closest('div[style*="position:relative"]');
+  if(bdrBox) bdrBox.style.background = bdr;
 };
 
 window.saveStatusEdit = function(idx, oldName){
@@ -3888,8 +3977,16 @@ window.openRecurrenceModal=function(clientId){
         <div class="form-group"><label>Hasta</label><input type="month" id="rc_hasta" value="${new Date(Date.now()+90*864e5).toISOString().slice(0,7)}"></div>
       </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1"><label>Técnico</label>
-          <select id="rc_tech">${technicians.map(t=>`<option value="${t.id}" ${t.id===(r.techId||technicians[0]?.id)?'selected':''}>${t.name}</option>`).join('')}</select></div>
+        <div class="form-group" style="flex:1"><label>Técnicos</label>
+          <div id="rc_tech_checks" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+            ${technicians.map(t=>`
+              <label style="display:flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px">
+                <input type="checkbox" name="rc_tech_cb" value="${t.id}"
+                  ${((r.techIds||[r.techId||'']).includes(t.id)||(t.id===(r.techId||technicians[0]?.id)&&!r.techIds))?'checked':''}
+                  style="width:14px;height:14px;accent-color:var(--accent)">
+                ${t.initials||t.name.split(' ')[0]}
+              </label>`).join('')}
+          </div></div>
         <div class="form-group" style="flex:1"><label>Tipo servicio</label>
           <select id="rc_svctype">${SVC_TYPES.map(t=>`<option ${t===(r.svcType||'Servicio')?'selected':''}>${t}</option>`).join('')}</select></div>
       </div>
@@ -3917,9 +4014,10 @@ function buildPatronFromUI(){
   const frecuencia=parseInt(document.getElementById('rc_freq').value)||1;
   const timeMode=document.getElementById('rc_timemode').value;
   const hora=document.getElementById('rc_hora')?.value||'09:00';
-  const techId=document.getElementById('rc_tech')?.value||technicians[0]?.id;
+  const techIds=[...document.querySelectorAll('input[name="rc_tech_cb"]:checked')].map(c=>c.value);
+  const techId=techIds[0]||technicians[0]?.id;
   const svcType=document.getElementById('rc_svctype')?.value||'Servicio';
-  const base={tipo,frecuencia,timeMode,hora,techId,svcType};
+  const base={tipo,frecuencia,timeMode,hora,techId,techIds:techIds.length?techIds:[techId],svcType};
   if(tipo==='dia_n')return{...base,dias:(document.getElementById('rc_dias').value||'1').split(',').map(x=>parseInt(x.trim())).filter(n=>n>0&&n<=31),margen:parseInt(document.getElementById('rc_margen').value)||0};
   if(tipo==='nth_dow')return{...base,dow:parseInt(document.getElementById('rc_dow').value),nth:parseInt(document.getElementById('rc_nth').value)};
   if(tipo==='dia_habil')return{...base,nhabil:parseInt(document.getElementById('rc_nhabil').value)||5,desde_fin:document.getElementById('rc_desde_fin').value==='1'};
@@ -3949,7 +4047,8 @@ window.saveAndGenerateRecurrence=function(clientId){
   fechas.forEach(fecha=>{
     if(existentes.has(fecha))return;
     const[sH,sM]=patron.timeMode==='defined'?(patron.hora||'09:00').split(':').map(Number):[patron.timeMode==='pm'?13:8,0];
-    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:patron.techId||technicians[0]?.id||'',status:'Programado',date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,recurrenceId:clientId,createdAt:Date.now()});
+    const techIds=patron.techIds?.length?patron.techIds:[patron.techId||technicians[0]?.id||''];
+    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:techIds[0],techIds,status:'Programado',date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,recurrenceId:clientId,createdAt:Date.now()});
     creados++;
   });
   addHistory('Recurrencia generada',`${c.name}: ${creados} servicios`);
