@@ -252,25 +252,23 @@ header {
 
 /* ── SERVICE BLOCKS ── */
 .svc-block {
-  position:absolute; border-radius:6px; padding:3px 6px;
+  position:absolute; border-radius:6px; padding:4px 6px;
   border-left:3px solid; cursor:grab; z-index:5;
   overflow:hidden; transition:filter .1s; user-select:none;
-  display:flex; align-items:center; gap:4px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
 }
 @media(max-width:640px){
-  .svc-block { flex-direction:column; align-items:flex-start; gap:2px; padding:4px 6px; height:auto !important; }
-  .sb-actions { width:100%; display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
-  .sb-left { width:100%; }
+  .svc-block { padding:4px 6px; height:auto !important; }
   .sb-client { font-size:11px; }
   .sb-time { font-size:10px; }
   .sb-btn-status { font-size:9px; padding:2px 6px; }
 }
 .svc-block:hover { filter:brightness(1.15); z-index:10; }
 .svc-block.dragging { opacity:.2; cursor:grabbing; }
-.sb-left { flex:1; min-width:0; overflow:hidden; }
+.sb-left { width:100%; min-width:0; overflow:hidden; }
 .sb-client { font-size:10px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sb-time   { font-size:9px; font-family:var(--mono); opacity:.7; white-space:nowrap; }
-.sb-actions { display:flex; gap:3px; align-items:center; flex-shrink:0; }
+.sb-actions { display:flex; gap:3px; align-items:center; flex-wrap:wrap; width:100%; }
 .sb-btn-status {
   font-size:8px; font-weight:700; padding:1px 5px; border-radius:4px;
   border:none; cursor:pointer; letter-spacing:.02em; text-transform:uppercase;
@@ -686,7 +684,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0526 · 17/04/2026 05:26</p>
+    <p class="login-footer">v2026.04.17.0545 · 17/04/2026 05:45</p>
   </div>
 </div>
 
@@ -708,12 +706,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:26"
+      <div id="versionBadge" title="Build: 17/04/2026 05:45"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0526
+        v2026.04.17.0545
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +725,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0526</span><span>17/04/2026 05:26</span>
+          <span>v2026.04.17.0545</span><span>17/04/2026 05:45</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -874,6 +872,15 @@ header {
           <button class="btn btn-primary btn-sm" onclick="openAddStatusModal()">+ Nuevo estado</button>
         </div>
         <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Define los estados, colores y orden. Se aplica para todos los usuarios.</p>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Estado inicial al crear servicio</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">Se aplica al agendar desde calendario, planificador y recurrencias</div>
+          </div>
+          <select id="defaultStatusSelect" onchange="saveDefaultStatus()"
+            style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;min-width:160px">
+          </select>
+        </div>
         <div id="statusConfigList"></div>
 
         <!-- GOOGLE MAPS -->
@@ -1213,7 +1220,7 @@ async function saveData(){
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    statusColors, mapsKey,
+    statusColors, mapsKey, defaultNewServiceStatus,
     productos: Object.fromEntries((productos.length?productos:DEFAULT_PRODUCTOS).map(p=>[p.id,p])),
     certificados: Object.fromEntries(certificados.map(c=>[c.id,c])),
     updatedAt:Date.now()
@@ -1312,8 +1319,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0526';
-const APP_BUILD  = '17/04/2026 05:26';
+const APP_VERSION = 'v2026.04.17.0545';
+const APP_BUILD  = '17/04/2026 05:45';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1919,7 +1926,7 @@ window.saveSvc=function(){
     showToast('Servicio actualizado','success');
   } else {
     const _cli2=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
-    services.push({id:uid(),client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
+    services.push({id:uid(),client,type,techId,techIds,status:defaultNewServiceStatus,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
     addHistory('Servicio creado',`${client} (${type}) — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
     showToast('Servicio creado','success');
   }
@@ -3469,19 +3476,21 @@ window.renderGoogleMap=function(byTech,mapDiv){
 /* ═══════════════ SETTINGS ═══════════════ */
 function renderStatusConfig(){
   const el=document.getElementById('statusConfigList');if(!el)return;
+  const dsel=document.getElementById('defaultStatusSelect');
+  if(dsel){ const ss=getSvcStatuses(); dsel.innerHTML=ss.map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join(''); }
   const statuses=getSvcStatuses();
   el.innerHTML=`
-    <div style="margin-bottom:16px">
+    <div id="status-drag-list" style="margin-bottom:16px">
       <div style="font-size:11px;color:var(--text2);margin-bottom:10px">
-        Arrastra para reordenar · El color afecta el bloque en el calendario y el badge de estado
+        Arrastra ⠿ para reordenar · El color afecta el bloque en el calendario y el badge de estado
       </div>
       ${statuses.map((s,idx)=>{
         const c=getSC(s);
         const isFirst=idx===0;
-        // Preview del bloque calendario
         const previewBlock=`<div id="sprv_${idx}" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;border-left:3px solid ${c.bd};background:${c.bg};font-size:10px;font-weight:600;color:${c.tx};white-space:nowrap">${s}</div>`;
-        return`<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
-          <div style="cursor:grab;color:var(--text3);font-size:16px;padding:0 4px">⠿</div>
+        return`<div class="status-drag-item" draggable="true" data-status="${s}"
+          style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;transition:opacity .15s">
+          <div class="status-drag-handle" style="cursor:grab;color:var(--text3);font-size:18px;padding:0 4px;line-height:1;flex-shrink:0">⠿</div>
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
               ${previewBlock}
@@ -3491,7 +3500,7 @@ function renderStatusConfig(){
                 style="flex:1;min-width:100px;padding:4px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px"
                 oninput="previewStatusName(${idx},'${s}')">
               <div style="display:flex;align-items:center;gap:5px">
-                <label style="font-size:11px;color:var(--text2)">Color borde/badge</label>
+                <label style="font-size:11px;color:var(--text2)">Borde</label>
                 <div style="position:relative;width:28px;height:24px;border-radius:5px;border:1px solid var(--border2);overflow:hidden;cursor:pointer;background:${c.bd}">
                   <input type="color" id="sbdr_${idx}" value="${c.bd}" onchange="previewStatusColor(${idx},'${s}')"
                     style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
@@ -3516,6 +3525,57 @@ function renderStatusConfig(){
         style="flex:1;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
       <button class="btn btn-primary btn-sm" onclick="addNewStatus()">+ Agregar</button>
     </div>`;
+
+  // Inicializar drag & drop después de renderizar
+  _initStatusDrag();
+}
+
+function _initStatusDrag(){
+  const list=document.getElementById('status-drag-list');
+  if(!list) return;
+  let dragEl=null, dragOver=null;
+
+  list.querySelectorAll('.status-drag-item').forEach(item=>{
+    item.addEventListener('dragstart', e=>{
+      dragEl=item;
+      setTimeout(()=>item.style.opacity='.35',0);
+      e.dataTransfer.effectAllowed='move';
+    });
+    item.addEventListener('dragend', ()=>{
+      item.style.opacity='';
+      list.querySelectorAll('.status-drag-item').forEach(i=>i.style.borderTop='');
+      dragEl=null; dragOver=null;
+    });
+    item.addEventListener('dragover', e=>{
+      e.preventDefault();
+      if(!dragEl||item===dragEl) return;
+      e.dataTransfer.dropEffect='move';
+      if(dragOver!==item){
+        list.querySelectorAll('.status-drag-item').forEach(i=>i.style.borderTop='');
+        item.style.borderTop='2px solid var(--accent)';
+        dragOver=item;
+      }
+    });
+    item.addEventListener('drop', e=>{
+      e.preventDefault();
+      if(!dragEl||item===dragEl) return;
+      // Reordenar statusColors según nueva posición
+      const allItems=[...list.querySelectorAll('.status-drag-item')];
+      const fromIdx=allItems.indexOf(dragEl);
+      const toIdx  =allItems.indexOf(item);
+      const keys=Object.keys(statusColors);
+      const [moved]=keys.splice(fromIdx,1);
+      keys.splice(toIdx,0,moved);
+      // Reconstruir statusColors en nuevo orden
+      const newSC={};
+      keys.forEach(k=>{ newSC[k]=statusColors[k]; });
+      Object.keys(statusColors).forEach(k=>delete statusColors[k]);
+      Object.assign(statusColors,newSC);
+      saveData();
+      renderStatusConfig();
+      showToast('Orden guardado','success');
+    });
+  });
 }
 
 window.previewStatusName = function(idx, oldName){
@@ -3569,6 +3629,10 @@ window.addNewStatus = function(){
   document.getElementById('newStatusName').value='';
   saveData(); renderStatusConfig();
   showToast(`Estado "${name}" creado`,'success');
+};
+window.saveDefaultStatus = function(){
+  const val=document.getElementById('defaultStatusSelect')?.value;
+  if(val){ defaultNewServiceStatus=val; saveData(); showToast('Estado predeterminado: '+val,'success'); }
 };
 window.saveStatusColors=function(){ saveData(); };
 window.saveMapsKey=function(){
@@ -3849,7 +3913,7 @@ window.onPlanCellClick=function(date,hour){
   const techId=(services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0]?.techId)||technicians[0]?.id||'';
   const techIds=(services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0]?.techIds)||[techId].filter(Boolean);
   const lastType=services.filter(s=>s.client.toLowerCase()===client.name.toLowerCase()).sort((a,b)=>b.date.localeCompare(a.date))[0]?.type||SVC_TYPES[0];
-  services.push({id:uid(),client:client.name,type:lastType,techId,techIds,status:'Programado',date,startH:hour,startM:0,endH:Math.min(23,hour+1),endM:0,address:client.address||'',phone:client.phone||'',notes:'',timeMode:horario==='none'?'am':horario,createdAt:Date.now()});
+  services.push({id:uid(),client:client.name,type:lastType,techId,techIds,status:defaultNewServiceStatus,date,startH:hour,startM:0,endH:Math.min(23,hour+1),endM:0,address:client.address||'',phone:client.phone||'',notes:'',timeMode:horario==='none'?'am':horario,createdAt:Date.now()});
   addHistory('Servicio creado desde planificador',`${client.name} — ${date} ${String(hour).padStart(2,'0')}:00`);
   saveData();
   window.renderPlanMiniCal();
@@ -4156,7 +4220,7 @@ window.saveAndGenerateRecurrence=function(clientId){
     if(existentes.has(fecha))return;
     const[sH,sM]=patron.timeMode==='defined'?(patron.hora||'09:00').split(':').map(Number):[patron.timeMode==='pm'?13:8,0];
     const techIds=patron.techIds?.length?patron.techIds:[patron.techId||technicians[0]?.id||''];
-    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:techIds[0],techIds,status:'Programado',date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,recurrenceId:clientId,createdAt:Date.now()});
+    services.push({id:uid(),client:c.name,type:patron.svcType||'Servicio',techId:techIds[0],techIds,status:defaultNewServiceStatus,date:fecha,startH:sH,startM:sM,endH:Math.min(23,sH+1),endM:sM,address:c.address||'',phone:c.phone||'',notes:'',timeMode:patron.timeMode==='defined'?'defined':patron.timeMode,recurrenceId:clientId,createdAt:Date.now()});
     creados++;
   });
   addHistory('Recurrencia generada',`${c.name}: ${creados} servicios`);
