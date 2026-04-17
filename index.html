@@ -684,7 +684,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0545 · 17/04/2026 05:45</p>
+    <p class="login-footer">v2026.04.17.0551 · 17/04/2026 05:51</p>
   </div>
 </div>
 
@@ -706,12 +706,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:45"
+      <div id="versionBadge" title="Build: 17/04/2026 05:51"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
-               white-space:nowrap;display:none">
-        v2026.04.17.0545
+               white-space:nowrap">
+        v2026.04.17.0551
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -725,7 +725,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0545</span><span>17/04/2026 05:45</span>
+          <span>v2026.04.17.0551</span><span>17/04/2026 05:51</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -910,17 +910,12 @@ header {
           </div>
         </div>
         <div class="toolbar-right">
-          <select id="planFilterTech" class="btn btn-sm" onchange="renderPlanMap()">
-            <option value="">Todos los técnicos</option>
+          <select id="planFilterComuna" class="btn btn-sm" onchange="renderPlanMap()">
+            <option value="">Todas las comunas</option>
           </select>
-          <select id="planFilterHorario" class="btn btn-sm" onchange="renderPlanMap()">
-            <option value="">Todos los horarios</option>
-            <option value="am">AM</option>
-            <option value="pm">PM</option>
-            <option value="defined">Hora fija</option>
-            <option value="dia">Todo el día</option>
-            <option value="none">Sin horario</option>
-          </select>
+          <input type="month" id="planFilterMes" class="btn btn-sm" style="cursor:text"
+            onchange="renderPlanMap()" title="Mes de servicio programado">
+          <button class="btn btn-sm" onclick="limpiarFiltrosPlan()" title="Limpiar filtros" style="color:var(--text3)">✕</button>
         </div>
       </div>
       <div class="plan-layout">
@@ -1053,6 +1048,7 @@ function getCertNotifications(){
       svcId:c.svcId,isCert:true}));
 }
 
+let defaultNewServiceStatus = 'Programado';
 let statusColors={
   'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
   'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
@@ -1201,6 +1197,7 @@ function startDataSync(){
     clients     = d.clients     ? Object.values(d.clients)     : [];
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
     statusColors= d.statusColors||statusColors;
+    if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
     mapsKey      = d.mapsKey||'';
     productos    = d.productos    ? Object.values(d.productos)    : [];
     certificados = d.certificados ? Object.values(d.certificados) : [];
@@ -1319,8 +1316,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0545';
-const APP_BUILD  = '17/04/2026 05:45';
+const APP_VERSION = 'v2026.04.17.0551';
+const APP_BUILD  = '17/04/2026 05:51';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -3771,6 +3768,33 @@ function initPlanMap(){
   });
 }
 window.renderPlanMap=function(){
+  // Poblar selector de comunas con las comunas de los clientes
+  const comunaSel=document.getElementById('planFilterComuna');
+  if(comunaSel){
+    const cur=comunaSel.value;
+    const comunas=[...new Set(clients.map(c=>c.ciudad||'').filter(Boolean))].sort();
+    comunaSel.innerHTML='<option value="">Todas las comunas</option>'+
+      comunas.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+  }
+
+  // Leer filtros
+  const filterComuna = document.getElementById('planFilterComuna')?.value||'';
+  const filterMes    = document.getElementById('planFilterMes')?.value||'';
+
+  // Si no hay ningún filtro activo, mostrar placeholder y no cargar clientes
+  const hayFiltro = filterComuna || filterMes;
+  if(!hayFiltro){
+    const d=document.getElementById('plan-map');
+    if(d)d.innerHTML=`<div class="map-placeholder">
+      <div style="font-size:40px">🔍</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:6px">Selecciona un filtro para ver clientes</div>
+      <div style="font-size:12px;color:var(--text2)">Usa los filtros de <strong>comuna</strong> o <strong>mes de servicio</strong> para cargar el mapa</div>
+    </div>`;
+    planMarkers.forEach(m=>m.setMap(null));
+    planMarkers=[];
+    return;
+  }
+
   if(!mapsKey){
     const d=document.getElementById('plan-map');
     if(d)d.innerHTML=`<div class="map-placeholder"><div style="font-size:32px">📌</div><div style="font-size:13px">Configura la API Key de Google Maps en ⚙️ Personalización</div></div>`;
@@ -3788,46 +3812,99 @@ window.renderPlanMap=function(){
   if(!planMap) return;
   planMarkers.forEach(m=>m.setMap(null));
   planMarkers=[];
-  const geocoder=new google.maps.Geocoder();
-  const filterHorario=document.getElementById('planFilterHorario')?.value||'';
-  const filterTech=document.getElementById('planFilterTech')?.value||'';
-  const pt=document.getElementById('planFilterTech');
-  if(pt){ const cur=pt.value; pt.innerHTML='<option value="">Todos los técnicos</option>'+technicians.map(t=>`<option value="${t.id}"${t.id===cur?' selected':''}>${t.name}</option>`).join(''); }
-  let clientsToShow=clients.filter(c=>c.address);
-  if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
-  if(filterTech){ const names=services.filter(s=>(s.techIds||[s.techId]).includes(filterTech)).map(s=>s.client.toLowerCase()); clientsToShow=clientsToShow.filter(c=>names.includes(c.name.toLowerCase())); }
+
+  // Determinar clientes a mostrar según filtros
+  // Filtro mes: clientes que tienen servicio programado en ese mes
+  // o cuya recurrencia cae en ese mes, o cuya frecuencia corresponde
+  let clientsToShow = clients.filter(c=>c.address);
+
+  if(filterComuna){
+    clientsToShow=clientsToShow.filter(c=>(c.ciudad||'').toLowerCase()===filterComuna.toLowerCase());
+  }
+
+  if(filterMes){
+    // Clientes que tienen al menos un servicio en ese mes
+    const clientesConSvcMes=new Set(
+      services.filter(s=>s.date.startsWith(filterMes)).map(s=>s.client.toLowerCase())
+    );
+    // Clientes cuya frecuencia indica que ese mes corresponde visita
+    // (si no tiene servicio registrado pero su frecuencia lo incluye)
+    const [y,m]=filterMes.split('-').map(Number);
+    const meses={'Mensual':1,'Bimestral':2,'Trimestral':3,'Semestral':6,'Anual':12,'Quincenal':1};
+
+    clientsToShow=clientsToShow.filter(c=>{
+      const nameL=c.name.toLowerCase();
+      // Tiene servicio registrado en ese mes
+      if(clientesConSvcMes.has(nameL)) return true;
+      // O tiene frecuencia que aplica ese mes (basado en mes de creación)
+      if(c.frecuencia && meses[c.frecuencia]){
+        const creado=new Date(c.createdAt||Date.now());
+        const mCreado=creado.getMonth()+1;
+        const yCreado=creado.getFullYear();
+        const diffMeses=(y-yCreado)*12+(m-mCreado);
+        if(diffMeses>=0 && diffMeses%meses[c.frecuencia]===0) return true;
+      }
+      return false;
+    });
+  }
+
   if(!clientsToShow.length){
     const d=document.getElementById('plan-map');
-    if(d)d.innerHTML=`<div class="map-placeholder"><div style="font-size:32px">📌</div><div>Sin clientes con dirección${filterHorario?' para este horario':''}</div></div>`;
+    if(d)d.innerHTML=`<div class="map-placeholder">
+      <div style="font-size:32px">📭</div>
+      <div style="font-size:13px">Sin clientes para los filtros seleccionados</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">
+        ${filterComuna?filterComuna:''}${filterComuna&&filterMes?' · ':''}${filterMes?filterMes:''}
+      </div>
+    </div>`;
     return;
   }
+
+  const geocoder=new google.maps.Geocoder();
   const bounds=new google.maps.LatLngBounds();
   clientsToShow.forEach(client=>{
     const horario=getClientHorario(client);
     const hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
+    // Indicar si tiene servicio en el mes filtrado
+    const tieneSvcMes=filterMes
+      ?services.some(s=>s.date.startsWith(filterMes)&&s.client.toLowerCase()===client.name.toLowerCase())
+      :null;
+    const borderColor=tieneSvcMes===true?'#22c55e':tieneSvcMes===false?'#f59e0b':hc.border;
+    const bgColor=tieneSvcMes===true?'#22c55e':tieneSvcMes===false?'#f59e0b':hc.bg;
     geocoder.geocode({address:client.address+', Santiago, Chile'},(res,st)=>{
       if(st!=='OK'||!res[0]) return;
       const pos=res[0].geometry.location;
       bounds.extend(pos);
       const marker=new google.maps.Marker({
         position:pos, map:planMap, draggable:false, zIndex:50,
-        icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
+        icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:bgColor,fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
         title:client.name
       });
       const overlay=new google.maps.OverlayView();
       const lbl=document.createElement('div');
-      lbl.innerHTML=`<span style="font-weight:700;color:#202124">${client.name}</span><br><span style="font-size:10px;color:${hc.border}">${hc.label}</span>`;
-      lbl.style.cssText=`position:absolute;background:#fff;border-left:3px solid ${hc.border};border-radius:4px;padding:3px 7px;font-family:sans-serif;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-160%);pointer-events:none;z-index:999;`;
+      const subLabel=tieneSvcMes===true?`<span style="color:#22c55e">✓ ${filterMes}</span>`:
+                     tieneSvcMes===false?`<span style="color:#f59e0b">Sin servicio ${filterMes}</span>`:
+                     `<span style="color:${hc.border}">${hc.label}</span>`;
+      lbl.innerHTML=`<span style="font-weight:700;color:#202124">${client.name}</span><br>${subLabel}`;
+      lbl.style.cssText=`position:absolute;background:#fff;border-left:3px solid ${borderColor};border-radius:4px;padding:3px 7px;font-family:sans-serif;font-size:11px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.25);transform:translate(-50%,-160%);pointer-events:none;z-index:999;`;
       overlay.onAdd=function(){this.getPanes().floatPane.appendChild(lbl);};
       overlay.draw=function(){const proj=this.getProjection();if(!proj)return;const pt=proj.fromLatLngToDivPixel(pos);if(pt){lbl.style.left=pt.x+'px';lbl.style.top=pt.y+'px';}};
       overlay.onRemove=function(){lbl.parentNode?.removeChild(lbl);};
       overlay.setMap(planMap);
-      const iw=new google.maps.InfoWindow({content:`<div style="font-family:sans-serif;padding:6px;min-width:200px"><div style="font-weight:700;font-size:14px">${client.name}</div><div style="font-size:12px;color:#555;margin:3px 0">📍 ${client.address||''}</div><div style="font-size:12px;color:#555">📞 ${client.phone||'—'}</div><div style="margin-top:4px"><span style="background:${hc.bg};color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${hc.label}</span></div><div style="margin-top:8px;font-size:11px;color:#888">Haz clic para seleccionar →</div></div>`});
+      const iw=new google.maps.InfoWindow({content:`<div style="font-family:sans-serif;padding:6px;min-width:200px">
+        <div style="font-weight:700;font-size:14px">${client.name}</div>
+        <div style="font-size:12px;color:#555;margin:3px 0">📍 ${client.address||''}</div>
+        <div style="font-size:12px;color:#555">📞 ${client.phone||'—'}</div>
+        ${client.frecuencia?`<div style="font-size:12px;color:#555">🔄 ${client.frecuencia}</div>`:''}
+        ${tieneSvcMes===true?`<div style="font-size:11px;color:#22c55e;font-weight:600;margin-top:4px">✓ Servicio programado en ${filterMes}</div>`:
+          tieneSvcMes===false?`<div style="font-size:11px;color:#f59e0b;font-weight:600;margin-top:4px">⚠ Sin servicio en ${filterMes}</div>`:''}
+        <div style="margin-top:8px;font-size:11px;color:#888">Haz clic para seleccionar →</div>
+      </div>`});
       marker.addListener('click',()=>{
         if(window._planActiveIW) window._planActiveIW.close();
         if(planDraggingClient&&planDraggingClient.id===client.id){
           planDraggingClient=null;
-          marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
+          marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:bgColor,fillOpacity:1,strokeColor:'#fff',strokeWeight:2});
           const banner=document.getElementById('planSelected');
           if(banner)banner.style.display='none';
           if(window._planSelectedMarker){window._planSelectedMarker=null;window._planSelectedClient=null;}
@@ -3840,7 +3917,7 @@ window.renderPlanMap=function(){
         planDraggingClient=client;
         window._planSelectedMarker=marker;
         window._planSelectedClient=client;
-        marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:18,fillColor:hc.bg,fillOpacity:1,strokeColor:'#facc15',strokeWeight:3});
+        marker.setIcon({path:google.maps.SymbolPath.CIRCLE,scale:18,fillColor:bgColor,fillOpacity:1,strokeColor:'#facc15',strokeWeight:3});
         const banner=document.getElementById('planSelected');
         if(banner){
           banner.style.display='flex';
@@ -3855,7 +3932,9 @@ window.renderPlanMap=function(){
       window._planFitTimer=setTimeout(()=>{if(!bounds.isEmpty())planMap.fitBounds(bounds,{padding:60});},800);
     });
   });
-};
+}
+
+
 window.renderPlanMiniCal=function(){
   const days=getPlanDays();
   const DOW=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -3918,6 +3997,13 @@ window.onPlanCellClick=function(date,hour){
   saveData();
   window.renderPlanMiniCal();
   showToast(`✓ ${client.name} → ${date} ${String(hour).padStart(2,'0')}:00`,'success');
+};
+window.limpiarFiltrosPlan=function(){
+  const fc=document.getElementById('planFilterComuna');
+  const fm=document.getElementById('planFilterMes');
+  if(fc) fc.value='';
+  if(fm) fm.value='';
+  renderPlanMap();
 };
 window.clearPlanSelection=function(){
   planDraggingClient=null;
