@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0447 · 17/04/2026 04:47</p>
+    <p class="login-footer">v2026.04.17.0455 · 17/04/2026 04:55</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 04:47"
+      <div id="versionBadge" title="Build: 17/04/2026 04:55"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0447
+        v2026.04.17.0455
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0447</span><span>17/04/2026 04:47</span>
+          <span>v2026.04.17.0455</span><span>17/04/2026 04:55</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1303,7 +1303,7 @@ function showApp(){
   if(isTech){
     document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
       const t=tab.dataset.tab;
-      if(!['calendar','routes','certs'].includes(t)) tab.style.display='none';
+      if(!['calendar','routes'].includes(t)) tab.style.display='none';
     });
   }
   const isMobileTech=window.innerWidth<=640&&isTech;
@@ -1311,8 +1311,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0447';
-const APP_BUILD  = '17/04/2026 04:47';
+const APP_VERSION = 'v2026.04.17.0455';
+const APP_BUILD  = '17/04/2026 04:55';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1568,7 +1568,7 @@ window.renderCalendar=function(){
           ${hasPerm('edit_calendar')&&svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
             title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
           ${hasPerm('edit_calendar')?(()=>{ const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase()); return (_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo de confirmación" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:''; })():''}
-          ${(()=>{ const _cs=certStatus(svc.id); return _cs==='pendiente_revision'&&hasPerm('edit_calendar')?`<button class="sb-btn-contact" style="background:#f59e0b" title="Pend. revisión" onclick="event.stopPropagation();switchTab('certs')">📋</button>`:_cs==='en_curso'?`<button class="sb-btn-contact" style="background:#22c55e" title="En curso" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">📍</button>`:_cs==='sin_inicio'?`<button class="sb-btn-contact" style="background:var(--accent)" title="Iniciar servicio" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">▶</button>`:_cs==='validado'&&hasPerm('edit_calendar')?`<button class="sb-btn-contact" style="background:#a855f7" title="Ver certificado" onclick="event.stopPropagation();openRevisionAdmin('${svc.id}')">📄</button>`:''; })()}
+          ${(()=>{ const _cs=certStatus(svc.id); return _cs==='pendiente_revision'&&hasPerm('edit_calendar')?`<button class="sb-btn-contact" style="background:#f59e0b" title="Pend. revisión" onclick="event.stopPropagation();switchTab('certs')">📋</button>`:_cs==='en_curso'?`<button class="sb-btn-contact" style="background:#22c55e" title="En curso" onclick="event.stopPropagation();abrirFlujoTecnico('${svc.id}')">📍</button>`:_cs==='sin_inicio'?'':_cs==='validado'&&hasPerm('edit_calendar')?`<button class="sb-btn-contact" style="background:#a855f7" title="Ver certificado" onclick="event.stopPropagation();openRevisionAdmin('${svc.id}')">📄</button>`:_cs==='pendiente_revision'&&!hasPerm('edit_calendar')?`<span class="sb-btn-contact" style="background:#22c55e;cursor:default" title="Servicio completado">✓</span>`:_cs==='validado'&&!hasPerm('edit_calendar')?`<span class="sb-btn-contact" style="background:#a855f7;cursor:default" title="Validado">✓</span>`:''; })()}
           <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
             onclick="${hasPerm('edit_calendar')?`cycleStatus(event,'${svc.id}')`:'event.stopPropagation()'}">${svcStatus}</button>
         </div>`;
@@ -1753,10 +1753,10 @@ window.openEditSvcModal=function(id){
           </div>`:''}
         </div>
       </div>
-      ${s.notesTech?`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
+      <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:var(--success);margin-bottom:4px">🔧 NOTAS TÉCNICO</div>
-        <div style="font-size:13px;color:var(--text);white-space:pre-line">${s.notesTech}</div>
-      </div>`:'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--text3)">Sin notas técnico para este servicio.</div>'}
+        <div style="font-size:13px;color:${s.notesTech?'var(--text)':'var(--text3)'};white-space:pre-line;font-style:${s.notesTech?'normal':'italic'}">${s.notesTech||'Sin notas'}</div>
+      </div>
       <div class="modal-footer">
         <button class="btn" onclick="closeModal()">Cerrar</button>
         ${cs==='sin_inicio'?`<button class="btn btn-primary" onclick="closeModal();abrirFlujoTecnico('${id}')">📍 Iniciar servicio</button>`:
@@ -1997,7 +1997,7 @@ function renderMobileTechView(){
         ${s.address?`<div class="tech-svc-row"><span class="tech-svc-label">Dirección</span><span>${s.address}</span></div>`:''}
         ${s.phone?`<div class="tech-svc-row"><span class="tech-svc-label">Teléfono</span><a href="tel:${s.phone}" style="color:var(--accent)">${s.phone}</a></div>`:''}
         <div class="tech-svc-row"><span class="tech-svc-label">Servicio</span><span>${s.type}</span></div>
-        ${s.notesTech?`<div class="tech-svc-row"><span class="tech-svc-label">Notas</span><span style="color:var(--text2)">${s.notesTech}</span></div>`:''}
+        <div class="tech-svc-row"><span class="tech-svc-label">Notas</span><span style="color:${s.notesTech?'var(--text2)':'var(--text3)'};font-style:${s.notesTech?'normal':'italic'}">${s.notesTech||'Sin notas'}</span></div>
       </div>
       <div class="tech-svc-actions">
         ${mapsUrl?`<a href="${mapsUrl}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;text-decoration:none">🧭 Navegar</a>`:''}
@@ -2858,7 +2858,12 @@ window.removeExtraStop=function(techId,stopId){
 
 window.generateRoutes=function(){
   const date=document.getElementById('routeDate').value||fmtKey(new Date());
-  const techFilter=document.getElementById('routeTech').value;
+  let techFilter=document.getElementById('routeTech')?.value||'all';
+  // Técnico solo ve sus propios servicios
+  if(!hasPerm('edit_calendar')){
+    const myTech=technicians.find(t=>t.name.toLowerCase().includes((currentUser?.name||'').split(' ')[0].toLowerCase()));
+    if(myTech) techFilter=myTech.id;
+  }
   if(window._lastRouteDate&&window._lastRouteDate!==date)extraStops={};
   window._lastRouteDate=date;
   const daySvcs=services.filter(s=>s.date===date&&(techFilter==='all'||(s.techIds||[s.techId]).includes(techFilter)))
@@ -3199,26 +3204,99 @@ window.renderGoogleMap=function(byTech,mapDiv){
 
 /* ═══════════════ SETTINGS ═══════════════ */
 function renderStatusConfig(){
-  // Renderizar en la nueva pestaña Personalización
   const el=document.getElementById('statusConfigList');if(!el)return;
   const statuses=getSvcStatuses();
-  el.innerHTML=statuses.map((s,idx)=>{
-    const c=getSC(s);
-    const isFirst=idx===0;
-    return`<div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px">
-      <div style="width:12px;height:12px;border-radius:50%;background:${c.bd};flex-shrink:0"></div>
-      <span style="flex:1;font-size:13px;font-weight:500">${s}</span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <label style="font-size:11px;color:var(--text2)">Color</label>
-        <div style="position:relative;width:32px;height:22px;border-radius:5px;border:1px solid var(--border2);overflow:hidden;cursor:pointer;background:${c.bd}">
-          <input type="color" value="${c.bd}" onchange="updateStatusColor('${s}',this.value)"
-            style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
-        </div>
+  el.innerHTML=`
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">
+        Arrastra para reordenar · El color afecta el bloque en el calendario y el badge de estado
       </div>
-      ${!isFirst?`<button class="btn btn-sm btn-danger" style="padding:3px 8px;font-size:11px" onclick="removeStatus('${s}')">Quitar</button>`:'<div style="width:52px"></div>'}
+      ${statuses.map((s,idx)=>{
+        const c=getSC(s);
+        const isFirst=idx===0;
+        // Preview del bloque calendario
+        const previewBlock=`<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;border-left:3px solid ${c.bd};background:${c.bg};font-size:10px;font-weight:600;color:${c.tx};white-space:nowrap">${s}</div>`;
+        return`<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+          <div style="cursor:grab;color:var(--text3);font-size:16px;padding:0 4px">⠿</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              ${previewBlock}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <input id="sname_${idx}" value="${s}"
+                style="flex:1;min-width:100px;padding:4px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px"
+                oninput="previewStatusName(${idx},'${s}')">
+              <div style="display:flex;align-items:center;gap:5px">
+                <label style="font-size:11px;color:var(--text2)">Color borde/badge</label>
+                <div style="position:relative;width:28px;height:24px;border-radius:5px;border:1px solid var(--border2);overflow:hidden;cursor:pointer;background:${c.bd}">
+                  <input type="color" id="sbdr_${idx}" value="${c.bd}" onchange="previewStatusColor(${idx},'${s}')"
+                    style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px">
+                <label style="font-size:11px;color:var(--text2)">Texto</label>
+                <div style="position:relative;width:28px;height:24px;border-radius:5px;border:1px solid var(--border2);overflow:hidden;cursor:pointer;background:${c.tx||'#fff'}">
+                  <input type="color" id="stx_${idx}" value="${c.tx||'#ffffff'}" onchange="previewStatusColor(${idx},'${s}')"
+                    style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+                </div>
+              </div>
+              <button class="btn btn-sm btn-primary" style="font-size:11px;padding:3px 10px" onclick="saveStatusEdit(${idx},'${s}')">Guardar</button>
+              ${!isFirst?`<button class="btn btn-sm btn-danger" style="font-size:11px;padding:3px 8px" onclick="removeStatus('${s}')">✕</button>`:''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <input id="newStatusName" placeholder="Nuevo estado…"
+        style="flex:1;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
+      <button class="btn btn-primary btn-sm" onclick="addNewStatus()">+ Agregar</button>
     </div>`;
-  }).join('');
 }
+
+window.previewStatusName = function(idx, oldName){
+  const val = document.getElementById(`sname_${idx}`)?.value||oldName;
+  // Live preview del bloque
+};
+
+window.previewStatusColor = function(idx, name){
+  const bdr = document.getElementById(`sbdr_${idx}`)?.value;
+  const tx  = document.getElementById(`stx_${idx}`)?.value;
+  if(!bdr||!tx) return;
+  // Actualizar preview inline
+  renderStatusConfig();
+  // Restaurar valores editados (se perdieron con el re-render)
+};
+
+window.saveStatusEdit = function(idx, oldName){
+  const newName = document.getElementById(`sname_${idx}`)?.value.trim();
+  const bdr     = document.getElementById(`sbdr_${idx}`)?.value;
+  const tx      = document.getElementById(`stx_${idx}`)?.value;
+  if(!newName){ showToast('Ingresa un nombre','error'); return; }
+  const bg = bdr + '26'; // 15% opacity
+  // Si cambió el nombre, renombrar en todos los servicios
+  if(newName !== oldName){
+    services.forEach(s=>{ if(s.status===oldName) s.status=newName; });
+    // Renombrar en statusColors
+    const existing = statusColors[oldName];
+    delete statusColors[oldName];
+    statusColors[newName] = {...(existing||{}), bg, bd:bdr, tx};
+  } else {
+    statusColors[oldName] = {...(statusColors[oldName]||{}), bg, bd:bdr, tx};
+  }
+  saveData(); renderStatusConfig(); renderCalendar();
+  showToast(`Estado "${newName}" actualizado`,'success');
+};
+
+window.addNewStatus = function(){
+  const name = document.getElementById('newStatusName')?.value.trim();
+  if(!name){ showToast('Ingresa un nombre','error'); return; }
+  if(statusColors[name]){ showToast('Ya existe ese estado','error'); return; }
+  statusColors[name] = {bg:'rgba(100,116,139,0.15)', bd:'#64748b', tx:'#94a3b8'};
+  document.getElementById('newStatusName').value='';
+  saveData(); renderStatusConfig();
+  showToast(`Estado "${name}" creado`,'success');
+};
 window.saveStatusColors=function(){ saveData(); };
 window.saveMapsKey=function(){
   const k=document.getElementById('mapsKeyInput').value.trim();
