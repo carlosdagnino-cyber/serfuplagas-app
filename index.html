@@ -214,6 +214,12 @@ header {
   border:1px solid var(--border); border-radius:var(--radius-lg);
   overflow:hidden; min-width:640px; background:var(--bg2);
 }
+@media(max-width:640px){
+  .calendar-grid {
+    grid-template-columns: 36px repeat(7, minmax(120px,1fr));
+    min-width: 876px;
+  }
+}
 .cal-corner { background:var(--bg3); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
 .col-head {
   background:var(--bg3); padding:8px 4px; text-align:center;
@@ -680,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0420 · 17/04/2026 04:20</p>
+    <p class="login-footer">v2026.04.17.0428 · 17/04/2026 04:28</p>
   </div>
 </div>
 
@@ -721,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0420</span><span>17/04/2026 04:20</span>
+          <span>v2026.04.17.0428</span><span>17/04/2026 04:28</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1297,8 +1303,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0420';
-const APP_BUILD  = '17/04/2026 04:20';
+const APP_VERSION = 'v2026.04.17.0428';
+const APP_BUILD  = '17/04/2026 04:28';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -4277,19 +4283,32 @@ window.openRevisionAdmin = function(svcId){
       </div>`);
     return;
   }
-  const prods=getProductos();
-  const cats=[...new Set(prods.map(p=>p.categoria))];
-
   const durMin = cert.checkOut && cert.checkIn
     ? Math.round((new Date(cert.checkOut)-new Date(cert.checkIn))/60000) : 0;
   const durStr = durMin>0 ? `${Math.floor(durMin/60)}h ${durMin%60}m` : '—';
   const tech = getTech(cert.techId);
 
+  // Normalizar estructura (compatible con flujo nuevo y viejo)
+  const plagasArr  = cert.plagasEncontradas || [];
+  const prodsArr   = cert.productosUsados   || [];
+  const fotosArr   = cert.fotos             || [];
+  const rodent     = cert.rodenticidas      || {estaciones:0,cebos:0,consumo:0};
+  const trampasArr = cert.trampas           || [];
+
+  // Datos del flujo nuevo
+  const nivelInf   = cert.nivelInfestacion  || '';
+  const tipoVisita = cert.tipoVisita        || '';
+  const tratam     = cert.tratamiento       || '';
+  const metod      = cert.metodologia       || '';
+  const sectores   = [...(cert.sectoresTratados||[]), cert.sectoresTexto||''].filter(Boolean).join(', ');
+  const estadoFinal= cert.estadoFinal       || '';
+  const causal     = cert.noEjecutadoCausal || '';
+
   showModal(`
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;gap:8px">
       <div>
         <h3 style="margin:0">🔍 Revisión de servicio</h3>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">${cert.clientName} · ${cert.serviceDate}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">${cert.clientName||svc.client} · ${cert.serviceDate||svc.date}</div>
       </div>
       ${cert.validado
         ? '<span style="background:rgba(34,197,94,.15);color:#22c55e;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600">✓ VALIDADO</span>'
@@ -4325,47 +4344,71 @@ window.openRevisionAdmin = function(svcId){
       </div>`:'<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠ Sin firma de receptor</div>'}
     </div>
 
+    <!-- DATOS FLUJO NUEVO -->
+    ${nivelInf||tipoVisita||tratam?`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+      ${nivelInf?`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px">
+        <div style="font-size:10px;color:var(--text2)">Nivel infestación</div>
+        <div style="font-size:12px;font-weight:600;margin-top:2px">${nivelInf}</div>
+      </div>`:''}
+      ${tipoVisita?`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px">
+        <div style="font-size:10px;color:var(--text2)">Tipo visita</div>
+        <div style="font-size:12px;font-weight:600;margin-top:2px">${tipoVisita}</div>
+      </div>`:''}
+      ${tratam?`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px">
+        <div style="font-size:10px;color:var(--text2)">Tratamiento</div>
+        <div style="font-size:12px;font-weight:600;margin-top:2px">${tratam}${metod?' · '+metod:''}</div>
+      </div>`:''}
+    </div>`:''} 
+    ${sectores?`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:12px">
+      <span style="color:var(--text2)">Sectores tratados:</span> <strong>${sectores}</strong>
+    </div>`:''}
+    ${causal?`<div style="background:var(--danger-dim);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--danger)">
+      ⚠️ No ejecutado: <strong>${causal}</strong>
+    </div>`:''}
+
     <!-- PLAGAS -->
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Plagas encontradas</div>
-      ${cert.plagasEncontradas.length
-        ? cert.plagasEncontradas.map(p=>`<span style="font-size:12px;background:var(--bg4);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block">${p}</span>`).join('')
+      ${plagasArr.length
+        ? plagasArr.map(p=>`<span style="font-size:12px;background:var(--bg4);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block">${p}</span>`).join('')
         : '<span style="font-size:12px;color:var(--text3)">No registradas</span>'}
     </div>
 
     <!-- PRODUCTOS -->
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Productos utilizados</div>
-      ${cert.productosUsados.length
-        ? cert.productosUsados.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
+      ${prodsArr.length
+        ? prodsArr.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
             <span style="flex:1">${p.nombre}</span>
-            <input type="number" class="rev-prod-dosis" data-pid="${p.productoId}" value="${p.dosis}"
+            <input type="number" class="rev-prod-dosis" data-pid="${p.productoId||p.id||''}" value="${p.dosis||0}"
               style="width:65px;padding:3px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
-            <span style="font-size:11px;color:var(--text2)">${p.unidad}</span>
-            <input type="number" class="rev-prod-area" data-pid="${p.productoId}" value="${p.area}"
+            <span style="font-size:11px;color:var(--text2)">${p.unidad||''}</span>
+            <input type="number" class="rev-prod-area" data-pid="${p.productoId||p.id||''}" value="${p.area||0}"
               style="width:55px;padding:3px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
             <span style="font-size:11px;color:var(--text2)">m²</span>
           </div>`).join('')
         : '<span style="font-size:12px;color:var(--text3)">No registrados</span>'}
     </div>
 
-    <!-- RODENTICIDAS / TRAMPAS / ÁREA -->
+    <!-- RODENTICIDAS / TRAMPAS -->
+    ${rodent.estaciones||rodent.cebos||trampasArr.length?`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
         <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Rodenticidas</div>
         <div style="font-size:12px;display:flex;flex-direction:column;gap:4px">
-          <span>Estaciones: <b>${cert.rodenticidas.estaciones}</b></span>
-          <span>Cebos: <b>${cert.rodenticidas.cebos}</b></span>
-          <span>Consumo: <b>${cert.rodenticidas.consumo}g</b></span>
+          <span>Estaciones: <b>${rodent.estaciones}</b></span>
+          <span>Cebos: <b>${rodent.cebos}</b></span>
+          <span>Consumo: <b>${rodent.consumo}g</b></span>
         </div>
       </div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
         <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Trampas</div>
-        ${cert.trampas.length
-          ? cert.trampas.map(t=>`<div style="font-size:12px">${t.tipo}: <b>${t.cantidad}</b></div>`).join('')
+        ${trampasArr.length
+          ? trampasArr.map(t=>`<div style="font-size:12px">${t.tipo}: <b>${t.cantidad}</b></div>`).join('')
           : '<span style="font-size:12px;color:var(--text3)">Ninguna</span>'}
       </div>
-    </div>
+    </div>`:''} 
 
     <!-- OBS / REC -->
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
@@ -4377,11 +4420,11 @@ window.openRevisionAdmin = function(svcId){
     </div>
 
     <!-- FOTOS -->
-    ${cert.fotos.length?`
+    ${fotosArr.length?`
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Evidencia fotográfica (${cert.fotos.length})</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${cert.fotos.map((f,i)=>`<img src="${f}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer"
+        ${fotosArr.map((f,i)=>`<img src="${f}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer"
           onclick="window.open('${f}','_blank')" title="Ver foto ${i+1}">`).join('')}
       </div>
     </div>`:''}
@@ -4404,9 +4447,10 @@ window.openRevisionAdmin = function(svcId){
     <div class="modal-footer">
       <button class="btn" onclick="closeModal()">Cerrar</button>
       <button class="btn" onclick="saveRevisionChanges('${svcId}')">💾 Guardar cambios</button>
+      <button class="btn" onclick="generarPDFs('${svcId}')">📄 Ver PDFs</button>
       ${!cert.validado
-        ? `<button class="btn btn-primary" onclick="validarCertificado('${svcId}')">✅ Validar y generar PDF</button>`
-        : `<button class="btn btn-success" onclick="generarPDFs('${svcId}')">📄 Descargar PDFs</button>`}
+        ? `<button class="btn btn-primary" onclick="validarCertificado('${svcId}')">✅ Validar</button>`
+        : `<button class="btn btn-success" style="background:var(--success);border-color:var(--success)" onclick="generarPDFs('${svcId}')">✓ Validado — PDFs</button>`}
     </div>
   `);
 };
