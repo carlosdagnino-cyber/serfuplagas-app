@@ -684,7 +684,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0557 · 17/04/2026 05:57</p>
+    <p class="login-footer">v2026.04.17.1313 · 17/04/2026 13:13</p>
   </div>
 </div>
 
@@ -706,12 +706,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:57"
+      <div id="versionBadge" title="Build: 17/04/2026 13:13"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.0557
+        v2026.04.17.1313
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -725,7 +725,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0557</span><span>17/04/2026 05:57</span>
+          <span>v2026.04.17.1313</span><span>17/04/2026 13:13</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1069,7 +1069,16 @@ const TECH_PALETTE=[
   {bg:'rgba(168,85,247,0.14)',bd:'#a855f7',tx:'#d8b4fe',av:'#4c1d95'},
 ];
 const ROUTE_COLORS=['#4f8ef7','#22c55e','#f59e0b','#a855f7','#ef4444'];
-const SVC_TYPES=['Fumigación','Desratización','Desinsectación','Control de plagas','Saneamiento','Revisión','Instalación de trampas','Otro'];
+const DEFAULT_SVC_MAESTRO = [
+  { id:'svc001', nombre:'Manejo Integrado de Plagas', activo:true, descripcion:'Control integral con enfoque preventivo y correctivo', procedimientos:['Inspección inicial','Identificación de plagas','Aplicación de productos','Monitoreo','Informe técnico'], productosBase:['Demand CS','Racumin Paste','K-Othrine'] },
+  { id:'svc002', nombre:'Desinsectación', activo:true, descripcion:'Control y eliminación de insectos rastreros y voladores', procedimientos:['Inspección de focos','Aplicación residual','Nebulización si requiere','Cierre de fisuras'], productosBase:['Demand CS','Cislin 25','Deltametrina 2.5%','Ficam W'] },
+  { id:'svc003', nombre:'Desratización', activo:true, descripcion:'Control de roedores mediante cebos y trampas', procedimientos:['Inspección de madrigueras','Instalación de estaciones','Colocación de cebos','Revisión periódica'], productosBase:['Racumin Paste','Klerat Pellets','Storm Bloque','Ratak Plus'] },
+  { id:'svc004', nombre:'Sanitización', activo:true, descripcion:'Desinfección y saneamiento de superficies e instalaciones', procedimientos:['Preparación de área','Aplicación de sanitizante','Tiempo de contacto','Ventilación','Verificación'], productosBase:['Cloro al 5%','Amonio Cuaternario','Alcohol 70%'] },
+];
+let svcMaestro = [];
+function getSvcMaestro(){ return svcMaestro.length ? svcMaestro : DEFAULT_SVC_MAESTRO; }
+function getSvcNombres(){ return getSvcMaestro().filter(s=>s.activo!==false).map(s=>s.nombre); }
+const SVC_TYPES = getSvcNombres();
 // SVC_STATUS es dinámico — se lee de statusColors
 function getSvcStatuses(){ return Object.keys(statusColors); }
 const HOURS=Array.from({length:17},(_,i)=>i+7);
@@ -1085,6 +1094,7 @@ const ROLES_DEF={
 
 /* ═══════════════ UTILS ═══════════════ */
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function nextOrderNum(){ const nums=services.map(s=>s.orderNum||0).filter(n=>n>0); return nums.length?Math.max(...nums)+1:1; }
 function fmtKey(d){ return d.toISOString().slice(0,10); }
 function fmtTime(h,m=0){ return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
 function isToday(d){ const t=new Date(); return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear(); }
@@ -1198,6 +1208,7 @@ function startDataSync(){
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
     statusColors= d.statusColors||statusColors;
     if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
+    if(d.svcMaestro) svcMaestro=Array.isArray(d.svcMaestro)?d.svcMaestro:Object.values(d.svcMaestro);
     mapsKey      = d.mapsKey||'';
     productos    = d.productos    ? Object.values(d.productos)    : [];
     certificados = d.certificados ? Object.values(d.certificados) : [];
@@ -1217,7 +1228,7 @@ async function saveData(){
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    statusColors, mapsKey, defaultNewServiceStatus,
+    statusColors, mapsKey, defaultNewServiceStatus, svcMaestro:getSvcMaestro(),
     productos: Object.fromEntries((productos.length?productos:DEFAULT_PRODUCTOS).map(p=>[p.id,p])),
     certificados: Object.fromEntries(certificados.map(c=>[c.id,c])),
     updatedAt:Date.now()
@@ -1316,8 +1327,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0557';
-const APP_BUILD  = '17/04/2026 05:57';
+const APP_VERSION = 'v2026.04.17.1313';
+const APP_BUILD  = '17/04/2026 13:13';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1378,6 +1389,7 @@ function renderAll(){
   renderStatusConfig();
   renderUsers();
   // Sincronizar STATUS_BTN dinámicamente
+  const _svcNames=getSvcNombres(); SVC_TYPES.splice(0,SVC_TYPES.length,..._svcNames);
   getSvcStatuses().forEach(s=>{ if(!STATUS_BTN[s]) STATUS_BTN[s]={bg:statusColors[s]?.bd||'#64748b',tx:'#fff'}; });
   renderRouteSelects();
   // Mapa key
@@ -1923,7 +1935,7 @@ window.saveSvc=function(){
     showToast('Servicio actualizado','success');
   } else {
     const _cli2=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
-    services.push({id:uid(),client,type,techId,techIds,status:defaultNewServiceStatus,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
+    services.push({id:uid(),orderNum:nextOrderNum(),client,type,techId,techIds,status:defaultNewServiceStatus,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
     addHistory('Servicio creado',`${client} (${type}) — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
     showToast('Servicio creado','success');
   }
