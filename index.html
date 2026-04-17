@@ -672,7 +672,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1558 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.17.1611 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -699,7 +699,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1558
+        v2026.04.17.1611
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -713,7 +713,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1558</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.17.1611</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1036,7 +1036,11 @@ function techMultiOpts(selectedIds=[]){
     ${t.name}
   </label>`).join('');
 }
-function getSelectedTechIds(){ return [...document.querySelectorAll('.f_tech_cb:checked')].map(cb=>cb.value); }
+function getSelectedTechIds(){
+  const checked=[...document.querySelectorAll('.f_tech_cb:checked')].map(cb=>cb.value);
+  if(!checked.length) return [...document.querySelectorAll('.f_tech_cb')].map(cb=>cb.value);
+  return checked;
+}
 function getPalette(idx){ return TECH_PALETTE[idx%TECH_PALETTE.length]; }
 function getSC(status){ return statusColors[status]||statusColors[Object.keys(statusColors)[0]]||{bg:'rgba(100,116,139,0.2)',bd:'#64748b',tx:'#94a3b8'}; }
 function hasPerm(perm){ if(!currentUser)return false; const roles=currentUser.roles||[]; return roles.some(r=>ROLES_DEF[r]?.perms.includes(perm)); }
@@ -1222,7 +1226,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1558';
+const APP_VERSION = 'v2026.04.17.1611';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1642,7 +1646,10 @@ window.openEditSvcModal=function(id){
     </div>
     <div class="form-row">
       <div class="form-group"><label>Tipo</label><select id="f_type" ${canEdit?'':'disabled'}>${typeOpts(s.type)}</select></div>
-      <div class="form-group"><label>Técnico</label><select id="f_tech" ${canEdit?'':'disabled'}>${techOpts(s.techId)}</select></div>
+      <div clasclass="form-group"><label>Técnico(s)</label>
+        <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;${canEdit?'':'opacity:.6;pointer-events:none'}">
+          ${techMultiOpts(s.techIds||[s.techId].filter(Boolean))}
+        </div></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Estado</label><select id="f_status" ${canEdit||canComplete?'':'disabled'} onchange="liveBar()">${statusOpts(s.status||'Pendiente')}</select></div>
