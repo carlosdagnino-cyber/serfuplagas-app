@@ -672,7 +672,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1548 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.17.1558 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -699,7 +699,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1548
+        v2026.04.17.1558
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -713,7 +713,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1548</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.17.1558</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -858,6 +858,15 @@ header {
           <button class="btn btn-primary btn-sm" onclick="openAddStatusModal()">+ Nuevo estado</button>
         </div>
         <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Define los estados, colores y orden. Se aplica para todos los usuarios.</p>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">Estado inicial al crear servicio</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">Se aplica al agendar desde el calendario</div>
+          </div>
+          <select id="defaultStatusSelect" onchange="saveDefaultStatus()"
+            style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;min-width:160px">
+          </select>
+        </div>
         <div id="statusConfigList"></div>
 
         <!-- GOOGLE MAPS -->
@@ -964,6 +973,7 @@ import { getDatabase, ref, onValue, set, get }
 let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], appUsers=[], mapsKey='';
+let defaultNewServiceStatus = '';
 let statusColors={
   'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
   'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
@@ -1104,6 +1114,7 @@ function startDataSync(){
     clients     = d.clients     ? Object.values(d.clients)     : [];
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
     statusColors= d.statusColors||statusColors;
+    if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
     mapsKey     = d.mapsKey||'';
     syncPill('ok');
     renderAll();
@@ -1121,7 +1132,7 @@ async function saveData(){
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    statusColors, mapsKey,
+    statusColors, mapsKey, defaultNewServiceStatus,
     updatedAt:Date.now()
   };
   if(fbOk&&db&&isOnline){
@@ -1211,7 +1222,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1548';
+const APP_VERSION = 'v2026.04.17.1558';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1536,10 +1547,11 @@ window.closeModal=function(){ document.getElementById('modalOverlay').classList.
 function techOpts(sel=''){ return technicians.map(t=>`<option value="${t.id}"${t.id===sel?' selected':''}>${t.name}</option>`).join(''); }
 function typeOpts(sel=''){ return SVC_TYPES.map(s=>`<option${s===sel?' selected':''}>${s}</option>`).join(''); }
 function statusOpts(sel=''){
-  const statuses = getSvcStatuses();
-  // Si no se especifica sel, usar el primer estado que no sea Cancelado/Completado
-  if(!sel || !statuses.includes(sel)){
-    sel = statuses.find(s=>!/cancelado|completado/i.test(s)) || statuses[0];
+  const statuses=getSvcStatuses();
+  if(!sel||!statuses.includes(sel)){
+    sel=defaultNewServiceStatus&&statuses.includes(defaultNewServiceStatus)
+      ?defaultNewServiceStatus
+      :statuses.find(s=>!/cancelado|completado/i.test(s))||statuses[0];
   }
   return statuses.map(s=>`<option${s===sel?' selected':''}>${s}</option>`).join('');
 }
@@ -3030,9 +3042,15 @@ window.renderGoogleMap=function(byTech,mapDiv){
 };
 
 /* ═══════════════ SETTINGS ═══════════════ */
+window.saveDefaultStatus=function(){
+  const val=document.getElementById('defaultStatusSelect')?.value;
+  if(val){defaultNewServiceStatus=val;saveData();showToast('Estado predeterminado: '+val,'success');}
+};
 function renderStatusConfig(){
   // Renderizar en la nueva pestaña Personalización
   const el=document.getElementById('statusConfigList');if(!el)return;
+  const dsel=document.getElementById('defaultStatusSelect');
+  if(dsel){const ss=getSvcStatuses();dsel.innerHTML=ss.map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join('');}
   const statuses=getSvcStatuses();
   el.innerHTML=statuses.map((s,idx)=>{
     const c=getSC(s);
