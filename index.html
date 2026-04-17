@@ -672,7 +672,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1530 · 17/04/2026 15:30</p>
+    <p class="login-footer">v2026.04.17.1538 · 17/04/2026 15:38</p>
   </div>
 </div>
 
@@ -699,7 +699,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1530
+        v2026.04.17.1538
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -713,7 +713,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1530</span><span>17/04/2026 15:30</span>
+          <span>v2026.04.17.1538</span><span>17/04/2026 15:38</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -970,7 +970,7 @@ let statusColors={
   'Confirmado':        {bg:'rgba(34,197,94,0.14)',   bd:'#22c55e', tx:'#86efac'},
   'Reprogramar':       {bg:'rgba(239,68,68,0.14)',   bd:'#ef4444', tx:'#fca5a5'},
   'Completado':        {bg:'rgba(168,85,247,0.14)',  bd:'#a855f7', tx:'#d8b4fe'},
-  'Cancelado':         {bg:'rgba(100,116,139,0.15)', bd:'#64748b', tx:'#94a3b8'},
+  'Cancelado':         {bg:'rgba(100,116,139,0.25)', bd:'#94a3b8', tx:'#cbd5e1'},
 };
 let weekOffset=0, editingId=null, mapInstance=null, directionsRenderer=[];
 let dragSvcId=null, dragOffsetM=0;
@@ -1211,7 +1211,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1530';
+const APP_VERSION = 'v2026.04.17.1538';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1535,7 +1535,14 @@ window.closeModal=function(){ document.getElementById('modalOverlay').classList.
 
 function techOpts(sel=''){ return technicians.map(t=>`<option value="${t.id}"${t.id===sel?' selected':''}>${t.name}</option>`).join(''); }
 function typeOpts(sel=''){ return SVC_TYPES.map(s=>`<option${s===sel?' selected':''}>${s}</option>`).join(''); }
-function statusOpts(sel='Pendiente'){ return getSvcStatuses().map(s=>`<option${s===sel?' selected':''}>${s}</option>`).join(''); }
+function statusOpts(sel=''){
+  const statuses = getSvcStatuses();
+  // Si no se especifica sel, usar el primer estado que no sea Cancelado/Completado
+  if(!sel || !statuses.includes(sel)){
+    sel = statuses.find(s=>!/cancelado|completado/i.test(s)) || statuses[0];
+  }
+  return statuses.map(s=>`<option${s===sel?' selected':''}>${s}</option>`).join('');
+}
 function colorOpts(sel=0){ return TECH_PALETTE.map((p,i)=>`<option value="${i}"${i===sel?' selected':''}>Color ${i+1}</option>`).join(''); }
 function roleOpts(selected=[]){
   return Object.entries(ROLES_DEF).map(([k,v])=>
@@ -1568,7 +1575,7 @@ window.openNewSvcModal=function(date='',hour=8){
         </div></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Estado</label><select id="f_status">${statusOpts()}</select></div>
+      <div class="form-group"><label>Estado</label><select id="f_status">${statusOpts('')}</select></div>
       <div class="form-group"><label>Fecha</label><input type="date" id="f_date" value="${d}"></div>
     </div>
     <div class="form-group" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">
