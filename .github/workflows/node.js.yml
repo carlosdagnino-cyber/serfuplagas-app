@@ -684,7 +684,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1503 · 17/04/2026 15:03</p>
+    <p class="login-footer">v2026.04.17.1510 · 17/04/2026 15:10</p>
   </div>
 </div>
 
@@ -706,12 +706,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 15:03"
+      <div id="versionBadge" title="Build: 17/04/2026 15:10"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1503
+        v2026.04.17.1510
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -725,7 +725,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1503</span><span>17/04/2026 15:03</span>
+          <span>v2026.04.17.1510</span><span>17/04/2026 15:10</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -915,7 +915,7 @@ header {
         <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
           <input id="ordersSearch" class="btn" style="width:220px;text-align:left;cursor:text;padding:9px 12px"
             placeholder="🔍 Buscar cliente, tipo, estado…" oninput="renderOrders()">
-          <input type="month" id="ordersFilterMes" class="btn btn-sm" style="cursor:text" onchange="renderOrders()">
+          <input type="month" id="ordersFilterMes" class="btn btn-sm" style="cursor:text" onchange="this._userSet=!!this.value;renderOrders()" placeholder="Todos los meses">
           <select id="ordersFilterStatus" class="btn btn-sm" onchange="renderOrders()">
             <option value="">Todos los estados</option>
           </select>
@@ -923,6 +923,7 @@ header {
             <option value="">Todos los técnicos</option>
           </select>
           <span id="ordersCount" style="font-size:12px;color:var(--text2);margin-left:4px"></span>
+          <button class="btn btn-sm" onclick="clearOrdersFilters()" title="Limpiar filtros" style="color:var(--text3)">✕ Limpiar</button>
         </div>
         <div id="ordersList"></div>
       </div>
@@ -1358,8 +1359,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1503';
-const APP_BUILD  = '17/04/2026 15:03';
+const APP_VERSION = 'v2026.04.17.1510';
+const APP_BUILD  = '17/04/2026 15:10';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -3743,7 +3744,12 @@ window.switchTab =function(tab){
   if(tab==='calendar') renderCalendar();
   if(tab==='routes')   renderRouteSelects();
   if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
-  if(tab==='orders'){ setTimeout(()=>renderOrders(),50); }
+  if(tab==='orders'){
+    // Limpiar filtro mes (el browser puede pre-rellenar input[type=month])
+    const om=document.getElementById('ordersFilterMes');
+    if(om&&!om._userSet) om.value='';
+    setTimeout(()=>renderOrders(),50);
+  }
   if(tab==='certs') renderCerts();
 };
 
@@ -6197,7 +6203,10 @@ window.renderOrders = function(){
   if(tech) items=items.filter(s=>(s.techIds||[s.techId]).includes(tech));
   const el=document.getElementById('ordersList'); if(!el) return;
   const cnt=document.getElementById('ordersCount');
-  if(cnt) cnt.textContent=items.length+' orden'+(items.length!==1?'es':'');
+  const totalSvcs=services.length;
+  if(cnt) cnt.textContent=items.length===totalSvcs
+    ? items.length+' orden'+(items.length!==1?'es':'')
+    : items.length+' de '+totalSvcs+' órdenes';
   if(!items.length){
     el.innerHTML=services.length===0
       ?'<p style="color:var(--text2);font-size:13px;padding:1rem 0">Cargando servicios… Si no aparece nada, verifica la conexión.</p>'
@@ -6328,6 +6337,15 @@ window.addSvcMaestro = function(){
   svcMaestro.push({id:uid(),nombre,activo:true,descripcion:'',procedimientos:[],productosBase:[]});
   saveData(); openSvcMaestroModal();
   showToast('Servicio "'+nombre+'" agregado','success');
+};
+
+
+window.clearOrdersFilters = function(){
+  const s=document.getElementById('ordersSearch');     if(s) s.value='';
+  const m=document.getElementById('ordersFilterMes');  if(m){ m.value=''; m._userSet=false; }
+  const st=document.getElementById('ordersFilterStatus'); if(st) st.value='';
+  const t=document.getElementById('ordersFilterTech');  if(t) t.value='';
+  renderOrders();
 };
 
 
