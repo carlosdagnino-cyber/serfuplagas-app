@@ -672,7 +672,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.16.2220 · 16/04/2026 22:20</p>
+    <p class="login-footer">v2026.04.16.2331 · 16/04/2026 23:31</p>
   </div>
 </div>
 
@@ -713,7 +713,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.16.2220</span><span>16/04/2026 22:20</span>
+          <span>v2026.04.16.2331</span><span>16/04/2026 23:31</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1237,7 +1237,7 @@ window.doLogin=async function(){
     if(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||e.code==='auth/user-not-found') msg='Correo o contraseña incorrectos.';
     else if(e.code==='auth/too-many-requests') msg='Demasiados intentos. Intenta en unos minutos.';
     else if(e.code==='auth/network-request-failed') msg='Sin conexión a internet.';
-    else if(e.code==='auth/unauthorized-domain') msg='Dominio no autorizado. Contacta al administrador.';
+    else if(e.code==='auth/unauthorized-domain') msg='Dominio no autorizado en Firebase. Ve a Firebase Console → Authentication → Settings → Authorized domains y agrega este dominio.';
     else if(e.code==='auth/invalid-email') msg='Correo electrónico inválido.';
     else if(e.code==='auth/user-disabled') msg='Esta cuenta está deshabilitada.';
     err.textContent=msg;
@@ -1255,6 +1255,11 @@ window.doLogout=async function(){
 function showLogin(){
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
+  // Advertir si se abre desde file:// (Firebase no funciona así)
+  if(window.location.protocol === 'file:'){
+    const errEl = document.getElementById('login-err');
+    if(errEl) errEl.innerHTML = '⚠️ Abriste el archivo directo desde tu PC (file://). Firebase requiere un servidor web.<br><br>Opciones:<br>1. Sube el archivo a tu hosting/servidor<br>2. Usa la extensión "Live Server" en VS Code<br>3. Ejecuta: <code>npx serve .</code> en la carpeta del archivo';
+  }
 }
 function showApp(){
   document.getElementById('login-screen').style.display='none';
@@ -1284,8 +1289,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.16.2220';
-const APP_BUILD  = '16/04/2026 22:20';
+const APP_VERSION = 'v2026.04.16.2331';
+const APP_BUILD  = '16/04/2026 23:31';
 
 function updateUserUI(){
   if(!currentUser)return;
