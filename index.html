@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0440 · 17/04/2026 04:40</p>
+    <p class="login-footer">v2026.04.17.0443 · 17/04/2026 04:43</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 04:40"
+      <div id="versionBadge" title="Build: 17/04/2026 04:43"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0440
+        v2026.04.17.0443
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0440</span><span>17/04/2026 04:40</span>
+          <span>v2026.04.17.0443</span><span>17/04/2026 04:43</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1303,8 +1303,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0440';
-const APP_BUILD  = '17/04/2026 04:40';
+const APP_VERSION = 'v2026.04.17.0443';
+const APP_BUILD  = '17/04/2026 04:43';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -3054,7 +3054,7 @@ window.renderGoogleMap=function(byTech,mapDiv){
             '<div style="font-size:12px;color:#1a73e8;font-weight:600;margin-bottom:3px">🕐 '+fmtTime(svc.startH,svc.startM||0)+' – '+fmtTime(svc.endH,svc.endM||0)+'</div>'+
             '<div style="font-size:12px;color:#555;margin-bottom:2px">📍 '+svc.address+'</div>'+
             '<div style="font-size:12px;color:#555">🔧 '+svc.type+'</div>'+
-            (svc.notes?'<div style="font-size:11px;color:#888;margin-top:3px;font-style:italic">'+svc.notes+'</div>':'')+
+            (svc.notesTech?'<div style="font-size:11px;color:#888;margin-top:3px;font-style:italic">'+svc.notesTech+'</div>':'')+
             '</div>'
           });
           marker.addListener('click',()=>{
@@ -4266,7 +4266,6 @@ window.openRevisionAdmin = function(svcId){
           <div><span style="color:var(--text2)">Estado:</span> <strong>${svc.status}</strong></div>
         </div>
         ${svc.address?`<div style="margin-top:8px;font-size:12px;color:var(--text2)">📍 ${svc.address}</div>`:''}
-        ${svc.notes?`<div style="margin-top:6px;font-size:12px;background:var(--warning-dim);padding:6px 10px;border-radius:6px;color:var(--warning)">⚠️ ${svc.notes}</div>`:''}
       </div>
       <div style="background:var(--accent-dim);border:1px solid rgba(79,142,247,.3);border-radius:var(--radius);padding:10px;font-size:12px;color:var(--text2);margin-bottom:12px">
         ℹ️ El técnico aún no ha iniciado este servicio (sin check-in).
@@ -5049,8 +5048,8 @@ function _paso1_checkin(svc, cert){
       <div style="font-size:24px;font-weight:700;color:var(--accent)">${prog}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:4px">${svc.address||'Sin dirección registrada'}</div>
     </div>
-    ${svc.notes?`<div style="background:var(--warning-dim);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:10px;margin-bottom:12px;font-size:12px;color:var(--warning)">
-      ⚠️ <strong>Notas:</strong> ${svc.notes}
+    ${svc.notesTech?`<div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius);padding:10px;margin-bottom:12px;font-size:12px;color:var(--success)">
+      🔧 <strong>Notas técnico:</strong> ${svc.notesTech}
     </div>`:''}
     <div style="text-align:center;padding:8px 0 16px">
       <button onclick="ejecutarCheckin('${svc.id}')"
