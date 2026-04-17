@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0522 · 17/04/2026 05:22</p>
+    <p class="login-footer">v2026.04.17.0526 · 17/04/2026 05:26</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:22"
+      <div id="versionBadge" title="Build: 17/04/2026 05:26"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0522
+        v2026.04.17.0526
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0522</span><span>17/04/2026 05:22</span>
+          <span>v2026.04.17.0526</span><span>17/04/2026 05:26</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1312,8 +1312,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0522';
-const APP_BUILD  = '17/04/2026 05:22';
+const APP_VERSION = 'v2026.04.17.0526';
+const APP_BUILD  = '17/04/2026 05:26';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -2509,155 +2509,241 @@ function readImportFile(file){
   const reader=new FileReader();
   reader.onload=e=>{
     const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-    const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
-    if(!json.length){showToast('Archivo vacío','error');return;}
-    const norm=s=>s.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-    const aliases={
-      cliente:        ['cliente','client','nombre','name','razon_social'],
-      direccion:      ['direccion','address','dir','direccion_comercial'],
-      telefono:       ['telefono','phone','tel','fono','movil'],
-      comentarios:    ['comentarios','notas','obs','notes'],
-      fecha:          ['fecha','date','dia'],
-      hora:           ['hora','time','inicio'],
-      correo_dest:    ['correo_destino','email_to','destinatario','correo_dest','correo','email'],
-      correo_cc:      ['correo_cc','cc','email_cc'],
-      asunto:         ['asunto','subject','asunto_correo'],
-      cuerpo:         ['cuerpo','body','cuerpo_correo','mensaje'],
-      recurrencia:    ['recurrencia','recurrence','patron','tipo_recurrencia'],
-      dia_ref:        ['dia_referencia','dia_ref','dia_recurrencia'],
-      margen:         ['margen_dias','margen','tolerancia'],
-      horario_rec:    ['horario','horario_rec','franja','franja_horaria'],
-      // Campos extendidos plantilla v3
-      codigo_cmip:    ['codigo_cmip','codigo','cod_cmip','id_cmip'],
-      rut:            ['rut','rut_empresa','rut_cliente'],
-      razon_social:   ['razon_social','razon','empresa'],
-      grupo_cliente:  ['grupo_cliente','grupo','grupo_sucursal'],
-      es_sucursal:    ['es_sucursal','sucursal'],
-      cartera:        ['cartera','zona'],
-      rubro:          ['rubro','actividad','giro'],
-      rut_contacto:   ['rut_contacto','rut_rep','rut_encargado'],
-      email_corp:     ['correo_corporativo','email_corp','emailcorp'],
-      whatsapp:       ['whatsapp','wsp','whatsapp_name'],
-      canal_contacto: ['canal_contacto','canal','medio_contacto'],
-      region:         ['region','zona_geografica'],
-      ciudad:         ['ciudad','comuna'],
-      dir_tributaria: ['direccion_tributaria','dir_tributaria','dir_trib'],
-      gps:            ['gps','coordenadas','latlong'],
-      frecuencia:     ['frecuencia','periodicidad'],
-      intranet:       ['intranet'],
-      notas_tech:     ['notas_tecnico','notes_tech','notesTech','notas_tech'],
-      telefono_fijo:  ['telefono_fijo','fono','fono_fijo','tel_fijo'],
+    // Preferir hoja "Clientes CMIP", luego "Nueva Carga", luego la primera
+    const sheetName=wb.SheetNames.find(s=>/cmip/i.test(s)||/nueva/i.test(s))||wb.SheetNames[0];
+    // skiprows=1 si la primera fila parece ser descripciones (muy larga)
+    let raw=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',raw:false});
+    if(!raw.length){showToast('Archivo vacío','error');return;}
+    // Si la primera fila parece descripción (col "cliente" tiene texto largo), saltar
+    const firstRow=raw[0];
+    const firstVals=Object.values(firstRow).map(v=>String(v||''));
+    if(firstVals.some(v=>v.length>40&&!v.includes('@'))){
+      raw=raw.slice(1);
+    }
+    if(!raw.length){showToast('Sin datos después del encabezado','error');return;}
+
+    const norm=s=>(s||'').toString().toLowerCase().trim()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_');
+
+    // Mapa campo_interno → aliases de columna en la planilla
+    const FMAP={
+      name:              ['cliente','nombre','name','client','nombre_que_aparece_en_el_calendario'],
+      codigo_cmip:       ['codigo_cmip','codigo_interno','cod_cmip','codigo'],
+      estado:            ['estado','status'],
+      es_sucursal:       ['es_sucursal','sucursal'],
+      grupo_cliente:     ['grupo_cliente','grupo','holding_matriz','holding'],
+      razon_social:      ['razon_social','razon','razon_social_legal_para_facturacion'],
+      rut:               ['rut','rut_empresa','rut_empresa_ej_12_345_678_9'],
+      cartera:           ['cartera','cartera_o_segmento'],
+      rubro:             ['rubro','rubro_industria'],
+      contacto:          ['contacto','nombre_contacto','persona_de_contacto','nombre_de_la_persona_de_contacto'],
+      rut_contacto:      ['rut_contacto','rut_del_contacto'],
+      telefono:          ['telefono','telefono_fijo','tel_fijo'],
+      celular:           ['celular','movil','celular_whatsapp_con_56'],
+      correo:            ['correo','email','correo_electronico','correo_electronico_principal'],
+      canal_contacto:    ['canal_contacto','canal','whatsapp_correo_telefono'],
+      correo_destino:    ['correo_destino','email_to','destinatario','destinatario_del_correo_de_aviso_to'],
+      correo_cc:         ['correo_cc','cc','con_copia'],
+      asunto:            ['asunto','subject','asunto_con_variables'],
+      cuerpo:            ['cuerpo','body','cuerpo_del_correo'],
+      address:           ['direccion','address','dir','direccion_del_servicio_esta_sede'],
+      ciudad:            ['ciudad','ciudad_comuna'],
+      region:            ['region'],
+      direccion_tributaria:['direccion_tributaria','dir_tributaria','direccion_tributaria_legal'],
+      direccion_contacto:['direccion_contacto','dir_contacto','direccion_del_contacto'],
+      frecuencia:        ['frecuencia','periodicidad','mensual_bimestral_trimestral'],
+      recurrencia:       ['recurrencia','patron','dia_n_nth_dow_dia_habil_rango_mes'],
+      dia_referencia:    ['dia_referencia','dia_ref','dia_del_mes_de_referencia_1_31'],
+      margen_dias:       ['margen_dias','margen','tolerancia'],
+      horario:           ['horario','franja','am_pm_dia_hh_mm'],
+      visita_lunes:      ['visita_lunes','lunes'],
+      visita_martes:     ['visita_martes','martes'],
+      visita_miercoles:  ['visita_miercoles','miercoles'],
+      visita_jueves:     ['visita_jueves','jueves'],
+      visita_viernes:    ['visita_viernes','viernes'],
+      visita_sabado:     ['visita_sabado','sabado'],
+      visita_domingo:    ['visita_domingo','domingo'],
+      intranet:          ['intranet','usa_intranet'],
+      notas:             ['notas','observaciones','notes','comentarios','observaciones_internas'],
     };
+
+    // Construir colMap: campo → nombre de columna real en el archivo
     const colMap={};
-    Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
-    if(!colMap.cliente){showToast('No encontré columna "cliente"','error');return;}
-    const gs=k=>colMap[k]?String(r[colMap[k]]||'').trim():'';
-    importRows=json.map(r=>({
-      name:          gs('cliente'),
-      address:       gs('direccion'),
-      phone:         gs('telefono'),
-      notes:         gs('comentarios'),
-      fecha:         gs('fecha'),
-      hora:          gs('hora'),
-      emailTo:       gs('correo_dest'),
-      emailCc:       gs('correo_cc'),
-      emailSubject:  gs('asunto'),
-      emailBody:     gs('cuerpo'),
-      recurrencia:   gs('recurrencia'),
-      diaRef:        gs('dia_ref'),
-      margen:        gs('margen'),
-      horarioRec:    gs('horario_rec'),
-      // Campos extendidos
-      codigo_cmip:    gs('codigo_cmip'),
-      rut:            gs('rut'),
-      razon_social:   gs('razon_social'),
-      grupo_cliente:  gs('grupo_cliente'),
-      es_sucursal:    gs('es_sucursal')||'No',
-      cartera:        gs('cartera'),
-      rubro:          gs('rubro'),
-      rut_contacto:   gs('rut_contacto'),
-      emailCorp:      gs('email_corp'),
-      whatsappName:   gs('whatsapp'),
-      contactChannel: gs('canal_contacto'),
-      region:         gs('region'),
-      ciudad:         gs('ciudad'),
-      telefono:       gs('telefono_fijo'),
-      dir_tributaria: gs('dir_tributaria'),
-      gps:            gs('gps'),
-      frecuencia:     gs('frecuencia'),
-      intranet:       gs('intranet')||'No',
-      notesTech:      gs('notas_tech'),
-    })).filter(r=>r.name);
+    const headers=Object.keys(raw[0]);
+    headers.forEach(col=>{
+      const nc=norm(col);
+      Object.entries(FMAP).forEach(([field,aliases])=>{
+        if(!colMap[field]&&aliases.some(a=>{
+          const na=norm(a);
+          return nc===na||nc.startsWith(na)||na.startsWith(nc);
+        })) colMap[field]=col;
+      });
+    });
+
+    if(!colMap.name){
+      showToast('No encontré columna de nombre de cliente. Revisa que la hoja tenga encabezados como "cliente" o "nombre".','error');
+      console.log('Columnas detectadas:',headers);
+      return;
+    }
+
+    // Construir importRows
+    importRows=raw.map(r=>{
+      const g=k=>colMap[k]?String(r[colMap[k]]||'').trim():'';
+      const name=g('name');
+      if(!name||name.length<2) return null;
+      return{
+        name,
+        codigo_cmip:    g('codigo_cmip'),
+        estado:         g('estado')||'Activo',
+        es_sucursal:    g('es_sucursal')||'No',
+        grupo_cliente:  g('grupo_cliente'),
+        razon_social:   g('razon_social'),
+        rut:            g('rut'),
+        cartera:        g('cartera'),
+        rubro:          g('rubro'),
+        contacto:       g('contacto'),
+        rut_contacto:   g('rut_contacto'),
+        telefono:       g('telefono'),
+        celular:        g('celular'),
+        correo:         g('correo'),
+        canal_contacto: g('canal_contacto'),
+        emailTo:        g('correo_destino'),
+        emailCc:        g('correo_cc'),
+        emailSubject:   g('asunto'),
+        emailBody:      g('cuerpo'),
+        address:        g('address'),
+        ciudad:         g('ciudad'),
+        region:         g('region'),
+        direccion_tributaria: g('direccion_tributaria'),
+        direccion_contacto:   g('direccion_contacto'),
+        frecuencia:     g('frecuencia'),
+        recurrencia:    g('recurrencia'),
+        diaRef:         g('dia_referencia'),
+        margen:         g('margen_dias'),
+        horarioRec:     g('horario'),
+        visita_lunes:   g('visita_lunes'),
+        visita_martes:  g('visita_martes'),
+        visita_miercoles:g('visita_miercoles'),
+        visita_jueves:  g('visita_jueves'),
+        visita_viernes: g('visita_viernes'),
+        visita_sabado:  g('visita_sabado'),
+        visita_domingo: g('visita_domingo'),
+        intranet:       g('intranet')||'No',
+        notas:          g('notas'),
+      };
+    }).filter(Boolean);
+
+    if(!importRows.length){showToast('No se encontraron filas con nombre de cliente','error');return;}
+
+    // Análisis de conflictos
+    const conflicts=[];
+    importRows.forEach(row=>{
+      const ex=clients.find(c=>c.name.toLowerCase()===row.name.toLowerCase());
+      if(ex){
+        const diffs=[];
+        if(row.rut&&ex.rut&&row.rut!==ex.rut) diffs.push('RUT distinto');
+        if(row.address&&ex.address&&row.address!==ex.address) diffs.push('dirección distinta');
+        if(diffs.length) conflicts.push({name:row.name,diffs});
+        row._exists=true; row._existingId=ex.id;
+      } else {
+        row._exists=false;
+      }
+    });
+
+    const newCount   =importRows.filter(r=>!r._exists).length;
+    const updateCount=importRows.filter(r=>r._exists).length;
+    const conflictCount=conflicts.length;
+
     document.getElementById('importPreview').innerHTML=`
-      <p style="font-size:12px;color:var(--text2);margin:.75rem 0 .5rem">${importRows.length} filas · vista previa:</p>
-      <div class="import-preview">
-        <div class="import-row header"><span>Cliente</span><span>Dirección</span><span>Fecha/Hora</span></div>
-        ${importRows.slice(0,8).map(r=>`<div class="import-row"><span>${r.name}</span><span>${r.address||'—'}</span><span>${r.fecha||'—'} ${r.hora}</span></div>`).join('')}
-        ${importRows.length>8?`<div style="color:var(--text3);font-size:11px;padding:4px 0">…y ${importRows.length-8} más</div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:.75rem 0 1rem">
+        <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:8px 12px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--success)">${newCount}</div>
+          <div style="font-size:11px;color:var(--text2)">Nuevos</div>
+        </div>
+        <div style="background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.3);border-radius:8px;padding:8px 12px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--accent)">${updateCount}</div>
+          <div style="font-size:11px;color:var(--text2)">Ya existen</div>
+        </div>
+        <div style="background:${conflictCount?'rgba(239,68,68,.1)':'var(--bg3)'};border:1px solid ${conflictCount?'rgba(239,68,68,.3)':'var(--border)'};border-radius:8px;padding:8px 12px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:${conflictCount?'var(--danger)':'var(--text3)'}">${conflictCount}</div>
+          <div style="font-size:11px;color:var(--text2)">Conflictos</div>
+        </div>
+      </div>
+      ${conflictCount?`<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px">
+        <div style="font-weight:700;color:var(--danger);margin-bottom:6px">⚠️ Datos distintos detectados:</div>
+        ${conflicts.slice(0,5).map(c=>`<div style="padding:2px 0;border-bottom:1px solid rgba(239,68,68,.15)">${c.name}: ${c.diffs.join(' · ')}</div>`).join('')}
+        ${conflicts.length>5?`<div style="color:var(--text3);font-size:11px;margin-top:4px">…y ${conflicts.length-5} más</div>`:''}
+      </div>`:''}
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:11px">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 60px;padding:5px 10px;background:var(--bg4);font-weight:700;color:var(--text2);font-size:10px;text-transform:uppercase">
+          <span>Cliente</span><span>RUT</span><span>Ciudad</span><span>Estado</span>
+        </div>
+        ${importRows.slice(0,10).map(r=>`<div style="display:grid;grid-template-columns:2fr 1fr 1fr 60px;padding:4px 10px;border-top:1px solid var(--border);background:${r._exists?'rgba(79,142,247,.04)':''}">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name}</span>
+          <span style="color:var(--text3)">${r.rut||'—'}</span>
+          <span style="color:var(--text3)">${r.ciudad||'—'}</span>
+          <span style="font-size:10px;padding:1px 5px;border-radius:8px;background:${r._exists?'rgba(79,142,247,.15)':'rgba(34,197,94,.15)'};color:${r._exists?'var(--accent)':'var(--success)'}">
+            ${r._exists?'Existe':'Nuevo'}
+          </span>
+        </div>`).join('')}
+        ${importRows.length>10?`<div style="text-align:center;padding:4px;color:var(--text3)">…y ${importRows.length-10} más</div>`:''}
       </div>`;
-    document.getElementById('importFooter').innerHTML=`
-      <button class="btn" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="confirmImport()">Importar ${importRows.length} filas</button>`;
+
+    document.getElementById('importFooter').innerHTML=
+      (updateCount?
+        `<button class="btn" onclick="closeModal()">Cancelar</button>
+         <button class="btn" onclick="confirmImport('skip')">➕ Solo nuevos (${newCount})</button>
+         <button class="btn btn-primary" onclick="confirmImport('update')">🔄 Todos (${importRows.length})</button>`:
+        `<button class="btn" onclick="closeModal()">Cancelar</button>
+         <button class="btn btn-primary" onclick="confirmImport('add')">➕ Importar ${newCount} clientes</button>`);
   };
   reader.readAsArrayBuffer(file);
 }
-window.confirmImport=function(){
-  let nc=0,ns=0;
+
+window.confirmImport=function(mode){
+  let nc=0,nu=0;
   importRows.forEach(row=>{
-    let cli=clients.find(c=>c.name.toLowerCase()===row.name.toLowerCase());
-    if(!cli){
-      const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
-      const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
-      cli={id:uid(),
-        // Campos básicos — coinciden con modal
-        name:          row.name,
-        address:       row.address,
-        phone:         row.phone,          // fc_phone  → c.phone
-        telefono:      row.telefono||row.phone||'', // fc_telefono → c.telefono (fono fijo)
-        notes:         row.notes,
-        // Identificación
-        codigo_cmip:   row.codigo_cmip||'',
-        rut:           row.rut||'',
-        razon_social:  row.razon_social||'',
-        grupo_cliente: row.grupo_cliente||'',
-        es_sucursal:   row.es_sucursal||'No',
-        cartera:       row.cartera||'',
-        rubro:         row.rubro||'',
-        // Contacto — fc_wname→c.whatsappName, fc_rut_contacto→c.rut_contacto
-        whatsappName:  row.whatsappName||'',
-        contacto:      row.whatsappName||'',  // fc_contacto→c.contacto (alias)
-        rut_contacto:  row.rut_contacto||'',
-        email:         row.emailTo||'',
-        emailCorp:     row.emailCorp||'',
-        contactChannel: row.contactChannel||'', // fc_contact→c.contactChannel
-        // Ubicación — fc_region→c.region, fc_ciudad→c.ciudad
-        region:        row.region||'',
-        ciudad:        row.ciudad||'',
-        direccion_tributaria: row.dir_tributaria||'',
-        gps:           row.gps||'',
-        // Operación
-        frecuencia:    row.frecuencia||'',
-        intranet:      row.intranet||'No',
-        notesTech:     row.notesTech||'',
-        ...(emailTpl?{emailTemplate:emailTpl}:{}),
-        ...(recPat?{recurrence:recPat}:{}),
-        createdAt:Date.now()};
-      clients.push(cli);nc++;
-    }
-    if(row.fecha&&row.hora){
-      let dk='';
-      if(/^\d{4,5}$/.test(row.fecha)) dk=fmtKey(new Date(Math.round((Number(row.fecha)-25569)*86400*1000)));
-      else if(/\d{4}-\d{2}-\d{2}/.test(row.fecha)) dk=row.fecha.slice(0,10);
-      else{ const pts=row.fecha.split(/[\/\-\.]/); if(pts.length===3){const[a,b,c]=pts; dk=a.length===4?`${a}-${b.padStart(2,'0')}-${c.padStart(2,'0')}`:`${c}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`;} }
-      const hm=row.hora.match(/(\d{1,2})[:\.](\d{2})/);
-      let sH=8,sM=0; if(hm){sH=parseInt(hm[1]);sM=parseInt(hm[2]);}
-      const tot=sH*60+sM+DEFAULT_DUR;
-      if(dk){services.push({id:uid(),client:row.name,type:'Servicio',techId:technicians[0]?.id||'',status:'Pendiente',date:dk,startH:sH,startM:sM,endH:Math.min(23,Math.floor(tot/60)),endM:tot%60,address:row.address,phone:row.phone,notes:row.notes,notesTech:row.notesTech||'',createdAt:Date.now()});ns++;}
+    const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
+    const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):
+                 row.frecuencia?parseRecurrenciaImport(row.frecuencia,row.diaRef,row.margen,row.horarioRec):undefined;
+    const data={
+      name:row.name, address:row.address||'',
+      phone:row.celular||row.telefono||'',
+      telefono:row.telefono||'', celular:row.celular||'',
+      notes:row.notas||'', codigo_cmip:row.codigo_cmip||'',
+      estado:row.estado||'Activo', rut:row.rut||'',
+      razon_social:row.razon_social||'', grupo_cliente:row.grupo_cliente||'',
+      es_sucursal:row.es_sucursal||'No', cartera:row.cartera||'', rubro:row.rubro||'',
+      contacto:row.contacto||'', whatsappName:row.contacto||'',
+      rut_contacto:row.rut_contacto||'',
+      email:row.correo||row.emailTo||'', correo:row.correo||'',
+      contactChannel:row.canal_contacto||'', canal_contacto:row.canal_contacto||'',
+      ciudad:row.ciudad||'', region:row.region||'',
+      direccion_tributaria:row.direccion_tributaria||'',
+      direccion_contacto:row.direccion_contacto||'',
+      frecuencia:row.frecuencia||'', intranet:row.intranet||'No',
+      visita_lunes:row.visita_lunes||'', visita_martes:row.visita_martes||'',
+      visita_miercoles:row.visita_miercoles||'', visita_jueves:row.visita_jueves||'',
+      visita_viernes:row.visita_viernes||'', visita_sabado:row.visita_sabado||'',
+      visita_domingo:row.visita_domingo||'',
+      ...(emailTpl?{emailTemplate:emailTpl}:{}),
+      ...(recPat?{recurrence:recPat}:{}),
+    };
+    if(row._exists&&mode!=='skip'){
+      const idx=clients.findIndex(c=>c.id===row._existingId);
+      if(idx>=0){
+        const upd={...clients[idx]};
+        Object.entries(data).forEach(([k,v])=>{if(v!==''&&v!==undefined) upd[k]=v;});
+        upd.updatedAt=Date.now(); clients[idx]=upd; nu++;
+      }
+    } else if(!row._exists){
+      clients.push({id:uid(),...data,createdAt:Date.now()}); nc++;
     }
   });
-  addHistory('Importación',`${nc} clientes y ${ns} servicios importados`);
-  closeModal(); saveData();
-  showToast(`✓ ${nc} clientes y ${ns} servicios importados`,'success');
+  addHistory('Importación',nc+' nuevos, '+nu+' actualizados');
+  closeModal(); saveData(); renderClients();
+  showToast('✓ '+nc+' nuevos · '+nu+' actualizados','success');
 };
 
 /* ═══════════════ TECHNICIANS ═══════════════ */
