@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0509 · 17/04/2026 05:09</p>
+    <p class="login-footer">v2026.04.17.0522 · 17/04/2026 05:22</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:09"
+      <div id="versionBadge" title="Build: 17/04/2026 05:22"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0509
+        v2026.04.17.0522
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0509</span><span>17/04/2026 05:09</span>
+          <span>v2026.04.17.0522</span><span>17/04/2026 05:22</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -827,6 +827,7 @@ header {
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm" onclick="openImportModal()">↑ Importar Excel</button>
             <button class="btn btn-primary btn-sm" onclick="openAddClientModal()">+ Agregar</button>
+            <button class="btn btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="confirmClearClients()" title="Borrar todos los clientes">🗑 Limpiar BD</button>
           </div>
         </div>
         <input id="clientSearch" class="btn" style="width:100%;margin-bottom:1rem;text-align:left;cursor:text;padding:9px 12px" placeholder="🔍 Buscar cliente…" oninput="renderClients()">
@@ -1311,8 +1312,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0509';
-const APP_BUILD  = '17/04/2026 05:09';
+const APP_VERSION = 'v2026.04.17.0522';
+const APP_BUILD  = '17/04/2026 05:22';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -2545,6 +2546,7 @@ function readImportFile(file){
       frecuencia:     ['frecuencia','periodicidad'],
       intranet:       ['intranet'],
       notas_tech:     ['notas_tecnico','notes_tech','notesTech','notas_tech'],
+      telefono_fijo:  ['telefono_fijo','fono','fono_fijo','tel_fijo'],
     };
     const colMap={};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
@@ -2579,6 +2581,7 @@ function readImportFile(file){
       contactChannel: gs('canal_contacto'),
       region:         gs('region'),
       ciudad:         gs('ciudad'),
+      telefono:       gs('telefono_fijo'),
       dir_tributaria: gs('dir_tributaria'),
       gps:            gs('gps'),
       frecuencia:     gs('frecuencia'),
@@ -2606,17 +2609,36 @@ window.confirmImport=function(){
       const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
       const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
       cli={id:uid(),
-        name:row.name, address:row.address, phone:row.phone, notes:row.notes,
-        codigo_cmip:row.codigo_cmip||'', rut:row.rut||'',
-        razon_social:row.razon_social||'', grupo_cliente:row.grupo_cliente||'',
-        es_sucursal:row.es_sucursal||'No', cartera:row.cartera||'',
-        rubro:row.rubro||'', rut_contacto:row.rut_contacto||'',
-        email:row.emailTo||'', emailCorp:row.emailCorp||'',
-        whatsappName:row.whatsappName||'', contactChannel:row.contactChannel||'',
-        region:row.region||'', ciudad:row.ciudad||'',
-        direccion_tributaria:row.dir_tributaria||'', gps:row.gps||'',
-        frecuencia:row.frecuencia||'', intranet:row.intranet||'No',
-        notesTech:row.notesTech||'',
+        // Campos básicos — coinciden con modal
+        name:          row.name,
+        address:       row.address,
+        phone:         row.phone,          // fc_phone  → c.phone
+        telefono:      row.telefono||row.phone||'', // fc_telefono → c.telefono (fono fijo)
+        notes:         row.notes,
+        // Identificación
+        codigo_cmip:   row.codigo_cmip||'',
+        rut:           row.rut||'',
+        razon_social:  row.razon_social||'',
+        grupo_cliente: row.grupo_cliente||'',
+        es_sucursal:   row.es_sucursal||'No',
+        cartera:       row.cartera||'',
+        rubro:         row.rubro||'',
+        // Contacto — fc_wname→c.whatsappName, fc_rut_contacto→c.rut_contacto
+        whatsappName:  row.whatsappName||'',
+        contacto:      row.whatsappName||'',  // fc_contacto→c.contacto (alias)
+        rut_contacto:  row.rut_contacto||'',
+        email:         row.emailTo||'',
+        emailCorp:     row.emailCorp||'',
+        contactChannel: row.contactChannel||'', // fc_contact→c.contactChannel
+        // Ubicación — fc_region→c.region, fc_ciudad→c.ciudad
+        region:        row.region||'',
+        ciudad:        row.ciudad||'',
+        direccion_tributaria: row.dir_tributaria||'',
+        gps:           row.gps||'',
+        // Operación
+        frecuencia:    row.frecuencia||'',
+        intranet:      row.intranet||'No',
+        notesTech:     row.notesTech||'',
         ...(emailTpl?{emailTemplate:emailTpl}:{}),
         ...(recPat?{recurrence:recPat}:{}),
         createdAt:Date.now()};
@@ -5833,6 +5855,36 @@ window.ejecutarCheckout = function(){
 
 // Inicializar canvas firma al renderizar paso 7
 const _origRenderFlujoPaso = window.renderFlujoPaso;
+
+
+window.confirmClearClients = function(){
+  showModal(`
+    <h3 style="color:var(--danger)">⚠️ Borrar base de clientes</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">
+      Esta acción eliminará <strong>${clients.length} clientes</strong> de la app.<br>
+      Los servicios programados NO se eliminarán.
+    </p>
+    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--danger)">
+      ⚠️ Esta acción no se puede deshacer. Ten una copia de la planilla antes de continuar.
+    </div>
+    <div class="form-group">
+      <label>Escribe BORRAR para confirmar</label>
+      <input id="clearConfirmText" placeholder="BORRAR"
+        oninput="document.getElementById('clearConfirmBtn').disabled=this.value!=='BORRAR'">
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button id="clearConfirmBtn" class="btn btn-danger" disabled
+        onclick="executeClearClients()">Borrar todos los clientes</button>
+    </div>`);
+};
+window.executeClearClients = function(){
+  const count=clients.length;
+  clients=[];
+  saveData(); closeModal(); renderClients();
+  addHistory('Base clientes limpiada',count+' clientes eliminados');
+  showToast(count+' clientes eliminados. Ahora importa la planilla actualizada.','success');
+};
 
 
 boot();
