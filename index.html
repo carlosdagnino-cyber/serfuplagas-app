@@ -684,7 +684,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1313 · 17/04/2026 13:13</p>
+    <p class="login-footer">v2026.04.17.1330 · 17/04/2026 13:30</p>
   </div>
 </div>
 
@@ -706,12 +706,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 13:13"
+      <div id="versionBadge" title="Build: 17/04/2026 13:30"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1313
+        v2026.04.17.1330
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -725,7 +725,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1313</span><span>17/04/2026 13:13</span>
+          <span>v2026.04.17.1330</span><span>17/04/2026 13:30</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -749,6 +749,7 @@ header {
     <div class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span>Personalización</div>
     <div class="tab" data-tab="history"  onclick="switchTab('history')" ><span class="tab-icon">📋</span>Historial</div>
     <div class="tab" data-tab="certs"    onclick="switchTab('certs')"   ><span class="tab-icon">📄</span>Certificados</div>
+    <div class="tab" data-tab="orders"  onclick="switchTab('orders')"  ><span class="tab-icon">📋</span>Órdenes</div>
     <div class="tab" data-tab="plan"     onclick="switchTab('plan')"    ><span class="tab-icon">📌</span>Planificar</div>
   </div>
 
@@ -761,6 +762,11 @@ header {
           <div class="legend" id="legendBar"></div>
         </div>
         <div class="toolbar-right">
+          <div style="position:relative">
+            <input id="calSearch" class="btn btn-sm" style="width:170px;text-align:left;cursor:text;padding:7px 10px"
+              placeholder="🔍 Buscar…" oninput="renderCalSearch()" autocomplete="off">
+            <div id="calSearchResults" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);z-index:200;width:300px;max-height:240px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
+          </div>
           <select class="btn btn-sm" id="filterTech" onchange="renderCalendar()">
             <option value="">Todos los técnicos</option>
           </select>
@@ -867,9 +873,12 @@ header {
     <div id="tab-settings" class="section">
       <div class="pad">
         <!-- ESTADOS -->
-        <div class="section-header">
+        <div class="section-header" style="flex-wrap:wrap;gap:8px">
           <h2>Estados de servicio</h2>
-          <button class="btn btn-primary btn-sm" onclick="openAddStatusModal()">+ Nuevo estado</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm" onclick="openSvcMaestroModal()">🛠 Maestro servicios</button>
+            <button class="btn btn-primary btn-sm" onclick="scrollToNewStatus()">+ Nuevo estado</button>
+          </div>
         </div>
         <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Define los estados, colores y orden. Se aplica para todos los usuarios.</p>
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
@@ -894,6 +903,28 @@ header {
           <button class="btn btn-primary" onclick="saveMapsKey()">Guardar API Key</button>
           <div id="mapsKeyStatus" style="font-size:12px;margin-top:8px;color:var(--text2)"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- ══ ÓRDENES ══ -->
+    <div id="tab-orders" class="section">
+      <div class="pad">
+        <div class="section-header">
+          <h2>Órdenes de servicio</h2>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+          <input id="ordersSearch" class="btn" style="width:220px;text-align:left;cursor:text;padding:9px 12px"
+            placeholder="🔍 Buscar cliente, tipo, estado…" oninput="renderOrders()">
+          <input type="month" id="ordersFilterMes" class="btn btn-sm" style="cursor:text" onchange="renderOrders()">
+          <select id="ordersFilterStatus" class="btn btn-sm" onchange="renderOrders()">
+            <option value="">Todos los estados</option>
+          </select>
+          <select id="ordersFilterTech" class="btn btn-sm" onchange="renderOrders()">
+            <option value="">Todos los técnicos</option>
+          </select>
+          <span id="ordersCount" style="font-size:12px;color:var(--text2);margin-left:4px"></span>
+        </div>
+        <div id="ordersList"></div>
       </div>
     </div>
 
@@ -1095,7 +1126,7 @@ const ROLES_DEF={
 /* ═══════════════ UTILS ═══════════════ */
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function nextOrderNum(){ const nums=services.map(s=>s.orderNum||0).filter(n=>n>0); return nums.length?Math.max(...nums)+1:1; }
-function fmtKey(d){ return d.toISOString().slice(0,10); }
+function fmtKey(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+day; }
 function fmtTime(h,m=0){ return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
 function isToday(d){ const t=new Date(); return d.getDate()===t.getDate()&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear(); }
 function getWeekDays(off=0){
@@ -1327,8 +1358,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1313';
-const APP_BUILD  = '17/04/2026 13:13';
+const APP_VERSION = 'v2026.04.17.1330';
+const APP_BUILD  = '17/04/2026 13:30';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1387,6 +1418,7 @@ function renderAll(){
   renderClients();
   renderHistory();
   renderStatusConfig();
+  if(document.getElementById('tab-orders')?.classList.contains('active')) renderOrders();
   renderUsers();
   // Sincronizar STATUS_BTN dinámicamente
   const _svcNames=getSvcNombres(); SVC_TYPES.splice(0,SVC_TYPES.length,..._svcNames);
@@ -1795,7 +1827,10 @@ window.openEditSvcModal=function(id){
     </div>
     <div class="form-row">
       <div class="form-group"><label>Tipo</label><select id="f_type">${typeOpts(s.type)}</select></div>
-      <div class="form-group"><label>Técnico</label><select id="f_tech">${techOpts(s.techId)}</select></div>
+      <div class="form-group"><label>Técnico(s)</label>
+        <div style="background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+          ${techMultiOpts(s.techIds||[s.techId].filter(Boolean))}
+        </div></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Estado</label><select id="f_status" onchange="liveBar()">${statusOpts(s.status||'Pendiente')}</select></div>
@@ -1897,7 +1932,11 @@ window.saveSvc=function(){
   const client=document.getElementById('f_client').value.trim();
   if(!client){showToast('Ingresa el nombre del cliente','error');return;}
   const type   =document.getElementById('f_type').value;
-  const techIds=getSelectedTechIds(); const techId=techIds[0]||technicians[0]?.id||'';
+  const techIds=getSelectedTechIds();
+  // Fallback: si hay un select f_tech (compatibilidad), usarlo
+  const _ftech = document.getElementById('f_tech')?.value;
+  const techId = techIds[0]||_ftech||technicians[0]?.id||'';
+  const _finalTechIds = techIds.length ? techIds : (techId ? [techId] : []);
   const status =document.getElementById('f_status').value;
   const date   =document.getElementById('f_date').value;
   const timeDef=document.getElementById('f_timedef')?.checked;
@@ -1921,7 +1960,7 @@ window.saveSvc=function(){
 
   if(editingId){
     const idx=services.findIndex(s=>s.id===editingId);
-    if(idx>=0) services[idx]={...services[idx],client,type,techId,techIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,updatedAt:Date.now()};
+    if(idx>=0) services[idx]={...services[idx],client,type,techId,techIds:_finalTechIds,status,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,updatedAt:Date.now()};
     const oldSvc=services[idx-1]||services.find(s=>s.id===editingId);
     const changes=[];
     const prevSvc=services.find(s=>s.id===editingId);
@@ -1935,7 +1974,7 @@ window.saveSvc=function(){
     showToast('Servicio actualizado','success');
   } else {
     const _cli2=clients.find(c=>c.name.toLowerCase()===client.toLowerCase());
-    services.push({id:uid(),orderNum:nextOrderNum(),client,type,techId,techIds,status:defaultNewServiceStatus,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
+    services.push({id:uid(),orderNum:nextOrderNum(),client,type,techId,techIds:_finalTechIds,status:defaultNewServiceStatus,date,startH:sH,startM:sM,endH:eH,endM:eM,address,phone,notes,notesTech,timeMode:franja,...(_cli2?.linkedGroup?{linkedGroupId:_cli2.linkedGroup}:{}),createdAt:Date.now()});
     addHistory('Servicio creado',`${client} (${type}) — ${date} ${fmtTime(sH,sM)} · ${tech.name}`);
     showToast('Servicio creado','success');
   }
@@ -3639,6 +3678,13 @@ window.addNewStatus = function(){
   saveData(); renderStatusConfig();
   showToast(`Estado "${name}" creado`,'success');
 };
+window.scrollToNewStatus = function(){
+  switchTab('settings');
+  setTimeout(()=>{
+    const el = document.getElementById('newStatusName');
+    if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.focus(); }
+  }, 150);
+};
 window.saveDefaultStatus = function(){
   const val=document.getElementById('defaultStatusSelect')?.value;
   if(val){ defaultNewServiceStatus=val; saveData(); showToast('Estado predeterminado: '+val,'success'); }
@@ -3698,6 +3744,7 @@ window.switchTab =function(tab){
   if(tab==='calendar') renderCalendar();
   if(tab==='routes')   renderRouteSelects();
   if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
+  if(tab==='orders') renderOrders();
   if(tab==='certs') renderCerts();
 };
 
@@ -6132,6 +6179,151 @@ window.executeClearClients = function(){
   saveData(); closeModal(); renderClients();
   addHistory('Base clientes limpiada',count+' clientes eliminados');
   showToast(count+' clientes eliminados. Ahora importa la planilla actualizada.','success');
+};
+
+
+window.renderOrders = function(){
+  const ssel=document.getElementById('ordersFilterStatus');
+  if(ssel){const cur=ssel.value; ssel.innerHTML='<option value="">Todos los estados</option>'+getSvcStatuses().map(s=>`<option value="${s}" ${s===cur?'selected':''}>${s}</option>`).join('');}
+  const tsel=document.getElementById('ordersFilterTech');
+  if(tsel){const cur=tsel.value; tsel.innerHTML='<option value="">Todos los técnicos</option>'+technicians.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.name}</option>`).join('');}
+  const q=(document.getElementById('ordersSearch')?.value||'').toLowerCase();
+  const mes=document.getElementById('ordersFilterMes')?.value||'';
+  const status=document.getElementById('ordersFilterStatus')?.value||'';
+  const tech=document.getElementById('ordersFilterTech')?.value||'';
+  let items=[...services].sort((a,b)=>a.date!==b.date?a.date.localeCompare(b.date):(a.startH*60+(a.startM||0))-(b.startH*60+(b.startM||0)));
+  if(q) items=items.filter(s=>s.client.toLowerCase().includes(q)||(s.type||'').toLowerCase().includes(q)||(s.status||'').toLowerCase().includes(q)||String(s.orderNum||'').includes(q));
+  if(mes) items=items.filter(s=>s.date.startsWith(mes));
+  if(status) items=items.filter(s=>s.status===status);
+  if(tech) items=items.filter(s=>(s.techIds||[s.techId]).includes(tech));
+  const el=document.getElementById('ordersList'); if(!el) return;
+  const cnt=document.getElementById('ordersCount');
+  if(cnt) cnt.textContent=items.length+' orden'+(items.length!==1?'es':'');
+  if(!items.length){el.innerHTML='<p style="color:var(--text2);font-size:13px;padding:1rem 0">Sin órdenes para los filtros seleccionados.</p>';return;}
+  const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  el.innerHTML=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+    <div style="display:grid;grid-template-columns:52px 90px 1fr 130px 110px 100px 34px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px;align-items:center">
+      <span>#</span><span>Fecha</span><span>Cliente</span><span>Tipo</span><span>Técnico</span><span>Estado</span><span></span>
+    </div>
+    ${items.map(s=>{
+      const sc=getSC(s.status||'Programado');
+      const t=getSvcMainTech(s); const pal=getPalette(t.colorIdx||0);
+      const dateObj=new Date(s.date+'T12:00'); const dow=DOW[dateObj.getDay()];
+      const hora=s.timeMode==='defined'?fmtTime(s.startH,s.startM||0):(s.timeMode==='pm'?'PM':s.timeMode==='dia'?'Día':'AM');
+      const num=s.orderNum?String(s.orderNum).padStart(4,'0'):'—';
+      return `<div style="display:grid;grid-template-columns:52px 90px 1fr 130px 110px 100px 34px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;gap:8px;align-items:center;cursor:pointer"
+        onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''"
+        onclick="openEditSvcModal('${s.id}')">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${num}</span>
+        <div><div style="font-weight:500">${dow} ${s.date.slice(8)}/${s.date.slice(5,7)}</div><div style="font-size:10px;color:var(--text3)">${hora}</div></div>
+        <div style="overflow:hidden"><div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.client}</div>${s.address?`<div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📍 ${s.address}</div>`:''}</div>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.type||'—'}</span>
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${pal.bd};flex-shrink:0"></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${t.name||'—'}</span></div>
+        <span style="padding:2px 7px;border-radius:10px;background:${sc.bg};color:${sc.tx};font-size:10px;font-weight:600;white-space:nowrap">${s.status||'—'}</span>
+        <button onclick="event.stopPropagation();openEditSvcModal('${s.id}')" style="background:none;border:1px solid var(--border);border-radius:5px;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 5px">✏️</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+};
+
+window.renderCalSearch = function(){
+  const q=(document.getElementById('calSearch')?.value||'').toLowerCase().trim();
+  const box=document.getElementById('calSearchResults');
+  if(!box) return;
+  if(!q){box.style.display='none';return;}
+  const matches=services.filter(s=>s.client.toLowerCase().includes(q)||(s.type||'').toLowerCase().includes(q)||(s.date||'').includes(q)||String(s.orderNum||'').includes(q)).slice(0,10);
+  if(!matches.length){box.style.display='none';return;}
+  const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  box.innerHTML=matches.map(s=>{
+    const sc=getSC(s.status||'Programado');
+    const dateObj=new Date(s.date+'T12:00'); const dow=DOW[dateObj.getDay()];
+    const num=s.orderNum?'#'+String(s.orderNum).padStart(4,'0')+' · ':'';
+    return `<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px"
+      onmouseover="this.style.background='var(--bg4)'" onmouseout="this.style.background=''"
+      onclick="goToService('${s.id}')">
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${num}${s.client}</div><div style="font-size:10px;color:var(--text2)">${dow} ${s.date} · ${s.type||'—'}</div></div>
+      <span style="padding:2px 6px;border-radius:8px;background:${sc.bg};color:${sc.tx};font-size:10px;flex-shrink:0">${s.status||''}</span>
+    </div>`;
+  }).join('');
+  box.style.display='block';
+  setTimeout(()=>document.addEventListener('click',function _c(e){if(!box.contains(e.target)&&e.target.id!=='calSearch'){box.style.display='none';document.removeEventListener('click',_c);}},),100);
+};
+
+window.goToService = function(svcId){
+  const svc=services.find(s=>s.id===svcId); if(!svc) return;
+  const today=new Date(); const svcDate=new Date(svc.date+'T12:00');
+  const todayMon=new Date(today); const dow=today.getDay();
+  todayMon.setDate(today.getDate()-(dow===0?6:dow-1)); todayMon.setHours(0,0,0,0);
+  const svcMon=new Date(svcDate); const sdow=svcDate.getDay();
+  svcMon.setDate(svcDate.getDate()-(sdow===0?6:sdow-1)); svcMon.setHours(0,0,0,0);
+  weekOffset=Math.round((svcMon-todayMon)/(7*24*3600*1000));
+  const box=document.getElementById('calSearchResults'); if(box) box.style.display='none';
+  const inp=document.getElementById('calSearch'); if(inp) inp.value='';
+  switchTab('calendar');
+  setTimeout(()=>openEditSvcModal(svcId),300);
+};
+
+window.openSvcMaestroModal = function(){
+  const maestro=getSvcMaestro();
+  showModal(`<h3>🛠 Maestro de servicios</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Tipos de servicio, procedimientos y productos base.</p>
+    <div style="max-height:400px;overflow-y:auto">
+      ${maestro.map((svc,i)=>`
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <input id="sm_nombre_${i}" value="${svc.nombre}"
+              style="flex:1;padding:5px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:13px;font-weight:600">
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="sm_activo_${i}" ${svc.activo!==false?'checked':''}
+                style="width:14px;height:14px;accent-color:var(--accent)"> Activo
+            </label>
+          </div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label style="font-size:10px">Descripción</label>
+            <input id="sm_desc_${i}" value="${svc.descripcion||''}"
+              style="width:100%;padding:4px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
+          </div>
+          <div class="form-group" style="margin-bottom:6px">
+            <label style="font-size:10px">Procedimientos (uno por línea)</label>
+            <textarea id="sm_proc_${i}" rows="3"
+              style="width:100%;padding:4px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px">${(svc.procedimientos||[]).join('\n')}</textarea>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label style="font-size:10px">Productos base (separados por coma)</label>
+            <input id="sm_prods_${i}" value="${(svc.productosBase||[]).join(', ')}"
+              style="width:100%;padding:4px 8px;background:var(--bg4);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:12px">
+          </div>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input id="sm_nuevo_nombre" placeholder="Nuevo tipo de servicio…"
+        style="flex:1;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
+      <button class="btn btn-sm" onclick="addSvcMaestro()">+ Agregar</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveSvcMaestro()">💾 Guardar</button>
+    </div>`);
+};
+window.saveSvcMaestro = function(){
+  const maestro=getSvcMaestro();
+  maestro.forEach((svc,i)=>{
+    svc.nombre        =document.getElementById(`sm_nombre_${i}`)?.value.trim()||svc.nombre;
+    svc.descripcion   =document.getElementById(`sm_desc_${i}`)?.value.trim()||'';
+    svc.activo        =document.getElementById(`sm_activo_${i}`)?.checked!==false;
+    svc.procedimientos=(document.getElementById(`sm_proc_${i}`)?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    svc.productosBase =(document.getElementById(`sm_prods_${i}`)?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  });
+  svcMaestro=maestro; saveData(); renderAll(); closeModal();
+  showToast('Maestro actualizado','success');
+};
+window.addSvcMaestro = function(){
+  const nombre=document.getElementById('sm_nuevo_nombre')?.value.trim();
+  if(!nombre){showToast('Ingresa el nombre','error');return;}
+  saveSvcMaestro();
+  svcMaestro.push({id:uid(),nombre,activo:true,descripcion:'',procedimientos:[],productosBase:[]});
+  saveData(); openSvcMaestroModal();
+  showToast('Servicio "'+nombre+'" agregado','success');
 };
 
 
