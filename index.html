@@ -675,7 +675,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1726 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.17.1738 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -702,7 +702,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1726
+        v2026.04.17.1738
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -716,7 +716,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1726</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.17.1738</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -901,6 +901,7 @@ header {
           <button id="mtab-dispositivos"class="mtab" onclick="switchMtab('dispositivos')">📡 Dispositivos</button>
           <button id="mtab-rubros"      class="mtab" onclick="switchMtab('rubros')">🏢 Rubros</button>
           <button id="mtab-frecuencias" class="mtab" onclick="switchMtab('frecuencias')">🗓 Frecuencias</button>
+          <button id="mtab-formularios" class="mtab" onclick="switchMtab('formularios')">📋 Formularios</button>
         </div>
         <div id="mpanel-servicios"></div>
         <div id="mpanel-plagas"       style="display:none"></div>
@@ -908,6 +909,7 @@ header {
         <div id="mpanel-dispositivos" style="display:none"></div>
         <div id="mpanel-rubros"       style="display:none"></div>
         <div id="mpanel-frecuencias"  style="display:none"></div>
+        <div id="mpanel-formularios" style="display:none"></div>
       </div>
     </div>
 
@@ -1034,28 +1036,28 @@ const MAESTRO_PLAGAS_DEFAULT = [
 ];
 
 const MAESTRO_PRODUCTOS_DEFAULT = [
-  { id:'pr001', nombre:'Acido Bórico',        activo:'Ácido bórico 96%',                    formulacion:'Polvo',                 concentracion:'96%',     unidad:'g',  dosis:'80-100 g/m²',              isp:'P-740/20',  tipo:'insecticida', activo:true },
-  { id:'pr002', nombre:'AVRO',                activo:'Deltametrina',                         formulacion:'Emulsión Inyectable',   concentracion:'0.1%',    unidad:'cc', dosis:'400 cc/80 ml',             isp:'P-808/23',  tipo:'insecticida', activo:true },
-  { id:'pr003', nombre:'Bell Max',            activo:'Imidacloprid',                         formulacion:'Gel',                   concentracion:'2.15%',   unidad:'g',  dosis:'2-5 gotas/m²',             isp:'P-888/20',  tipo:'insecticida', activo:true },
-  { id:'pr004', nombre:'Cyperkill 25 EC',     activo:'Cipermetrina',                         formulacion:'Emulsión Concentrada',  concentracion:'25%',     unidad:'cc', dosis:'20-40 cc en 5L/100m²',     isp:'P-101/24',  tipo:'insecticida', activo:true },
-  { id:'pr005', nombre:'Cyperkill Plus',      activo:'Cipermetrina + Tetrametrina',          formulacion:'Emulsión Concentrada',  concentracion:'25%+15%', unidad:'cc', dosis:'20-40 cc en 5L/100m²',     isp:'P-407/24',  tipo:'insecticida', activo:true },
-  { id:'pr006', nombre:'Demand 2.5 CS',       activo:'Lambda cihalotrina',                   formulacion:'Suspensión acuosa',     concentracion:'2.5%',    unidad:'cc', dosis:'10 cc en 1L/25m²',         isp:'P-899/20',  tipo:'insecticida', activo:true },
-  { id:'pr007', nombre:'Demon TC 25',         activo:'Cipermetrina',                         formulacion:'Emulsión Concentrada',  concentracion:'25%',     unidad:'cc', dosis:'20-40 cc en 5L/100m²',     isp:'P-251/21',  tipo:'insecticida', activo:true },
-  { id:'pr008', nombre:'Detia Raticida Plus', activo:'Brodifacoum',                          formulacion:'Mini Bloque',           concentracion:'0.005%',  unidad:'g',  dosis:'1-2 bloques/2-10 m',       isp:'P-426/20',  tipo:'rodenticida', activo:true },
-  { id:'pr009', nombre:'Dryquat',             activo:'Sales de Amonio Cuaternario',          formulacion:'Líquido Desinfectante', concentracion:'0.025%',  unidad:'cc', dosis:'30-100 cc/10L agua',        isp:'D-204/21',  tipo:'sanitizante', activo:true },
-  { id:'pr010', nombre:'Jabón Potásico',      activo:'Tensioactivos aniónicos',              formulacion:'Líquido Limpieza',      concentracion:'10%',     unidad:'cc', dosis:'10 cc/L agua por 10m²',    isp:'No aplica', tipo:'sanitizante', activo:true },
-  { id:'pr011', nombre:'Kilarvol 2EC',        activo:'Pyriproxyfen',                         formulacion:'Emulsión Concentrada',  concentracion:'2%',      unidad:'cc', dosis:'125-250 cc en 5L/100m²',   isp:'P-483/22',  tipo:'insecticida', activo:true },
-  { id:'pr012', nombre:'LEMONSOL EC',         activo:'D-Limonene',                           formulacion:'Emulsión Concentrada',  concentracion:'67%',     unidad:'cc', dosis:'420 ml/580 ml agua/100m²', isp:'P-732/25',  tipo:'insecticida', activo:true },
-  { id:'pr013', nombre:'Mandra',              activo:'Tiametoxam',                           formulacion:'Suspensión Concentrada',concentracion:'25%',     unidad:'cc', dosis:'20-40 cc en 5L/10m²',      isp:'P-967/22',  tipo:'insecticida', activo:true },
-  { id:'pr014', nombre:'Rastop Mini Bloque',  activo:'Bromadiolona',                         formulacion:'Mini Bloque',           concentracion:'0.005%',  unidad:'g',  dosis:'1-2 bloques/2-10 m',       isp:'P-870/24',  tipo:'rodenticida', activo:true },
-  { id:'pr015', nombre:'Rastop Molienda',     activo:'Bromadiolona',                         formulacion:'Molienda de Granos',    concentracion:'0.005%',  unidad:'g',  dosis:'1 sachet 20g/2-10 m',      isp:'P-872/24',  tipo:'rodenticida', activo:true },
-  { id:'pr016', nombre:'Rastop Pasta',        activo:'Bromadiolona',                         formulacion:'Pasta',                 concentracion:'0.005%',  unidad:'g',  dosis:'1-2 sachet 10g/2-10 m',    isp:'P-598/21',  tipo:'rodenticida', activo:true },
-  { id:'pr017', nombre:'Stuka Max',           activo:'Deltametrina + Pirimifós Metil',       formulacion:'Concentrado Emulsionable',concentracion:'25%',   unidad:'cc', dosis:'40-60 cc/1000 m³',         isp:'P-853/24',  tipo:'insecticida', activo:true },
-  { id:'pr018', nombre:'Talon Bloque',        activo:'Brodifacoum',                          formulacion:'Bloque',                concentracion:'0.005%',  unidad:'g',  dosis:'1-2 bloques/3-10 m',       isp:'P-609/21',  tipo:'rodenticida', activo:true },
-  { id:'pr019', nombre:'Trampa Adhesiva 72 MB',activo:'No aplica',                           formulacion:'Trampa física',         concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      activo:true },
-  { id:'pr020', nombre:'Trampa Adhesiva Cucarachas',activo:'No aplica',                      formulacion:'Trampa física',         concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      activo:true },
-  { id:'pr021', nombre:'Trampa R48',          activo:'No aplica',                            formulacion:'Trampa física',         concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      activo:true },
-  { id:'pr022', nombre:'Trampas Adhesivas Arod A-78',activo:'No aplica',                    formulacion:'Trampa física',         concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      activo:true },
+  { id:'pr001', nombre:'Acido Bórico',               ingrediente:'Ácido bórico 96%',             formulacion:'Polvo',                  concentracion:'96%',     unidad:'g',  dosis:'80-100 g/m²',              isp:'P-740/20',  tipo:'insecticida', habilitado:true },
+  { id:'pr002', nombre:'AVRO',                        ingrediente:'Deltametrina',                  formulacion:'Emulsión Inyectable',    concentracion:'0.1%',    unidad:'cc', dosis:'400 cc/80 ml',             isp:'P-808/23',  tipo:'insecticida', habilitado:true },
+  { id:'pr003', nombre:'Bell Max',                    ingrediente:'Imidacloprid',                  formulacion:'Gel',                    concentracion:'2.15%',   unidad:'g',  dosis:'2-5 gotas/m²',             isp:'P-888/20',  tipo:'insecticida', habilitado:true },
+  { id:'pr004', nombre:'Cyperkill 25 EC',             ingrediente:'Cipermetrina',                  formulacion:'Emulsión Concentrada',   concentracion:'25%',     unidad:'cc', dosis:'20-40 cc en 5L/100m²',     isp:'P-101/24',  tipo:'insecticida', habilitado:true },
+  { id:'pr005', nombre:'Cyperkill Plus',              ingrediente:'Cipermetrina + Tetrametrina',   formulacion:'Emulsión Concentrada',   concentracion:'25%+15%', unidad:'cc', dosis:'20-40 cc en 5L/100m²',     isp:'P-407/24',  tipo:'insecticida', habilitado:true },
+  { id:'pr006', nombre:'Demand 2.5 CS',               ingrediente:'Lambda cihalotrina',            formulacion:'Suspensión acuosa',      concentracion:'2.5%',    unidad:'cc', dosis:'10 cc en 1L/25m²',         isp:'P-899/20',  tipo:'insecticida', habilitado:true },
+  { id:'pr007', nombre:'Demon TC 25',                 ingrediente:'Cipermetrina',                  formulacion:'Emulsión Concentrada',   concentracion:'25%',     unidad:'cc', dosis:'20-40 cc en 5L/100m²',     isp:'P-251/21',  tipo:'insecticida', habilitado:true },
+  { id:'pr008', nombre:'Detia Raticida Plus',         ingrediente:'Brodifacoum',                   formulacion:'Mini Bloque',            concentracion:'0.005%',  unidad:'g',  dosis:'1-2 bloques/2-10 m',       isp:'P-426/20',  tipo:'rodenticida', habilitado:true },
+  { id:'pr009', nombre:'Dryquat',                     ingrediente:'Sales de Amonio Cuaternario',   formulacion:'Líquido Desinfectante',  concentracion:'0.025%',  unidad:'cc', dosis:'30-100 cc/10L agua',        isp:'D-204/21',  tipo:'sanitizante', habilitado:true },
+  { id:'pr010', nombre:'Jabón Potásico',              ingrediente:'Tensioactivos aniónicos',       formulacion:'Líquido Limpieza',       concentracion:'10%',     unidad:'cc', dosis:'10 cc/L agua por 10m²',    isp:'No aplica', tipo:'sanitizante', habilitado:true },
+  { id:'pr011', nombre:'Kilarvol 2EC',                ingrediente:'Pyriproxyfen',                  formulacion:'Emulsión Concentrada',   concentracion:'2%',      unidad:'cc', dosis:'125-250 cc en 5L/100m²',   isp:'P-483/22',  tipo:'insecticida', habilitado:true },
+  { id:'pr012', nombre:'LEMONSOL EC',                 ingrediente:'D-Limonene',                    formulacion:'Emulsión Concentrada',   concentracion:'67%',     unidad:'cc', dosis:'420 ml/580 ml agua/100m²', isp:'P-732/25',  tipo:'insecticida', habilitado:true },
+  { id:'pr013', nombre:'Mandra',                      ingrediente:'Tiametoxam',                    formulacion:'Suspensión Concentrada', concentracion:'25%',     unidad:'cc', dosis:'20-40 cc en 5L/10m²',      isp:'P-967/22',  tipo:'insecticida', habilitado:true },
+  { id:'pr014', nombre:'Rastop Mini Bloque',          ingrediente:'Bromadiolona',                  formulacion:'Mini Bloque',            concentracion:'0.005%',  unidad:'g',  dosis:'1-2 bloques/2-10 m',       isp:'P-870/24',  tipo:'rodenticida', habilitado:true },
+  { id:'pr015', nombre:'Rastop Molienda',             ingrediente:'Bromadiolona',                  formulacion:'Molienda de Granos',     concentracion:'0.005%',  unidad:'g',  dosis:'1 sachet 20g/2-10 m',      isp:'P-872/24',  tipo:'rodenticida', habilitado:true },
+  { id:'pr016', nombre:'Rastop Pasta',                ingrediente:'Bromadiolona',                  formulacion:'Pasta',                  concentracion:'0.005%',  unidad:'g',  dosis:'1-2 sachet 10g/2-10 m',    isp:'P-598/21',  tipo:'rodenticida', habilitado:true },
+  { id:'pr017', nombre:'Stuka Max',                   ingrediente:'Deltametrina + Pirimifós Metil',formulacion:'Concentrado Emulsionable',concentracion:'25%',    unidad:'cc', dosis:'40-60 cc/1000 m³',         isp:'P-853/24',  tipo:'insecticida', habilitado:true },
+  { id:'pr018', nombre:'Talon Bloque',                ingrediente:'Brodifacoum',                   formulacion:'Bloque',                 concentracion:'0.005%',  unidad:'g',  dosis:'1-2 bloques/3-10 m',       isp:'P-609/21',  tipo:'rodenticida', habilitado:true },
+  { id:'pr019', nombre:'Trampa Adhesiva 72 MB',       ingrediente:'No aplica',                     formulacion:'Trampa física',          concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      habilitado:true },
+  { id:'pr020', nombre:'Trampa Adhesiva Cucarachas',  ingrediente:'No aplica',                     formulacion:'Trampa física',          concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      habilitado:true },
+  { id:'pr021', nombre:'Trampa R48',                  ingrediente:'No aplica',                     formulacion:'Trampa física',          concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      habilitado:true },
+  { id:'pr022', nombre:'Trampas Adhesivas Arod A-78', ingrediente:'No aplica',                     formulacion:'Trampa física',          concentracion:'N/A',     unidad:'u',  dosis:'N/A',                      isp:'No aplica', tipo:'trampa',      habilitado:true },
 ];
 
 const MAESTRO_RUBROS_DEFAULT = [
@@ -1106,7 +1108,30 @@ const TECH_PALETTE=[
   {bg:'rgba(168,85,247,0.14)',bd:'#a855f7',tx:'#d8b4fe',av:'#4c1d95'},
 ];
 const ROUTE_COLORS=['#4f8ef7','#22c55e','#f59e0b','#a855f7','#ef4444'];
-const SVC_TYPES=['Fumigación','Desratización','Desinsectación','Control de plagas','Saneamiento','Revisión','Instalación de trampas','Otro'];
+const DEFAULT_SVC_MAESTRO = [
+  { id:'svc001', nombre:'Manejo Integrado de Plagas', habilitado:true, descripcion:'Control integral con enfoque preventivo y correctivo',
+    procedimientos:['Inspección inicial','Identificación de plagas','Plan de acción','Aplicación','Monitoreo','Informe técnico'],
+    productosBase:['Demand 2.5 CS','Rastop Mini Bloque','Dryquat'] },
+  { id:'svc002', nombre:'Desinsectación', habilitado:true, descripcion:'Control y eliminación de insectos rastreros y voladores',
+    procedimientos:['Inspección de focos','Aplicación residual','Nebulización si requiere','Cierre de fisuras'],
+    productosBase:['Demand 2.5 CS','Cyperkill 25 EC','AVRO'] },
+  { id:'svc003', nombre:'Desratización', habilitado:true, descripcion:'Control de roedores mediante cebos y trampas',
+    procedimientos:['Inspección de madrigueras','Instalación de estaciones','Colocación de cebos','Revisión periódica'],
+    productosBase:['Rastop Mini Bloque','Detia Raticida Plus','Talon Bloque'] },
+  { id:'svc004', nombre:'Sanitización', habilitado:true, descripcion:'Desinfección y saneamiento de superficies e instalaciones',
+    procedimientos:['Preparación de área','Aplicación de sanitizante','Tiempo de contacto','Ventilación','Verificación'],
+    productosBase:['Dryquat','Jabón Potásico'] },
+  { id:'svc005', nombre:'Tratamiento Cucarachas', habilitado:true, descripcion:'Tratamiento no tóxico de alto efecto residual',
+    procedimientos:['Inspección de colonias','Aplicación de gel','Monitoreo con trampas'],
+    productosBase:['Bell Max','Trampa Adhesiva Cucarachas'] },
+  { id:'svc006', nombre:'Aromatización', habilitado:true, descripcion:'Control de olores mediante aromatizadores',
+    procedimientos:['Instalación de equipos','Configuración de frecuencia','Revisión periódica'],
+    productosBase:[] },
+];
+let svcMaestro = [];
+function getSvcMaestro(){ return svcMaestro.length ? svcMaestro : DEFAULT_SVC_MAESTRO; }
+function getSvcNombres(){ return getSvcMaestro().filter(s=>s.habilitado!==false).map(s=>s.nombre); }
+const SVC_TYPES = getSvcNombres();
 // SVC_STATUS es dinámico — se lee de statusColors
 function getSvcStatuses(){ return Object.keys(statusColors); }
 const HOURS=Array.from({length:17},(_,i)=>i+7);
@@ -1236,6 +1261,8 @@ function startDataSync(){
     if(d.maestroRubros)       maestroRubros       = Array.isArray(d.maestroRubros)       ? d.maestroRubros       : Object.values(d.maestroRubros);
     if(d.maestroFrecuencias)  maestroFrecuencias  = Array.isArray(d.maestroFrecuencias)  ? d.maestroFrecuencias  : Object.values(d.maestroFrecuencias);
     if(d.maestroDispositivos) maestroDispositivos = Array.isArray(d.maestroDispositivos) ? d.maestroDispositivos : Object.values(d.maestroDispositivos);
+    if(d.maestroFormularios)  maestroFormularios  = Array.isArray(d.maestroFormularios)  ? d.maestroFormularios  : Object.values(d.maestroFormularios);
+    if(d.svcMaestro) svcMaestro=Array.isArray(d.svcMaestro)?d.svcMaestro:Object.values(d.svcMaestro);
     mapsKey     = d.mapsKey||'';
     syncPill('ok');
     renderAll();
@@ -1253,12 +1280,13 @@ async function saveData(){
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    statusColors, mapsKey, defaultNewServiceStatus,
+    statusColors, mapsKey, defaultNewServiceStatus, svcMaestro:getSvcMaestro(),
     maestroPlagas:      getMaestroPlagas(),
     maestroProductos:   getMaestroProductos(),
     maestroRubros:      getMaestroRubros(),
     maestroFrecuencias: getMaestroFrecuencias(),
-    maestroDispositivos:getMaestroDispositivos(),
+    maestroDispositivos: getMaestroDispositivos(),
+    maestroFormularios:  getMaestroFormularios(),
     updatedAt:Date.now()
   };
   if(fbOk&&db&&isOnline){
@@ -1348,7 +1376,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1726';
+const APP_VERSION = 'v2026.04.17.1738';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1400,6 +1428,7 @@ document.addEventListener('click',e=>{ if(!e.target.closest('#userBtn')&&!e.targ
 
 /* ═══════════════ RENDER ALL ═══════════════ */
 function renderAll(){
+  const _n=getSvcNombres(); SVC_TYPES.splice(0,SVC_TYPES.length,..._n);
   renderWeekLabel();
   renderCalendar();
   renderLegend();
@@ -3819,7 +3848,7 @@ let _currentMtab = 'servicios';
 window.switchMtab = function(tab){
   _currentMtab=tab;
   document.querySelectorAll('.mtab').forEach(b=>b.classList.toggle('mtab-active',b.id==='mtab-'+tab));
-  ['servicios','plagas','productos','dispositivos','rubros','frecuencias'].forEach(t=>{
+  ['servicios','plagas','productos','dispositivos','rubros','frecuencias','formularios'].forEach(t=>{
     const p=document.getElementById('mpanel-'+t); if(p) p.style.display=t===tab?'block':'none';
   });
   _renderMtabContent(tab);
@@ -3834,13 +3863,14 @@ function _renderMtabContent(tab){
   if(tab==='dispositivos') _renderMaestroDispositivos(el);
   if(tab==='rubros')       _renderMaestroRubros(el);
   if(tab==='frecuencias')  _renderMaestroFrecuencias(el);
+  if(tab==='formularios')  _renderMaestroFormularios(el);
 }
 
 // ─ SERVICIOS ─────────────────────────────────────────
 function _renderMaestroServicios(el){
   const data=getSvcMaestro();
   const rows=data.map((s,i)=>{
-    const badge=s.activo!==false?'<span style="padding:1px 7px;border-radius:8px;background:rgba(34,197,94,.15);color:#22c55e;font-size:10px">Activo</span>':'<span style="padding:1px 7px;border-radius:8px;background:rgba(100,116,139,.15);color:#94a3b8;font-size:10px">Inactivo</span>';
+    const badge=s.habilitado!==false?'<span style="padding:1px 7px;border-radius:8px;background:rgba(34,197,94,.15);color:#22c55e;font-size:10px">Activo</span>':'<span style="padding:1px 7px;border-radius:8px;background:rgba(100,116,139,.15);color:#94a3b8;font-size:10px">Inactivo</span>';
     return `<div style="display:grid;grid-template-columns:1fr 2fr 50px 50px 80px 60px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;gap:8px;align-items:center">
       <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.nombre}</span>
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${s.descripcion||'—'}</span>
@@ -3909,7 +3939,7 @@ function _renderMaestroProductos(el){
   const TC={insecticida:'rgba(79,142,247,.2)',rodenticida:'rgba(239,68,68,.2)',sanitizante:'rgba(34,197,94,.2)',trampa:'rgba(245,158,11,.2)'};
   const rows=data.map((p,i)=>`<div style="display:grid;grid-template-columns:1fr 1fr 90px 70px 60px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;gap:8px;align-items:center">
     <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nombre}</span>
-    <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.activo||''}">${p.activo||'—'}</span>
+    <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.ingrediente||''}">${p.ingrediente||'—'}</span>
     <span style="padding:1px 6px;border-radius:6px;background:${TC[p.tipo]||'var(--bg4)'};font-size:10px">${p.tipo||'—'}</span>
     <span style="color:var(--text3);font-size:11px">${p.isp||'—'}</span>
     <button onclick="_editProducto(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
@@ -3925,7 +3955,7 @@ window._editProducto=function(idx){
   showModal(`<h3>${idx>=data.length?'Nuevo':'Editar'} producto</h3>
     <div class="form-row">
       <div class="form-group"><label>Nombre comercial</label><input id="mpr_nom" value="${p.nombre||''}"></div>
-      <div class="form-group"><label>Ingrediente activo</label><input id="mpr_act" value="${p.activo||''}"></div>
+      <div class="form-group"><label>Ingrediente activo</label><input id="mpr_act" value="${p.ingrediente||''}"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Tipo</label>
@@ -3948,7 +3978,7 @@ window._editProducto=function(idx){
 window._newProducto=function(){ _editProducto(getMaestroProductos().length); };
 window._saveProducto=function(idx){
   const data=[...getMaestroProductos()];
-  const item={id:data[idx]?.id||uid(), nombre:document.getElementById('mpr_nom')?.value.trim(), activo:document.getElementById('mpr_act')?.value.trim()||'', tipo:document.getElementById('mpr_tipo')?.value||'insecticida', formulacion:document.getElementById('mpr_form')?.value.trim()||'', concentracion:document.getElementById('mpr_conc')?.value.trim()||'', unidad:document.getElementById('mpr_und')?.value||'cc', dosis:document.getElementById('mpr_dosis')?.value.trim()||'', isp:document.getElementById('mpr_isp')?.value.trim()||''};
+  const item={id:data[idx]?.id||uid(), nombre:document.getElementById('mpr_nom')?.value.trim(), ingrediente:document.getElementById('mpr_act')?.value.trim()||'', tipo:document.getElementById('mpr_tipo')?.value||'insecticida', formulacion:document.getElementById('mpr_form')?.value.trim()||'', concentracion:document.getElementById('mpr_conc')?.value.trim()||'', unidad:document.getElementById('mpr_und')?.value||'cc', dosis:document.getElementById('mpr_dosis')?.value.trim()||'', isp:document.getElementById('mpr_isp')?.value.trim()||''};
   if(!item.nombre){showToast('Ingresa el nombre','error');return;}
   if(idx>=data.length) data.push(item); else data[idx]=item;
   maestroProductos=data; saveData(); closeModal(); switchMtab('productos'); showToast('Producto guardado','success');
@@ -4035,6 +4065,92 @@ window._saveFrecuencia=function(idx){
   if(!nombre){showToast('Ingresa el nombre','error');return;}
   if(idx>=data.length) data.push(nombre); else data[idx]=nombre;
   maestroFrecuencias=data; saveData(); closeModal(); switchMtab('frecuencias'); showToast('Frecuencia guardada','success');
+};
+
+
+// ─ MAESTRO FORMULARIOS ───────────────────────────────
+let maestroFormularios = [];
+const DEFAULT_FORMULARIOS = [
+  { id:'fm001', nombre:'Procedimiento de Desinsectación General', descripcion:'Procedimiento de Desinsectación General', servicio:'Desinsectación', habilitado:true,
+    campos:['Plaga objetivo','Tipo de aplicación','Productos usados','Dosis aplicada','Superficie tratada (m²)','Observaciones','Nivel de infestación'] },
+  { id:'fm002', nombre:'Procedimiento de Desratización General',  descripcion:'Procedimiento de Desratización General',  servicio:'Desratización',  habilitado:true,
+    campos:['Tipo de roedor','Nº estaciones instaladas','Nº estaciones con consumo','Productos usados','Dosis aplicada','Observaciones','Nivel de infestación'] },
+  { id:'fm003', nombre:'Procedimiento de Sanitización General',   descripcion:'Procedimiento de Sanitización general',   servicio:'Sanitización',   habilitado:true,
+    campos:['Superficie tratada (m²)','Productos usados','Dilución aplicada','Tiempo de contacto','Observaciones'] },
+  { id:'fm004', nombre:'Tratamiento Cucarachas',                  descripcion:'Tratamiento no tóxico para cucarachas',   servicio:'Tratamiento Cucarachas', habilitado:true,
+    campos:['Nº trampas instaladas','Nº trampas con captura','Producto aplicado','Puntos de aplicación','Observaciones'] },
+  { id:'fm005', nombre:'Aromatización',                           descripcion:'Control de olores con aromatizadores',    servicio:'Aromatización',   habilitado:true,
+    campos:['Nº equipos instalados','Fragancia utilizada','Observaciones'] },
+];
+function getMaestroFormularios(){ return maestroFormularios.length ? maestroFormularios : DEFAULT_FORMULARIOS; }
+
+function _renderMaestroFormularios(el){
+  const data = getMaestroFormularios();
+  const rows = data.map((f,i)=>{
+    const badge = f.habilitado!==false
+      ?'<span style="padding:1px 7px;border-radius:8px;background:rgba(34,197,94,.15);color:#22c55e;font-size:10px">Activo</span>'
+      :'<span style="padding:1px 7px;border-radius:8px;background:rgba(100,116,139,.15);color:#94a3b8;font-size:10px">Inactivo</span>';
+    return `<div style="display:grid;grid-template-columns:1fr 1fr 50px 80px 60px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;gap:8px;align-items:center">
+      <span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.nombre}</span>
+      <span style="color:var(--text2)">${f.servicio||'—'}</span>
+      <span style="text-align:center;color:var(--accent)">${(f.campos||[]).length}</span>
+      ${badge}
+      <button onclick="_editFormulario(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
+    </div>`;
+  });
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newFormulario()">+ Nuevo formulario</button></div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr 50px 80px 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px">
+        <span>Formulario</span><span>Servicio</span><span>Campos</span><span>Estado</span><span></span>
+      </div>${rows.join('')}</div>`;
+}
+
+window._editFormulario = function(idx){
+  const data = getMaestroFormularios(); const f = data[idx]||{};
+  const campos = (f.campos||[]).join('\n');
+  showModal(`<h3>${idx>=data.length?'Nuevo':'Editar'} formulario</h3>
+    <div class="form-group"><label>Nombre</label><input id="mfm_nom" value="${f.nombre||''}" placeholder="Ej: Procedimiento de Desratización"></div>
+    <div class="form-group"><label>Descripción</label><input id="mfm_desc" value="${f.descripcion||''}"></div>
+    <div class="form-group"><label>Servicio asociado</label>
+      <select id="mfm_svc">
+        <option value="">Sin definir</option>
+        ${getSvcNombres().map(s=>`<option value="${s}" ${f.servicio===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Campos del formulario <span style="font-size:10px;color:var(--text3)">(uno por línea)</span></label>
+      <textarea id="mfm_campos" rows="8"
+        style="width:100%;padding:8px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;resize:vertical"
+        placeholder="Ej:&#10;Plaga objetivo&#10;Productos usados&#10;Dosis aplicada&#10;Superficie tratada (m²)&#10;Observaciones">${campos}</textarea>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">Estos campos aparecerán en la ejecución del servicio por el técnico</div>
+    </div>
+    <div class="form-group"><label>Estado</label>
+      <select id="mfm_hab">
+        <option value="1" ${f.habilitado!==false?'selected':''}>Activo</option>
+        <option value="0" ${f.habilitado===false?'selected':''}>Inactivo</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="_saveFormulario(${idx})">💾 Guardar</button>
+    </div>`);
+};
+window._newFormulario = function(){ _editFormulario(getMaestroFormularios().length); };
+window._saveFormulario = function(idx){
+  const data=[...getMaestroFormularios()];
+  const nombre = document.getElementById('mfm_nom')?.value.trim();
+  if(!nombre){showToast('Ingresa el nombre','error');return;}
+  const item = {
+    id:          data[idx]?.id||uid(),
+    nombre,
+    descripcion: document.getElementById('mfm_desc')?.value.trim()||'',
+    servicio:    document.getElementById('mfm_svc')?.value||'',
+    campos:      (document.getElementById('mfm_campos')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    habilitado:  document.getElementById('mfm_hab')?.value==='1',
+  };
+  if(idx>=data.length) data.push(item); else data[idx]=item;
+  maestroFormularios=data; saveData(); closeModal();
+  switchMtab('formularios'); showToast('Formulario guardado','success');
 };
 
 
