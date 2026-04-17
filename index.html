@@ -216,8 +216,8 @@ header {
 }
 @media(max-width:640px){
   .calendar-grid {
-    grid-template-columns: 36px repeat(7, minmax(160px,1fr));
-    min-width: 1156px;
+    grid-template-columns: 36px repeat(7, minmax(240px,1fr));
+    min-width: 1716px;
   }
 }
 .cal-corner { background:var(--bg3); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
@@ -686,7 +686,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0435 · 17/04/2026 04:35</p>
+    <p class="login-footer">v2026.04.17.0440 · 17/04/2026 04:40</p>
   </div>
 </div>
 
@@ -708,12 +708,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 04:35"
+      <div id="versionBadge" title="Build: 17/04/2026 04:40"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap;display:none">
-        v2026.04.17.0435
+        v2026.04.17.0440
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0435</span><span>17/04/2026 04:35</span>
+          <span>v2026.04.17.0440</span><span>17/04/2026 04:40</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1303,8 +1303,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0435';
-const APP_BUILD  = '17/04/2026 04:35';
+const APP_VERSION = 'v2026.04.17.0440';
+const APP_BUILD  = '17/04/2026 04:40';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1989,7 +1989,7 @@ function renderMobileTechView(){
         ${s.address?`<div class="tech-svc-row"><span class="tech-svc-label">Dirección</span><span>${s.address}</span></div>`:''}
         ${s.phone?`<div class="tech-svc-row"><span class="tech-svc-label">Teléfono</span><a href="tel:${s.phone}" style="color:var(--accent)">${s.phone}</a></div>`:''}
         <div class="tech-svc-row"><span class="tech-svc-label">Servicio</span><span>${s.type}</span></div>
-        ${s.notes?`<div class="tech-svc-row"><span class="tech-svc-label">Notas</span><span style="color:var(--text2)">${s.notes}</span></div>`:''}
+        ${s.notesTech?`<div class="tech-svc-row"><span class="tech-svc-label">Notas</span><span style="color:var(--text2)">${s.notesTech}</span></div>`:''}
       </div>
       <div class="tech-svc-actions">
         ${mapsUrl?`<a href="${mapsUrl}" target="_blank" class="btn btn-primary btn-sm" style="flex:1;justify-content:center;text-decoration:none">🧭 Navegar</a>`:''}
