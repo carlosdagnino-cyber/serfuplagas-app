@@ -254,7 +254,7 @@ header {
 .svc-block {
   position:absolute; border-radius:6px; padding:4px 6px;
   border-left:3px solid; cursor:grab; z-index:5;
-  overflow:hidden; transition:filter .1s; user-select:none;
+  transition:filter .1s; user-select:none;
   display:flex; flex-direction:column; align-items:flex-start; gap:2px;
 }
 @media(max-width:640px){
@@ -684,7 +684,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.0551 · 17/04/2026 05:51</p>
+    <p class="login-footer">v2026.04.17.0557 · 17/04/2026 05:57</p>
   </div>
 </div>
 
@@ -706,12 +706,12 @@ header {
         <div class="sync-dot"></div>
         <span id="syncText">—</span>
       </div>
-      <div id="versionBadge" title="Build: 17/04/2026 05:51"
+      <div id="versionBadge" title="Build: 17/04/2026 05:57"
         style="font-size:10px;font-family:var(--mono);color:var(--text3);
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.0551
+        v2026.04.17.0557
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -725,7 +725,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.0551</span><span>17/04/2026 05:51</span>
+          <span>v2026.04.17.0557</span><span>17/04/2026 05:57</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1316,8 +1316,8 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.0551';
-const APP_BUILD  = '17/04/2026 05:51';
+const APP_VERSION = 'v2026.04.17.0557';
+const APP_BUILD  = '17/04/2026 05:57';
 
 function updateUserUI(){
   if(!currentUser)return;
@@ -1544,8 +1544,8 @@ window.renderCalendar=function(){
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
       // Para franja horaria sin hora exacta, altura fija compacta
       const hpx = svc.timeMode==='defined'
-        ? Math.max(mins/60*56, 28)
-        : 28; // altura fija para AM/PM/Todo el día
+        ? Math.max(mins/60*56, 52)
+        : 52; // altura mínima: nombre + botón de estado
       const {col,total}=layout[svc.id]||{col:0,total:1};
       const w='calc(100% - 6px)';
       const left='3px';
