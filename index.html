@@ -678,7 +678,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0507 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0522 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -710,7 +710,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0507
+        v2026.04.18.0522
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -724,7 +724,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0507</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0522</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1037,12 +1037,12 @@ let defaultNewServiceStatus = '';
 let statusCycleOrder = []; // orden personalizado del ciclo de estados
 let calBlockLayout = 'default';
 let statusColors={
-  'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
-  'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
-  'Confirmado':        {bg:'rgba(34,197,94,0.14)',   bd:'#22c55e', tx:'#86efac'},
-  'Reprogramar':       {bg:'rgba(239,68,68,0.14)',   bd:'#ef4444', tx:'#fca5a5'},
-  'Completado':        {bg:'rgba(168,85,247,0.14)',  bd:'#a855f7', tx:'#d8b4fe'},
-  'Cancelado':         {bg:'rgba(100,116,139,0.25)', bd:'#94a3b8', tx:'#cbd5e1'},
+  'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa', label:'P'},
+  'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d', label:'⏳'},
+  'Confirmado':        {bg:'rgba(34,197,94,0.14)',   bd:'#22c55e', tx:'#86efac', label:'✓'},
+  'Reprogramar':       {bg:'rgba(239,68,68,0.14)',   bd:'#ef4444', tx:'#fca5a5', label:'R'},
+  'Completado':        {bg:'rgba(168,85,247,0.14)',  bd:'#a855f7', tx:'#d8b4fe', label:'OK'},
+  'Cancelado':         {bg:'rgba(100,116,139,0.25)', bd:'#94a3b8', tx:'#cbd5e1', label:'✕'},
 };
 
 // ─────────────────────────────────────────────
@@ -1286,7 +1286,10 @@ function startDataSync(){
     technicians = d.technicians ? Object.values(d.technicians) : getDefaultTechs();
     clients     = d.clients     ? Object.values(d.clients)     : [];
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
-    statusColors= d.statusColors||statusColors;
+    if(d.statusColors){
+      statusColors=d.statusColors;
+      Object.keys(statusColors).forEach(k=>{ if(!statusColors[k].label) statusColors[k].label=k; });
+    }
     if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
     if(d.calBlockLayout) calBlockLayout=d.calBlockLayout;
     if(d.statusCycleOrder) statusCycleOrder=Array.isArray(d.statusCycleOrder)?d.statusCycleOrder:Object.values(d.statusCycleOrder);
@@ -1410,7 +1413,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0507';
+const APP_VERSION = 'v2026.04.18.0522';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1709,7 +1712,8 @@ window.renderCalendar=function(){
       const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase());
       const _btnContact=svcContact?`<button class="sb-btn-contact" style="background:${contactBg}" title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:'';
       const _btnEmail=(_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:'';
-      const _btnStatus=`<button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}" onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>`;
+      const _svcLabel=btnSC.label||svcStatus;
+      const _btnStatus=`<button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}" onclick="cycleStatus(event,'${svc.id}')" title="${svcStatus}">${_svcLabel}</button>`;
       if(calBlockLayout==='compact'){
         block.innerHTML=`
           <div style="width:100%;min-width:0">
@@ -4344,6 +4348,17 @@ window.goToMonth=function(ym){
   targetMon.setHours(0,0,0,0);
   weekOffset=Math.round((targetMon-todayMon)/(7*24*3600*1000));
   renderWeekLabel(); renderCalendar();
+};
+
+window.updateStatusColor=function(status,color){
+  if(!statusColors[status]) return;
+  statusColors[status].bd=color;
+  saveData(); renderStatusConfig(); renderCalendar();
+};
+window.updateStatusLabel=function(status,val){
+  if(!statusColors[status]) return;
+  statusColors[status].label=val.trim()||status;
+  saveData(); renderCalendar();
 };
 
 boot();
