@@ -676,7 +676,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0345 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0349 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -703,7 +703,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0345
+        v2026.04.18.0349
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -717,7 +717,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0345</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0349</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1395,7 +1395,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0345';
+const APP_VERSION = 'v2026.04.18.0349';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1597,9 +1597,6 @@ window.cycleContact=function(e,svcId){
 };
 
 window.renderCalendar=function(){
-  // Altura de celda según layout: default más compacta, compact más alta para mostrar info
-  const cellH = calBlockLayout==='compact' ? 56 : 36;
-  document.documentElement.style.setProperty('--cell-h', cellH+'px');
   if(!hasPerm('view_calendar'))return;
   const days=getWeekDays(weekOffset);
   const filter=document.getElementById('filterTech')?.value||'';
@@ -1652,16 +1649,15 @@ window.renderCalendar=function(){
       if(!cell)return;
       const sc=getSC(svc.status||'Pendiente');
       const tech=getSvcMainTech(svc); // primer técnico para color
-      const topPx=((svc.startM||0)/60)*cellH;
+      const topPx=((svc.startM||0)/60)*56;
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
       // Para franja horaria sin hora exacta, altura fija compacta
-      const minH = calBlockLayout==='compact' ? 46 : 22;
+      const minH = calBlockLayout==='compact' ? 46 : 28;
       // Usar siempre startH/endH reales para calcular duración visual
       // independiente del timeMode — AM/PM también tienen startH/endH guardados
-      const cellH = calBlockLayout==='compact' ? 56 : 36;
       const minsReal = (svc.endH*60+(svc.endM||0)) - (svc.startH*60+(svc.startM||0));
       const hpx = minsReal > 0
-        ? Math.max(minsReal/60*cellH, minH)
+        ? Math.max(minsReal/60*56, minH)
         : minH;
       const {col,total}=layout[svc.id]||{col:0,total:1};
       const colW=100/total;
