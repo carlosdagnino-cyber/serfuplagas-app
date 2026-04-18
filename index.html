@@ -681,7 +681,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.1532 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.1540 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -713,7 +713,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.1532
+        v2026.04.18.1540
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.1532</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.1540</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1424,7 +1424,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.1532';
+const APP_VERSION = 'v2026.04.18.1540';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3374,7 +3374,7 @@ function renderStatusConfig(){
   if(dsel) dsel.innerHTML=getSvcStatuses().map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join('');
   const estados=getEstados();
   el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-    <button class="btn btn-primary btn-sm" onclick="_nuevoEstado()">+ Nuevo estado</button>
+    <button class="btn btn-sm" onclick="exportarMaestro('estados')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_nuevoEstado()">+ Nuevo estado</button>
   </div>`+estados.map((e,i)=>`
     <div class="cycle-item" draggable="true" data-status="${e.nombre}"
       style="display:grid;grid-template-columns:24px 1fr;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;overflow:hidden;${e.habilitado===false?'opacity:.5':''}">
@@ -4038,7 +4038,7 @@ function _renderMaestroServicios(el){
       <button onclick="openSvcMaestroModal()" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
     </div>`;
   });
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="openSvcMaestroModal()">+ Nuevo servicio</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('servicios')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="openSvcMaestroModal()">+ Nuevo servicio</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 2fr 50px 50px 80px 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px">
         <span>Servicio</span><span>Descripción</span><span>Procs</span><span>Prods</span><span>Estado</span><span></span>
@@ -4059,7 +4059,7 @@ function _renderMaestroPlagas(el){
       <button onclick="_editPlaga(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
     </div>`;
   });
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newPlaga()">+ Nueva plaga</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('plagas')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_newPlaga()">+ Nueva plaga</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 1fr 110px 80px 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px">
         <span>Nombre</span><span>Nombre científico</span><span>Categoría</span><span>Estado</span><span></span>
@@ -4102,7 +4102,7 @@ function _renderMaestroProductos(el){
     <span style="color:var(--text3);font-size:11px">${p.isp||'—'}</span>
     <button onclick="_editProducto(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
   </div>`);
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newProducto()">+ Nuevo producto</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('productos')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_newProducto()">+ Nuevo producto</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 1fr 90px 70px 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px">
         <span>Nombre</span><span>Ingrediente activo</span><span>Tipo</span><span>ISP</span><span></span>
@@ -4152,7 +4152,7 @@ function _renderMaestroDispositivos(el){
       <button onclick="_editDispositivo(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
     </div>`;
   });
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newDispositivo()">+ Nuevo dispositivo</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('dispositivos')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_newDispositivo()">+ Nuevo dispositivo</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 1fr 80px 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px">
         <span>Nombre</span><span>Servicio</span><span>Estado</span><span></span>
@@ -4183,7 +4183,7 @@ window._saveDispositivo=function(idx){
 function _renderMaestroRubros(el){
   const data=getMaestroRubros();
   const rows=data.map((r,i)=>{const n=typeof r==='string'?r:r.nombre; return `<div style="display:grid;grid-template-columns:1fr 60px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;gap:8px;align-items:center"><span style="font-weight:500">${n}</span><button onclick="_editRubro(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button></div>`;});
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newRubro()">+ Nuevo rubro</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('rubros')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_newRubro()">+ Nuevo rubro</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px"><span>Rubro</span><span></span></div>
       ${rows.join('')}</div>`;
@@ -4206,7 +4206,7 @@ window._saveRubro=function(idx){
 function _renderMaestroFrecuencias(el){
   const data=getMaestroFrecuencias();
   const rows=data.map((f,i)=>{const n=typeof f==='string'?f:f.nombre; return `<div style="display:grid;grid-template-columns:1fr 60px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;gap:8px;align-items:center"><span style="font-weight:500">${n}</span><button onclick="_editFrecuencia(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button></div>`;});
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newFrecuencia()">+ Nueva frecuencia</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('frecuencias')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_newFrecuencia()">+ Nueva frecuencia</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px"><span>Frecuencia</span><span></span></div>
       ${rows.join('')}</div>`;
@@ -4256,7 +4256,7 @@ function _renderMaestroFormularios(el){
       <button onclick="_editFormulario(${i})" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text3);cursor:pointer;font-size:11px;padding:2px 7px">✏️</button>
     </div>`;
   });
-  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="_newFormulario()">+ Nuevo formulario</button></div>
+  el.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-sm" onclick="exportarMaestro('formularios')" style="margin-right:6px">⬇ Excel</button><button class="btn btn-primary btn-sm" onclick="_newFormulario()">+ Nuevo formulario</button></div>
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
       <div style="display:grid;grid-template-columns:1fr 1fr 50px 80px 60px;padding:7px 12px;background:var(--bg4);font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;gap:8px">
         <span>Formulario</span><span>Servicio</span><span>Campos</span><span>Estado</span><span></span>
@@ -4385,6 +4385,54 @@ window._saveCycleOrder=function(container){
   maestroEstados=orden.map(n=>es.find(e=>e.nombre===n)).filter(Boolean);
   es.forEach(e=>{ if(!maestroEstados.find(m=>m.id===e.id)) maestroEstados.push(e); });
   saveData(); showToast('Orden actualizado','success');
+};
+
+// ── EXPORTAR MAESTROS A EXCEL ──────────────────────────────────────
+window.exportarMaestro = function(tipo){
+  if(typeof XLSX === 'undefined'){ showToast('SheetJS no disponible','error'); return; }
+  let rows=[], titulo='';
+  if(tipo==='servicios'){
+    titulo='Maestro_Servicios';
+    rows=[['ID','Nombre','Descripción','Habilitado']];
+    getSvcMaestro().forEach(s=>rows.push([s.id,s.nombre,s.descripcion||'',s.habilitado!==false?'Sí':'No']));
+  } else if(tipo==='plagas'){
+    titulo='Maestro_Plagas';
+    rows=[['ID','Nombre','Nombre científico','Categoría','Habilitado']];
+    getMaestroPlagas().forEach(p=>rows.push([p.id,p.nombre,p.cientifico||'',p.categoria||'',p.activo!==false?'Sí':'No']));
+  } else if(tipo==='productos'){
+    titulo='Maestro_Productos';
+    rows=[['ID','Nombre','Ingrediente activo','Tipo','Formulación','Concentración','Unidad','Dosis','ISP','Habilitado']];
+    getMaestroProductos().forEach(p=>rows.push([p.id,p.nombre,p.ingrediente||'',p.tipo||'',p.formulacion||'',p.concentracion||'',p.unidad||'',p.dosis||'',p.isp||'',p.habilitado!==false?'Sí':'No']));
+  } else if(tipo==='dispositivos'){
+    titulo='Maestro_Dispositivos';
+    rows=[['ID','Nombre','Servicio','Habilitado']];
+    getMaestroDispositivos().forEach(d=>rows.push([d.id,d.nombre,d.servicio||'',d.activo!==false?'Sí':'No']));
+  } else if(tipo==='rubros'){
+    titulo='Maestro_Rubros';
+    rows=[['Rubro']];
+    getMaestroRubros().forEach(r=>rows.push([typeof r==='string'?r:r.nombre]));
+  } else if(tipo==='frecuencias'){
+    titulo='Maestro_Frecuencias';
+    rows=[['Frecuencia']];
+    getMaestroFrecuencias().forEach(f=>rows.push([typeof f==='string'?f:f.nombre]));
+  } else if(tipo==='formularios'){
+    titulo='Maestro_Formularios';
+    rows=[['ID','Nombre','Descripción','Servicio','Habilitado']];
+    getMaestroFormularios().forEach(f=>rows.push([f.id,f.nombre,f.descripcion||'',f.servicio||'',f.habilitado!==false?'Sí':'No']));
+  } else if(tipo==='estados'){
+    titulo='Maestro_Estados';
+    rows=[['ID','Nombre','Color','Estado final','Habilitado']];
+    getEstados().forEach(e=>rows.push([e.id,e.nombre,e.bd||'',e.esFinal?'Sí':'No',e.habilitado!==false?'Sí':'No']));
+  }
+  if(!rows.length){ showToast('Sin datos para exportar','error'); return; }
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Ajustar anchos de columna
+  const cols = rows[0].map((_,i)=>({wch:Math.max(...rows.map(r=>String(r[i]||'').length),12)}));
+  ws['!cols']=cols;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, titulo.replace('Maestro_',''));
+  XLSX.writeFile(wb, titulo+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('Exportado: '+titulo+'.xlsx','success');
 };
 
 boot();
