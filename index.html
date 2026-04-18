@@ -690,7 +690,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.1730 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.1740 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -703,7 +703,7 @@ header {
     </div>
     <div id="mainTabs" class="tabs" style="flex:1;border-bottom:none;padding:0;overflow-x:auto;background:none;gap:0">
       <div class="tab active" data-tab="calendar" onclick="switchTab('calendar')"><span class="tab-icon">📅</span>Calendario</div>
-      <div class="tab" data-tab="gestiones" onclick="switchTab('gestiones')"><span class="tab-icon">📌</span>Gestión</div>
+      <div class="tab" data-tab="gestiones" onclick="switchTab('gestiones')"><span class="tab-icon">📌</span>Gestión <span id="gBadge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-left:2px"></span></div>
       <div class="tab" data-tab="routes"   onclick="switchTab('routes')"  ><span class="tab-icon">🗺️</span>Rutas</div>
       <div class="tab" data-tab="clients"  onclick="switchTab('clients')" ><span class="tab-icon">👥</span>Clientes</div>
       <div class="tab" data-tab="techs"    onclick="switchTab('techs')"   ><span class="tab-icon">👷</span>Técnicos</div>
@@ -723,7 +723,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.1730
+        v2026.04.18.1740
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -737,7 +737,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.1730</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.1740</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -912,6 +912,36 @@ header {
           </div>
         </div>
 
+        <!-- INTEGRACIÓN OUTLOOK -->
+        <div style="margin-top:2rem">
+          <div class="section-header"><h2>Integración Outlook</h2></div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+            Mueve correos de solicitudes a la carpeta <strong>"Gestión APP"</strong> en Outlook.
+            La app los importará automáticamente cada 5 minutos como gestiones.
+          </p>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:12px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="outlookSyncChk" style="width:15px;height:15px"
+                onchange="saveOutlookConfig()">
+              <div>
+                <div style="font-size:13px;font-weight:600">Sincronización automática activa</div>
+                <div style="font-size:11px;color:var(--text2)">Importar correos desde carpeta "Gestión APP" de Outlook</div>
+              </div>
+            </label>
+            <div class="form-group" style="margin:0">
+              <label>Responsable predefinido para correos importados</label>
+              <select id="outlookRespSel" onchange="saveOutlookConfig()"
+                style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
+                <option value="">Sin asignar</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn btn-sm" onclick="syncOutlookGestion(true)">↻ Sincronizar ahora</button>
+              <span id="outlookSyncStatus" style="font-size:11px;color:var(--text3)"></span>
+            </div>
+          </div>
+        </div>
+
         <!-- GOOGLE MAPS -->
         <div style="margin-top:2rem">
           <div class="section-header"><h2>Google Maps API</h2></div>
@@ -1080,6 +1110,10 @@ let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], gestiones=[], appUsers=[], mapsKey='';
 let defaultNewServiceStatus = '';
+let outlookSyncEnabled = false;       // activado por el usuario en Personalización
+let outlookLastSync    = 0;           // timestamp último sync
+let outlookSyncedIds   = [];          // internetMessageIds ya importados
+let outlookResponsable = '';          // responsable predefinido para correos
 let statusCycleOrder = [];
 let calBlockLayout = 'default';
 let statusColors={
@@ -1352,6 +1386,9 @@ function startDataSync(){
     }
     if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
     if(d.calBlockLayout) calBlockLayout=d.calBlockLayout;
+    if(d.outlookSyncEnabled!==undefined) outlookSyncEnabled=d.outlookSyncEnabled;
+    if(d.outlookSyncedIds)   outlookSyncedIds=d.outlookSyncedIds;
+    if(d.outlookResponsable) outlookResponsable=d.outlookResponsable;
     if(d.statusCycleOrder) statusCycleOrder=Array.isArray(d.statusCycleOrder)?d.statusCycleOrder:Object.values(d.statusCycleOrder);
     if(d.maestroPlagas)       maestroPlagas       = Array.isArray(d.maestroPlagas)       ? d.maestroPlagas       : Object.values(d.maestroPlagas);
     if(d.maestroProductos)    maestroProductos    = Array.isArray(d.maestroProductos)    ? d.maestroProductos    : Object.values(d.maestroProductos);
@@ -1378,7 +1415,7 @@ async function saveData(){
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     gestiones:  Object.fromEntries(gestiones.map(g=>[g.id,g])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    maestroEstados:getEstados(), mapsKey, defaultNewServiceStatus, calBlockLayout, statusCycleOrder:[], svcMaestro:getSvcMaestro(),
+    maestroEstados:getEstados(), mapsKey, defaultNewServiceStatus, calBlockLayout, statusCycleOrder:[], outlookSyncEnabled, outlookSyncedIds, outlookResponsable, svcMaestro:getSvcMaestro(),
     maestroPlagas:      getMaestroPlagas(),
     maestroProductos:   getMaestroProductos(),
     maestroRubros:      getMaestroRubros(),
@@ -1474,7 +1511,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.1730';
+const APP_VERSION = 'v2026.04.18.1740';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3420,6 +3457,7 @@ function renderStatusConfig(){
   const el=document.getElementById('statusConfigList'); if(!el) return;
   const cls=document.getElementById('calBlockLayoutSelect');
   if(cls) cls.value=calBlockLayout||'default';
+  _initOutlookSettings();
   const dsel=document.getElementById('defaultStatusSelect');
   if(dsel) dsel.innerHTML=getSvcStatuses().map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join('');
   const estados=getEstados();
@@ -3823,7 +3861,8 @@ function renderNotifPanel(){
 // Revisar notificaciones cada 5 minutos
 function startNotifChecker(){
   updateNotifBadge();
-  setInterval(updateNotifBadge, 5*60*1000);
+  syncOutlookGestion();
+  setInterval(()=>{ updateNotifBadge(); syncOutlookGestion(); }, 5*60*1000);
 }
 
 /* ═══ SERVICIOS VINCULADOS ═══ */
@@ -4568,6 +4607,10 @@ window.renderGestiones = function(){
   if(resp)   data=data.filter(g=>g.responsable===resp);
   if(q)      data=data.filter(g=>(g.titulo+g.descripcion+g.cliente).toLowerCase().includes(q));
 
+  // Actualizar badge
+  const pendientes=gestiones.filter(g=>g.estado==='Pendiente').length;
+  const badge=document.getElementById('gBadge');
+  if(badge){ if(pendientes>0){badge.textContent=pendientes;badge.style.display='inline';}else{badge.style.display='none';} }
   if(!data.length){
     el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sin resultados. Usa el botón + Nueva para agregar.</div>';
     return;
@@ -4582,7 +4625,7 @@ window.renderGestiones = function(){
     return `<div class="g-card" onclick="openEditGestion('${g.id}')">
       <div class="g-bar" style="background:${tc.color}"></div>
       <div class="g-body">
-        <div class="g-title">${g.titulo||'Sin título'}</div>
+        <div class="g-title">${g.origen==='outlook'?'📧 ':''} ${g.titulo||'Sin título'}</div>
         <div class="g-meta">
           <span class="g-badge" style="background:${tc.bg};color:${tc.color}">${g.tipo}</span>
           <span class="g-badge" style="background:${ec.bg};color:${ec.color}">${g.estado}</span>
@@ -4611,7 +4654,7 @@ window.openEditGestion = function(id){
 
 function _gestionModal(g){
   const isEdit=!!g;
-  const clientOpts=['<option value="">Sin cliente</option>',...clients.map(c=>`<option value="${c.name}" ${g?.cliente===c.name?'selected':''}>${c.name}</option>`)].join('');
+  // clientOpts eliminado — se usa autocomplete
   const respOpts=['<option value="">Sin asignar</option>',...technicians.map(t=>`<option value="${t.name}" ${g?.responsable===t.name?'selected':''}>${t.name}</option>`)].join('');
   const tipoOpts=Object.keys(G_TIPOS).map(t=>`<option value="${t}" ${(g?.tipo||'Solicitud')===t?'selected':''}>${t}</option>`).join('');
   const estOpts=G_ESTADOS_LIST.map(e=>`<option value="${e}" ${(g?.estado||'Pendiente')===e?'selected':''}>${e}</option>`).join('');
@@ -4624,7 +4667,14 @@ function _gestionModal(g){
       <div class="form-group"><label>Estado</label><select id="gf_estado">${estOpts}</select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Cliente</label><select id="gf_cliente">${clientOpts}</select></div>
+      <div class="form-group"><label>Cliente</label>
+        <div class="ac-wrap" style="position:relative">
+          <input id="gf_cliente" value="${g?.cliente||''}" autocomplete="off"
+            placeholder="Buscar cliente…"
+            oninput="acSearchG()" onkeydown="acKeydownG(event)" onblur="acCloseList()">
+          <div id="ac_list_g" class="ac-list"></div>
+        </div>
+      </div>
       <div class="form-group"><label>Responsable</label><select id="gf_resp">${respOpts}</select></div>
     </div>
     <div class="form-row">
@@ -4700,6 +4750,174 @@ window.exportarGestiones = function(){
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Gestiones');
   const f='Gestiones_'+new Date().toISOString().slice(0,10)+'.xlsx';
   XLSX.writeFile(wb,f); showToast('Exportado: '+f,'success');
+};
+
+window.acSearchG=function(){
+  const inp=document.getElementById('gf_cliente');
+  const list=document.getElementById('ac_list_g');
+  if(!inp||!list) return;
+  const q=inp.value.toLowerCase();
+  if(!q){ list.classList.remove('open'); return; }
+  const m=clients.filter(c=>c.name.toLowerCase().includes(q)).slice(0,20);
+  if(!m.length){ list.classList.remove('open'); return; }
+  list.innerHTML=m.map((c,i)=>`<div class="ac-item${i===0?' ac-active':''}" data-name="${c.name}"
+    onmousedown="acSelG('${c.id}')">
+    <div class="ac-name">${c.name}</div>
+    <div class="ac-addr">${c.address||''}${c.phone?' · '+c.phone:''}</div>
+  </div>`).join('');
+  list.classList.add('open');
+  list._activeIdx=0;
+};
+window.acSelG=function(cid){
+  const c=clients.find(x=>x.id===cid); if(!c) return;
+  const inp=document.getElementById('gf_cliente');
+  if(inp) inp.value=c.name;
+  const list=document.getElementById('ac_list_g');
+  if(list) list.classList.remove('open');
+};
+window.acKeydownG=function(e){
+  const list=document.getElementById('ac_list_g');
+  if(!list||!list.classList.contains('open')) return;
+  const items=[...list.querySelectorAll('.ac-item')];
+  if(!items.length) return;
+  let idx=list._activeIdx||0;
+  if(e.key==='ArrowDown'){
+    e.preventDefault(); idx=Math.min(idx+1,items.length-1);
+    items.forEach((el,i)=>el.classList.toggle('ac-active',i===idx));
+    list._activeIdx=idx; items[idx]?.scrollIntoView({block:'nearest'});
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault(); idx=Math.max(idx-1,0);
+    items.forEach((el,i)=>el.classList.toggle('ac-active',i===idx));
+    list._activeIdx=idx; items[idx]?.scrollIntoView({block:'nearest'});
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    const active=items[idx];
+    if(active) acSelG(active.dataset.name ? clients.find(c=>c.name===active.dataset.name)?.id||'' : '');
+    setTimeout(()=>{ document.getElementById('gf_resp')?.focus(); },50);
+  } else if(e.key==='Escape'){
+    list.classList.remove('open');
+  }
+};
+
+// ════════════════════════════════════════════════════
+// INTEGRACIÓN OUTLOOK — sincronización carpeta "Gestión APP"
+// ════════════════════════════════════════════════════
+
+window.saveOutlookConfig = function(){
+  outlookSyncEnabled = document.getElementById('outlookSyncChk')?.checked || false;
+  outlookResponsable = document.getElementById('outlookRespSel')?.value || '';
+  saveData();
+  showToast('Configuración Outlook guardada','success');
+  if(outlookSyncEnabled) syncOutlookGestion(true);
+};
+
+// Poblar selector de responsable en Personalización
+function _initOutlookSettings(){
+  const chk = document.getElementById('outlookSyncChk');
+  const sel = document.getElementById('outlookRespSel');
+  if(chk) chk.checked = outlookSyncEnabled;
+  if(sel){
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Sin asignar</option>' +
+      technicians.map(t=>`<option value="${t.name}" ${outlookResponsable===t.name?'selected':''}>${t.name}</option>`).join('');
+    if(cur) sel.value = cur;
+  }
+}
+
+// Detectar cliente por dominio del remitente
+function _detectarClienteDesdeEmail(senderEmail){
+  if(!senderEmail) return '';
+  const emailLower = senderEmail.toLowerCase();
+  // 1. Buscar coincidencia exacta de email
+  const exacto = clients.find(c => (c.email||'').toLowerCase()===emailLower || (c.emailCorp||'').toLowerCase()===emailLower);
+  if(exacto) return exacto.name;
+  // 2. Buscar por dominio del remitente en emails de clientes
+  const dominio = emailLower.split('@')[1];
+  if(dominio){
+    const porDominio = clients.find(c =>
+      (c.email||'').toLowerCase().includes('@'+dominio) ||
+      (c.emailCorp||'').toLowerCase().includes('@'+dominio)
+    );
+    if(porDominio) return porDominio.name;
+  }
+  // 3. Buscar por nombre del remitente (parte antes del @) en nombre de clientes
+  const user = emailLower.split('@')[0].replace(/[._-]/g,' ');
+  const porNombre = clients.find(c => c.name.toLowerCase().includes(user) || user.includes(c.name.toLowerCase().slice(0,5)));
+  if(porNombre) return porNombre.name;
+  return '';
+}
+
+// Sincronización principal
+window.syncOutlookGestion = async function(manual=false){
+  if(!outlookSyncEnabled && !manual) return;
+  const statusEl = document.getElementById('outlookSyncStatus');
+  if(statusEl) statusEl.textContent = '↻ Sincronizando…';
+
+  try {
+    // Llamar a la API de Microsoft Graph via el proxy Anthropic
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        mcp_servers:[{type:'url',url:'https://microsoft365.mcp.claude.com/mcp',name:'m365'}],
+        messages:[{role:'user',content:`Busca los últimos 20 correos en la carpeta "Gestión APP" de Outlook. Devuelve SOLO un JSON array con esta estructura exacta, sin texto adicional:
+[{"id":"internetMessageId","subject":"asunto","sender":"email_remitente","senderName":"nombre_remitente","received":"fecha ISO","body":"primeros 300 chars del cuerpo"}]
+Si la carpeta no existe o está vacía devuelve [].`}]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('');
+
+    // Parsear JSON
+    let emails = [];
+    try {
+      const match = text.match(/\[[\s\S]*\]/);
+      if(match) emails = JSON.parse(match[0]);
+    } catch(e){ console.warn('Outlook sync parse error:', e); }
+
+    // Importar correos nuevos
+    let nuevos = 0;
+    emails.forEach(em => {
+      if(!em.id || outlookSyncedIds.includes(em.id)) return;
+      const clienteDetectado = _detectarClienteDesdeEmail(em.sender);
+      const g = {
+        id:          uid(),
+        titulo:      em.subject || '(sin asunto)',
+        tipo:        'Solicitud',
+        estado:      'Pendiente',
+        cliente:     clienteDetectado,
+        responsable: outlookResponsable,
+        fechaVenc:   '',
+        prioridad:   'Normal',
+        descripcion: em.body||'',
+        origen:      'outlook',
+        origenEmail: em.sender,
+        origenNombre:em.senderName||em.sender,
+        origenFecha: em.received||'',
+        createdAt:   Date.now(),
+        updatedAt:   Date.now(),
+      };
+      gestiones.push(g);
+      outlookSyncedIds.push(em.id);
+      nuevos++;
+    });
+
+    if(nuevos > 0){
+      saveData();
+      if(document.getElementById('tab-gestiones')?.classList.contains('active')) renderGestiones();
+      showToast(`Outlook: ${nuevos} correo${nuevos>1?'s':''} importado${nuevos>1?'s':''}`, 'success');
+    }
+
+    outlookLastSync = Date.now();
+    const hora = new Date(outlookLastSync).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    if(statusEl) statusEl.textContent = `Última sync: ${hora}${nuevos?` · ${nuevos} nuevo${nuevos>1?'s':''}`:' · Sin cambios'}`;
+
+  } catch(err){
+    console.error('Outlook sync error:', err);
+    if(statusEl) statusEl.textContent = '✗ Error de conexión';
+  }
 };
 
 boot();
