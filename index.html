@@ -211,19 +211,19 @@ header {
 .toolbar-left,.toolbar-right { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 
 /* ── CALENDAR ── */
-.calendar-wrap { flex:1; overflow-y:auto; overflow-x:auto; padding:0 1rem .75rem; scroll-behavior:smooth; }
+.calendar-wrap { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 .calendar-grid {
   display:grid; grid-template-columns:48px repeat(7,1fr);
   border:1px solid var(--border); border-radius:var(--radius-lg);
-  overflow:hidden; min-width:640px; background:var(--bg2);
+  min-width:640px; background:var(--bg2);
 }
 .cal-corner { background:var(--bg3); border-right:1px solid var(--border); border-bottom:1px solid var(--border); }
 .col-head {
   background:var(--bg3); padding:8px 4px; text-align:center;
-  border-bottom:1px solid var(--border); border-right:1px solid var(--border);
-  position:sticky; top:0; z-index:20;
+  border-bottom:2px solid var(--border); border-right:1px solid var(--border);
+  position:sticky; top:0; z-index:20; box-shadow:0 1px 0 var(--border);
 }
-.cal-corner { position:sticky; top:0; z-index:21; background:var(--bg3); }
+.cal-corner { position:sticky; top:0; z-index:21; background:var(--bg3); box-shadow:0 1px 0 var(--border); }
 .col-head:last-child { border-right:none; }
 .col-head .dow { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:500; }
 .col-head .dom { font-size:17px; font-weight:600; margin-top:2px; }
@@ -678,7 +678,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0457 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0504 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -710,7 +710,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0457
+        v2026.04.18.0504
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -724,7 +724,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0457</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0504</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -754,17 +754,18 @@ header {
           style="cursor:pointer;padding:4px 8px;font-size:12px"
           onchange="goToMonth(this.value)" title="Ir a mes">
         <button class="btn btn-sm" onclick="goToday()" style="margin-left:2px">Hoy</button>
+        <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+        <select class="btn btn-sm" id="filterTech" onchange="renderCalendar()" style="font-size:12px">
+          <option value="">Todos los técnicos</option>
+        </select>
       </div>
-      <div class="toolbar">
-        <div class="toolbar-left"></div>
-        <div class="toolbar-right">
-          <select class="btn btn-sm" id="filterTech" onchange="renderCalendar()">
-            <option value="">Todos los técnicos</option>
-          </select>
 
+      <div class="calendar-wrap" style="padding:0;display:flex;flex-direction:column;overflow:hidden">
+        <div id="calDayHeader" style="display:grid;grid-template-columns:48px repeat(7,1fr);min-width:640px;background:var(--bg3);border-bottom:2px solid var(--border);flex-shrink:0;overflow:hidden"></div>
+        <div id="calBody" style="overflow-y:auto;overflow-x:auto;flex:1;padding-bottom:.75rem">
+          <div id="calGrid"></div>
         </div>
       </div>
-      <div class="calendar-wrap"><div id="calGrid"></div></div>
       <!-- Vista móvil para técnicos -->
       <div class="mobile-tech-view" id="mobileTechView" style="overflow-y:auto;padding-bottom:1rem">
         <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
@@ -1409,7 +1410,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0457';
+const APP_VERSION = 'v2026.04.18.0504';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1621,15 +1622,19 @@ window.renderCalendar=function(){
   const days=getWeekDays(weekOffset);
   const filter=document.getElementById('filterTech')?.value||'';
   const DOW=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  let html='<div class="calendar-grid">';
-  html+='<div class="cal-corner" style="border-bottom:1px solid var(--border)"></div>';
+  // Header de días — div fijo fuera del scroll
+  const dayHeader=document.getElementById('calDayHeader');
+  let hdrHtml='<div class="cal-corner"></div>';
   days.forEach((d,i)=>{
     const dk0=fmtKey(d);
-    html+=`<div class="col-head${isToday(d)?' today':''}${esFeriado&&esFeriado(dk0)?' feriado':''}">
+    hdrHtml+=`<div class="col-head${isToday(d)?' today':''}${esFeriado&&esFeriado(dk0)?' feriado':''}">
       <div class="dow">${DOW[i]}${esFeriado&&esFeriado(dk0)?'<span style="font-size:8px;margin-left:3px;color:#ef4444">feriado</span>':''}</div>
       <div class="dom">${d.getDate()}</div>
     </div>`;
   });
+  if(dayHeader) dayHeader.innerHTML=hdrHtml;
+  // Grid de horas — va dentro del scroll
+  let html='<div class="calendar-grid">';
   HOURS.forEach(h=>{
     html+=`<div class="time-label"><span>${fmtTime(h)}</span></div>`;
     days.forEach((d,di)=>{
