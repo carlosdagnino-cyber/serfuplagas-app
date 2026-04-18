@@ -297,7 +297,7 @@ header {
 .ac-list.open { display:block; }
 .ac-item { padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid var(--border); }
 .ac-item:last-child { border-bottom:none; }
-.ac-item:hover { background:var(--bg4); }
+.ac-item:hover, .ac-active { background:var(--bg4); }
 .ac-name { font-weight:500; }
 .ac-addr { font-size:11px; color:var(--text2); }
 
@@ -675,7 +675,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.17.1738 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0320 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -702,7 +702,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.17.1738
+        v2026.04.18.0320
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -716,7 +716,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.17.1738</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0320</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1376,7 +1376,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.17.1738';
+const APP_VERSION = 'v2026.04.18.0320';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1727,7 +1727,7 @@ window.openNewSvcModal=function(date='',hour=8){
   showModal(`<h3>Nuevo servicio</h3>
     <div class="form-group ac-wrap">
       <label>Cliente</label>
-      <input id="f_client" placeholder="Nombre del cliente" autocomplete="off" oninput="acSearch()" onblur="setTimeout(()=>{const l=document.getElementById('ac_list');if(l)l.classList.remove('open')},200)">
+      <input id="f_client" placeholder="Nombre del cliente" autocomplete="off" oninput="acSearch()" onkeydown="acKeydown(event)" onblur="setTimeout(()=>{const l=document.getElementById('ac_list');if(l)l.classList.remove('open')},200)">
       <div id="ac_list" class="ac-list"></div>
     </div>
     <div class="form-row">
@@ -1870,8 +1870,35 @@ window.acSearch=function(){
   if(!q||!list){list?.classList.remove('open');return;}
   const m=clients.filter(c=>c.name.toLowerCase().includes(q)).slice(0,6);
   if(!m.length){list.classList.remove('open');return;}
-  list.innerHTML=m.map(c=>`<div class="ac-item" onmousedown="acSel('${c.id}')"><div class="ac-name">${c.name}</div><div class="ac-addr">${c.address||''}${c.phone?' · '+c.phone:''}</div></div>`).join('');
+  list.innerHTML=m.map((c,i)=>`<div class="ac-item${i===0?' ac-active':''}" onmousedown="acSel('${c.id}')" data-cid="${c.id}"><div class="ac-name">${c.name}</div><div class="ac-addr">${c.address||''}${c.phone?' · '+c.phone:''}</div></div>`).join('');
   list.classList.add('open');
+  list._activeIdx = 0;
+};
+window.acKeydown=function(e){
+  const list=document.getElementById('ac_list');
+  if(!list||!list.classList.contains('open')) return;
+  const items=[...list.querySelectorAll('.ac-item')];
+  if(!items.length) return;
+  let idx=list._activeIdx||0;
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    idx=Math.min(idx+1,items.length-1);
+    items.forEach((el,i)=>el.classList.toggle('ac-active',i===idx));
+    list._activeIdx=idx;
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    idx=Math.max(idx-1,0);
+    items.forEach((el,i)=>el.classList.toggle('ac-active',i===idx));
+    list._activeIdx=idx;
+  } else if(e.key==='Enter'){
+    e.preventDefault();
+    const active=items[idx];
+    if(active){ acSel(active.dataset.cid); }
+    // Mover foco al selector de tipo de servicio
+    setTimeout(()=>{ document.getElementById('f_type')?.focus(); },50);
+  } else if(e.key==='Escape'){
+    list.classList.remove('open');
+  }
 };
 window.acSel=function(cid){
   const c=clients.find(x=>x.id===cid);if(!c)return;
