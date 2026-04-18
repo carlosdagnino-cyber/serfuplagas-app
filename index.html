@@ -254,6 +254,7 @@ header {
   overflow:hidden; transition:filter .1s; user-select:none;
   display:flex; align-items:center; gap:4px;
 }
+.svc-block.layout-compact { align-items:flex-start; padding:4px 6px; }
 .svc-block:hover { filter:brightness(1.15); z-index:10; }
 .svc-block.dragging { opacity:.2; cursor:grabbing; }
 .sb-left { flex:1; min-width:0; overflow:hidden; }
@@ -675,7 +676,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0325 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0336 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -702,7 +703,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0325
+        v2026.04.18.0336
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -716,7 +717,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0325</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0336</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1394,7 +1395,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0325';
+const APP_VERSION = 'v2026.04.18.0336';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1508,9 +1509,39 @@ function renderFilterSelect(){
 }
 
 function calcLayout(daySvcs){
-  // Siempre apilado vertical — 1 columna, ancho 100%
+  // En modo default → siempre 1 columna sin divisiones
+  if(calBlockLayout!=='compact'){
+    const res={}; daySvcs.forEach(s=>{ res[s.id]={col:0,total:1}; }); return res;
+  }
+  // En modo compacto → detectar solapamientos y dividir columnas (algoritmo greedy)
+  function svcRange(s){
+    const startMin=s.startH*60+(s.startM||0);
+    // Usar siempre endH/endM reales — existen para todos los timeMode
+    const endMinReal=s.endH*60+(s.endM||0);
+    const endMin=endMinReal>startMin ? endMinReal : startMin+60; // mínimo 1h
+    return {startMin,endMin};
+  }
+  const sorted=[...daySvcs].sort((a,b)=>(a.startH*60+(a.startM||0))-(b.startH*60+(b.startM||0)));
+  const colEnd=[]; // colEnd[i] = endMin del último servicio en columna i
+  const assigned={};
+  sorted.forEach(svc=>{
+    const {startMin,endMin}=svcRange(svc);
+    let placed=false;
+    for(let i=0;i<colEnd.length;i++){
+      if(colEnd[i]<=startMin){ colEnd[i]=endMin; assigned[svc.id]=i; placed=true; break; }
+    }
+    if(!placed){ assigned[svc.id]=colEnd.length; colEnd.push(endMin); }
+  });
   const res={};
-  daySvcs.forEach(svc=>{ res[svc.id]={col:0,total:1}; });
+  sorted.forEach(svc=>{
+    const {startMin,endMin}=svcRange(svc);
+    const overlapping=sorted.filter(s2=>{
+      const r2=svcRange(s2);
+      return r2.startMin<endMin && r2.endMin>startMin;
+    });
+    const maxCol=Math.max(...overlapping.map(s2=>assigned[s2.id]));
+    res[svc.id]={col:assigned[svc.id],total:maxCol+1};
+  });
   return res;
 }
 
@@ -1621,15 +1652,20 @@ window.renderCalendar=function(){
       const topPx=((svc.startM||0)/60)*56;
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
       // Para franja horaria sin hora exacta, altura fija compacta
-      const hpx = svc.timeMode==='defined'
-        ? Math.max(mins/60*56, 28)
-        : 28; // altura fija para AM/PM/Todo el día
+      const minH = calBlockLayout==='compact' ? 46 : 28;
+      // Usar siempre startH/endH reales para calcular duración visual
+      // independiente del timeMode — AM/PM también tienen startH/endH guardados
+      const minsReal = (svc.endH*60+(svc.endM||0)) - (svc.startH*60+(svc.startM||0));
+      const hpx = minsReal > 0
+        ? Math.max(minsReal/60*56, minH)
+        : minH;
       const {col,total}=layout[svc.id]||{col:0,total:1};
-      const w='calc(100% - 6px)';
-      const left='3px';
+      const colW=100/total;
+      const w = calBlockLayout==='compact'&&total>1 ? `calc(${colW}% - 5px)` : 'calc(100% - 6px)';
+      const left = calBlockLayout==='compact'&&total>1 ? `calc(${col*colW}% + 3px)` : '3px';
 
       const block=document.createElement('div');
-      block.className='svc-block';
+      block.className='svc-block'+(calBlockLayout==='compact'?' layout-compact':'');
       block.draggable=canEdit;
       block.dataset.id=svc.id;
       block.style.cssText=`top:${topPx}px;height:${hpx}px;width:${w};left:${left};right:auto;background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}`;
@@ -1954,7 +1990,9 @@ window.saveSvc=function(){
   const endStr  =document.getElementById('f_end')?.value||(timeDef?'09:00':null);
   const sH = timeDef ? parseInt((startStr||'08:00').split(':')[0]) : franjaDefaultH;
   const sM = timeDef ? parseInt((startStr||'08:00').split(':')[1]) : 0;
-  const eH = timeDef ? parseInt((endStr||'09:00').split(':')[0])   : franjaDefaultH+1;
+  const eH = timeDef
+    ? parseInt((endStr||'09:00').split(':')[0])
+    : (franja==='pm' ? 18 : franja==='dia' ? 18 : 13); // AM→8-13h, PM→13-18h, Día→8-18h
   const eM = timeDef ? parseInt((endStr||'09:00').split(':')[1])   : 0;
   const address=document.getElementById('f_address').value.trim();
   const phone  =document.getElementById('f_phone').value.trim();
