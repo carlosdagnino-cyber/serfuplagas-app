@@ -211,7 +211,7 @@ header {
 .toolbar-left,.toolbar-right { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 
 /* ── CALENDAR ── */
-.calendar-wrap { flex:1; overflow:auto; padding:0 1rem .75rem; }
+.calendar-wrap { flex:1; overflow:auto; padding:0 1rem .75rem; scroll-behavior:smooth; }
 .calendar-grid {
   display:grid; grid-template-columns:48px repeat(7,1fr);
   border:1px solid var(--border); border-radius:var(--radius-lg);
@@ -221,7 +221,9 @@ header {
 .col-head {
   background:var(--bg3); padding:8px 4px; text-align:center;
   border-bottom:1px solid var(--border); border-right:1px solid var(--border);
+  position:sticky; top:0; z-index:20;
 }
+.cal-corner { position:sticky; top:0; z-index:21; }
 .col-head:last-child { border-right:none; }
 .col-head .dow { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:500; }
 .col-head .dom { font-size:17px; font-weight:600; margin-top:2px; }
@@ -676,7 +678,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0420 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0452 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -686,12 +688,17 @@ header {
     <div class="h-left">
       <div class="logo-mark">🐛</div>
       <span class="app-name">Serfuplagas</span>
-      <div class="week-nav" id="weekNavBar">
-        <button onclick="changeWeek(-1)">←</button>
-        <div class="week-label" id="weekLabel">—</div>
-        <button onclick="changeWeek(1)">→</button>
-        <button class="btn btn-sm" onclick="goToday()" style="margin-left:2px">Hoy</button>
-      </div>
+    </div>
+    <div id="mainTabs" class="tabs" style="flex:1;border-bottom:none;padding:0;overflow-x:auto;background:none;gap:0">
+      <div class="tab active" data-tab="calendar" onclick="switchTab('calendar')"><span class="tab-icon">📅</span>Calendario</div>
+      <div class="tab" data-tab="routes"   onclick="switchTab('routes')"  ><span class="tab-icon">🗺️</span>Rutas</div>
+      <div class="tab" data-tab="clients"  onclick="switchTab('clients')" ><span class="tab-icon">👥</span>Clientes</div>
+      <div class="tab" data-tab="techs"    onclick="switchTab('techs')"   ><span class="tab-icon">👷</span>Técnicos</div>
+      <div class="tab" data-tab="users"    onclick="switchTab('users')"   ><span class="tab-icon">🔑</span>Usuarios</div>
+      <div class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span>Personalización</div>
+      <div class="tab" data-tab="history"  onclick="switchTab('history')" ><span class="tab-icon">📋</span>Historial</div>
+      <div class="tab" data-tab="maestros" onclick="switchTab('maestros')"><span class="tab-icon">🗂️</span>Maestros</div>
+      <div class="tab" data-tab="plan"     onclick="switchTab('plan')"    ><span class="tab-icon">📌</span>Planificar</div>
     </div>
     <div class="h-right">
       <div class="sync-pill s-ok" id="syncPill">
@@ -703,7 +710,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0420
+        v2026.04.18.0452
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -717,7 +724,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0420</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0452</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -732,31 +739,26 @@ header {
     </div>
   </header>
 
-  <div class="tabs" id="mainTabs">
-    <div class="tab active" data-tab="calendar" onclick="switchTab('calendar')"><span class="tab-icon">📅</span>Calendario</div>
-    <div class="tab" data-tab="routes"   onclick="switchTab('routes')"  ><span class="tab-icon">🗺️</span>Rutas</div>
-    <div class="tab" data-tab="clients"  onclick="switchTab('clients')" ><span class="tab-icon">👥</span>Clientes</div>
-    <div class="tab" data-tab="techs"    onclick="switchTab('techs')"   ><span class="tab-icon">👷</span>Técnicos</div>
-    <div class="tab" data-tab="users"    onclick="switchTab('users')"   ><span class="tab-icon">🔑</span>Usuarios</div>
-    <div class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span>Personalización</div>
-    <div class="tab" data-tab="history"  onclick="switchTab('history')" ><span class="tab-icon">📋</span>Historial</div>
-    <div class="tab" data-tab="maestros" onclick="switchTab('maestros')" ><span class="tab-icon">🗂️</span>Maestros</div>
-    <div class="tab" data-tab="plan"     onclick="switchTab('plan')"    ><span class="tab-icon">📌</span>Planificar</div>
-  </div>
+
 
   <div class="main">
 
     <!-- ══ CALENDARIO ══ -->
     <div id="tab-calendar" class="section active">
+      <!-- Navegación semanal centrada sobre la grilla -->
+      <div id="weekNavBar" style="display:none;justify-content:center;align-items:center;gap:6px;padding:6px 1rem;border-bottom:1px solid var(--border);background:var(--bg2)">
+        <button class="btn btn-sm" onclick="changeWeek(-1)">←</button>
+        <div class="week-label" id="weekLabel" style="font-size:13px;font-weight:600;min-width:160px;text-align:center">—</div>
+        <button class="btn btn-sm" onclick="changeWeek(1)">→</button>
+        <button class="btn btn-sm" onclick="goToday()" style="margin-left:4px">Hoy</button>
+      </div>
       <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="legend" id="legendBar"></div>
-        </div>
+        <div class="toolbar-left"></div>
         <div class="toolbar-right">
           <select class="btn btn-sm" id="filterTech" onchange="renderCalendar()">
             <option value="">Todos los técnicos</option>
           </select>
-          <button class="btn btn-primary btn-sm" onclick="openNewSvcModal()">+ Servicio</button>
+
         </div>
       </div>
       <div class="calendar-wrap"><div id="calGrid"></div></div>
@@ -873,6 +875,13 @@ header {
           </select>
         </div>
         <div id="statusConfigList"></div>
+
+        <!-- ORDEN DEL CICLO DE ESTADOS -->
+        <div style="margin-top:1.5rem">
+          <div class="section-header"><h2>Orden del ciclo de estados</h2></div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Arrastra para definir el orden al hacer clic en el estado de un servicio</p>
+          <div id="statusCycleList"></div>
+        </div>
 
         <!-- VISUALIZACIÓN CALENDARIO -->
         <div style="margin-top:2rem">
@@ -1021,6 +1030,7 @@ let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], appUsers=[], mapsKey='';
 let defaultNewServiceStatus = '';
+let statusCycleOrder = []; // orden personalizado del ciclo de estados
 let calBlockLayout = 'default';
 let statusColors={
   'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
@@ -1275,6 +1285,7 @@ function startDataSync(){
     statusColors= d.statusColors||statusColors;
     if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
     if(d.calBlockLayout) calBlockLayout=d.calBlockLayout;
+    if(d.statusCycleOrder) statusCycleOrder=Array.isArray(d.statusCycleOrder)?d.statusCycleOrder:Object.values(d.statusCycleOrder);
     if(d.maestroPlagas)       maestroPlagas       = Array.isArray(d.maestroPlagas)       ? d.maestroPlagas       : Object.values(d.maestroPlagas);
     if(d.maestroProductos)    maestroProductos    = Array.isArray(d.maestroProductos)    ? d.maestroProductos    : Object.values(d.maestroProductos);
     if(d.maestroRubros)       maestroRubros       = Array.isArray(d.maestroRubros)       ? d.maestroRubros       : Object.values(d.maestroRubros);
@@ -1299,7 +1310,7 @@ async function saveData(){
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    statusColors, mapsKey, defaultNewServiceStatus, calBlockLayout, svcMaestro:getSvcMaestro(),
+    statusColors, mapsKey, defaultNewServiceStatus, calBlockLayout, statusCycleOrder, svcMaestro:getSvcMaestro(),
     maestroPlagas:      getMaestroPlagas(),
     maestroProductos:   getMaestroProductos(),
     maestroRubros:      getMaestroRubros(),
@@ -1395,7 +1406,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0420';
+const APP_VERSION = 'v2026.04.18.0452';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1551,9 +1562,11 @@ window.cycleStatus=function(e,svcId){
   e.stopPropagation();
   const idx=services.findIndex(s=>s.id===svcId); if(idx<0)return;
   const cur=services[idx].status||'Programado';
-  const cycle=getSvcStatuses();
-  const ci=cycle.indexOf(cur);
-  const next=cycle[(ci+1)%cycle.length];
+  const allStatuses=getSvcStatuses();
+  const cycle=statusCycleOrder.length ? statusCycleOrder.filter(s=>allStatuses.includes(s)) : allStatuses;
+  const effectiveCycle=cycle.length ? cycle : allStatuses;
+  const ci=effectiveCycle.indexOf(cur);
+  const next=effectiveCycle[(ci+1)%effectiveCycle.length];
   services[idx]={...services[idx],status:next,updatedAt:Date.now()};
   addHistory('Estado cambiado',`${services[idx].client}: ${cur} → ${next}`);
   saveData(); updateNotifBadge();
@@ -3327,6 +3340,22 @@ function renderStatusConfig(){
   if(cls){ cls.value=calBlockLayout||'default'; }
   const dsel=document.getElementById('defaultStatusSelect');
   if(dsel){const ss=getSvcStatuses();dsel.innerHTML=ss.map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join('');}
+  // Render orden de ciclo
+  const cycleEl=document.getElementById('statusCycleList');
+  if(cycleEl){
+    const all=getSvcStatuses();
+    const ordered=statusCycleOrder.length?[...statusCycleOrder.filter(s=>all.includes(s)),...all.filter(s=>!statusCycleOrder.includes(s))]:all;
+    cycleEl.innerHTML=ordered.map((s,i)=>{
+      const c=getSC(s);
+      return `<div class="cycle-item" draggable="true" data-status="${s}" style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:4px;cursor:grab">
+        <span style="color:var(--text3);font-size:12px">⠿</span>
+        <span style="width:10px;height:10px;border-radius:50%;background:${c.bd};flex-shrink:0"></span>
+        <span style="font-size:13px;flex:1">${s}</span>
+        <span style="font-size:10px;color:var(--text3)">${i===0?'primero':''}</span>
+      </div>`;
+    }).join('');
+    _initCycleDrag(cycleEl);
+  }
   const statuses=getSvcStatuses();
   el.innerHTML=statuses.map((s,idx)=>{
     const c=getSC(s);
@@ -4273,6 +4302,20 @@ window._saveFormulario = function(idx){
 
 
 window.getSvcClientField=function(clientName,field,fallback){ const c=clients.find(x=>x.name.toLowerCase()===clientName.toLowerCase()); return (c&&c[field])||fallback||''; };
+
+window._initCycleDrag=function(container){
+  let dragged=null;
+  container.querySelectorAll('.cycle-item').forEach(item=>{
+    item.addEventListener('dragstart',e=>{ dragged=item; item.style.opacity='.4'; });
+    item.addEventListener('dragend',  e=>{ item.style.opacity='1'; dragged=null; _saveCycleOrder(container); });
+    item.addEventListener('dragover', e=>{ e.preventDefault(); const r=item.getBoundingClientRect(); const mid=r.top+r.height/2; container.insertBefore(dragged,e.clientY<mid?item:item.nextSibling); });
+  });
+};
+window._saveCycleOrder=function(container){
+  const order=[...container.querySelectorAll('.cycle-item')].map(el=>el.dataset.status);
+  statusCycleOrder=order; saveData();
+  showToast('Orden del ciclo actualizado','success');
+};
 
 boot();
 startNotifChecker();
