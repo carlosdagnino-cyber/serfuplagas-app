@@ -294,7 +294,7 @@ header {
 .ac-list {
   position:absolute; top:calc(100% + 4px); left:0; right:0;
   background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius);
-  z-index:500; max-height:160px; overflow-y:auto; display:none;
+  z-index:500; max-height:280px; overflow-y:auto; display:none;
   box-shadow:var(--shadow);
 }
 .ac-list.open { display:block; }
@@ -678,7 +678,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0630 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0709 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -710,7 +710,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0630
+        v2026.04.18.0709
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -724,7 +724,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0630</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0709</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1421,7 +1421,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0630';
+const APP_VERSION = 'v2026.04.18.0709';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1982,7 +1982,7 @@ window.acSearch=function(){
   const q=document.getElementById('f_client').value.toLowerCase();
   const list=document.getElementById('ac_list');
   if(!q||!list){list?.classList.remove('open');return;}
-  const m=clients.filter(c=>c.name.toLowerCase().includes(q)).slice(0,6);
+  const m=clients.filter(c=>c.name.toLowerCase().includes(q)).slice(0,20);
   if(!m.length){list.classList.remove('open');return;}
   list.innerHTML=m.map((c,i)=>`<div class="ac-item${i===0?' ac-active':''}" onmousedown="acSel('${c.id}')" data-cid="${c.id}"><div class="ac-name">${c.name}</div><div class="ac-addr">${c.address||''}${c.phone?' · '+c.phone:''}</div></div>`).join('');
   list.classList.add('open');
@@ -1999,11 +1999,13 @@ window.acKeydown=function(e){
     idx=Math.min(idx+1,items.length-1);
     items.forEach((el,i)=>el.classList.toggle('ac-active',i===idx));
     list._activeIdx=idx;
+    items[idx]?.scrollIntoView({block:'nearest'});
   } else if(e.key==='ArrowUp'){
     e.preventDefault();
     idx=Math.max(idx-1,0);
     items.forEach((el,i)=>el.classList.toggle('ac-active',i===idx));
     list._activeIdx=idx;
+    items[idx]?.scrollIntoView({block:'nearest'});
   } else if(e.key==='Enter'){
     e.preventDefault();
     const active=items[idx];
