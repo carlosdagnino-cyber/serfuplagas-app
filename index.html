@@ -182,6 +182,15 @@ header {
 .mtab{padding:7px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s;margin-bottom:-1px}
 .mtab:hover{color:var(--text);background:var(--bg3)}
 .mtab-active{color:var(--accent)!important;border-bottom-color:var(--accent)!important;font-weight:500}
+.g-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:8px; display:grid; grid-template-columns:4px 1fr auto; gap:0 12px; align-items:start; cursor:pointer; transition:filter .1s; }
+.g-card:hover { filter:brightness(1.08); }
+.g-bar { border-radius:4px; width:4px; align-self:stretch; }
+.g-body { min-width:0; }
+.g-title { font-size:13px; font-weight:600; margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.g-meta { font-size:11px; color:var(--text2); display:flex; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
+.g-desc { font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.g-actions { display:flex; gap:4px; flex-shrink:0; }
+.g-badge { padding:2px 8px; border-radius:8px; font-size:10px; font-weight:600; }
 /* ── MAIN CONTENT ── */
 .main { flex:1; overflow:hidden; display:flex; flex-direction:column; }
 .section { display:none; flex:1; overflow:hidden; flex-direction:column; }
@@ -681,7 +690,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.1543 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.1730 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -694,6 +703,7 @@ header {
     </div>
     <div id="mainTabs" class="tabs" style="flex:1;border-bottom:none;padding:0;overflow-x:auto;background:none;gap:0">
       <div class="tab active" data-tab="calendar" onclick="switchTab('calendar')"><span class="tab-icon">📅</span>Calendario</div>
+      <div class="tab" data-tab="gestiones" onclick="switchTab('gestiones')"><span class="tab-icon">📌</span>Gestión</div>
       <div class="tab" data-tab="routes"   onclick="switchTab('routes')"  ><span class="tab-icon">🗺️</span>Rutas</div>
       <div class="tab" data-tab="clients"  onclick="switchTab('clients')" ><span class="tab-icon">👥</span>Clientes</div>
       <div class="tab" data-tab="techs"    onclick="switchTab('techs')"   ><span class="tab-icon">👷</span>Técnicos</div>
@@ -713,7 +723,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.1543
+        v2026.04.18.1730
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -727,7 +737,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.1543</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.1730</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -942,6 +952,43 @@ header {
       </div>
     </div>
 
+    <!-- ══ GESTIÓN ══ -->
+    <div id="tab-gestiones" class="section">
+      <div class="pad">
+        <div class="section-header">
+          <h2>Gestión</h2>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="exportarGestiones()">⬇ Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="openNuevaGestion()">+ Nueva</button>
+          </div>
+        </div>
+        <!-- Filtros -->
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+          <select id="gFiltroTipo" class="btn btn-sm" onchange="renderGestiones()" style="font-size:12px">
+            <option value="">Todos los tipos</option>
+            <option value="Solicitud">Solicitudes</option>
+            <option value="Tarea">Tareas internas</option>
+            <option value="Incidencia">Incidencias</option>
+            <option value="Reclamo">Reclamos</option>
+          </select>
+          <select id="gFiltroEstado" class="btn btn-sm" onchange="renderGestiones()" style="font-size:12px">
+            <option value="">Todos los estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Asignado">Asignado</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Resuelto">Resuelto</option>
+          </select>
+          <select id="gFiltroResp" class="btn btn-sm" onchange="renderGestiones()" style="font-size:12px">
+            <option value="">Todos los responsables</option>
+          </select>
+          <input id="gBuscar" class="btn btn-sm" style="font-size:12px;cursor:text;text-align:left;min-width:180px"
+            placeholder="🔍 Buscar…" oninput="renderGestiones()">
+        </div>
+        <!-- Lista -->
+        <div id="gestionList"></div>
+      </div>
+    </div>
+
     <!-- ══ PLANIFICADOR ══ -->
     <div id="tab-plan" class="section">
       <div class="toolbar">
@@ -1031,7 +1078,7 @@ import { getDatabase, ref, onValue, set, get }
 /* ═══════════════ STATE ═══════════════ */
 let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
-let services=[], technicians=[], clients=[], history=[], appUsers=[], mapsKey='';
+let services=[], technicians=[], clients=[], history=[], gestiones=[], appUsers=[], mapsKey='';
 let defaultNewServiceStatus = '';
 let statusCycleOrder = [];
 let calBlockLayout = 'default';
@@ -1293,6 +1340,7 @@ function startDataSync(){
     services    = d.services    ? Object.values(d.services).map(s=>({...s, date:String(s.date||'').slice(0,10)}))   : [];
     technicians = d.technicians ? Object.values(d.technicians) : getDefaultTechs();
     clients     = d.clients     ? Object.values(d.clients)     : [];
+    gestiones   = d.gestiones   ? Object.values(d.gestiones)   : [];
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
     if(d.maestroEstados){
       maestroEstados=Array.isArray(d.maestroEstados)?d.maestroEstados:Object.values(d.maestroEstados);
@@ -1328,6 +1376,7 @@ async function saveData(){
     services:   Object.fromEntries(services.map(s=>[s.id,s])),
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
+    gestiones:  Object.fromEntries(gestiones.map(g=>[g.id,g])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
     maestroEstados:getEstados(), mapsKey, defaultNewServiceStatus, calBlockLayout, statusCycleOrder:[], svcMaestro:getSvcMaestro(),
     maestroPlagas:      getMaestroPlagas(),
@@ -1425,7 +1474,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.1543';
+const APP_VERSION = 'v2026.04.18.1730';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3441,6 +3490,7 @@ window.switchTab =function(tab){
   if(tab==='calendar') renderCalendar();
   if(tab==='routes')   renderRouteSelects();
   if(tab==='maestros') renderMaestros();
+  if(tab==='gestiones') renderGestiones();
   if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
 };
 
@@ -4479,6 +4529,177 @@ window.exportarClientes = function(){
   const fecha = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, 'Clientes_'+fecha+'.xlsx');
   showToast('Exportado: Clientes_'+fecha+'.xlsx ('+clients.length+' clientes)','success');
+};
+
+// ════════════════════════════════════════════════════
+// GESTIÓN — Solicitudes, Tareas, Incidencias, Reclamos
+// ════════════════════════════════════════════════════
+
+const G_TIPOS = {
+  'Solicitud': {color:'#4f8ef7', bg:'rgba(79,142,247,.15)'},
+  'Tarea':     {color:'#a855f7', bg:'rgba(168,85,247,.15)'},
+  'Incidencia':{color:'#f59e0b', bg:'rgba(245,158,11,.15)'},
+  'Reclamo':   {color:'#ef4444', bg:'rgba(239,68,68,.15)'},
+};
+const G_ESTADOS = {
+  'Pendiente': {color:'#94a3b8', bg:'rgba(100,116,139,.2)'},
+  'Asignado':  {color:'#f59e0b', bg:'rgba(245,158,11,.15)'},
+  'En proceso':{color:'#4f8ef7', bg:'rgba(79,142,247,.15)'},
+  'Resuelto':  {color:'#22c55e', bg:'rgba(34,197,94,.15)'},
+};
+const G_ESTADOS_LIST = ['Pendiente','Asignado','En proceso','Resuelto'];
+
+window.renderGestiones = function(){
+  // Poblar filtro responsables
+  const selResp = document.getElementById('gFiltroResp');
+  if(selResp && selResp.options.length<=1){
+    const resps=[...new Set(gestiones.map(g=>g.responsable).filter(Boolean))];
+    resps.forEach(r=>{ const o=document.createElement('option'); o.value=o.textContent=r; selResp.appendChild(o); });
+  }
+  const tipo    = document.getElementById('gFiltroTipo')?.value||'';
+  const estado  = document.getElementById('gFiltroEstado')?.value||'';
+  const resp    = document.getElementById('gFiltroResp')?.value||'';
+  const q       = (document.getElementById('gBuscar')?.value||'').toLowerCase();
+  const el      = document.getElementById('gestionList'); if(!el) return;
+
+  let data = [...gestiones].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(tipo)   data=data.filter(g=>g.tipo===tipo);
+  if(estado) data=data.filter(g=>g.estado===estado);
+  if(resp)   data=data.filter(g=>g.responsable===resp);
+  if(q)      data=data.filter(g=>(g.titulo+g.descripcion+g.cliente).toLowerCase().includes(q));
+
+  if(!data.length){
+    el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Sin resultados. Usa el botón + Nueva para agregar.</div>';
+    return;
+  }
+  el.innerHTML=data.map(g=>{
+    const tc=G_TIPOS[g.tipo]||G_TIPOS['Solicitud'];
+    const ec=G_ESTADOS[g.estado]||G_ESTADOS['Pendiente'];
+    const fecha=g.createdAt?new Date(g.createdAt).toLocaleDateString('es-CL',{day:'numeric',month:'short',year:'numeric'}):'';
+    const fechaVenc=g.fechaVenc?'<span title="Vence">📅 '+g.fechaVenc+'</span>':'';
+    const cliente=g.cliente?'<span>👥 '+g.cliente+'</span>':'';
+    const resp=g.responsable?'<span>👤 '+g.responsable+'</span>':'';
+    return `<div class="g-card" onclick="openEditGestion('${g.id}')">
+      <div class="g-bar" style="background:${tc.color}"></div>
+      <div class="g-body">
+        <div class="g-title">${g.titulo||'Sin título'}</div>
+        <div class="g-meta">
+          <span class="g-badge" style="background:${tc.bg};color:${tc.color}">${g.tipo}</span>
+          <span class="g-badge" style="background:${ec.bg};color:${ec.color}">${g.estado}</span>
+          ${cliente}${resp}${fechaVenc}
+          ${fecha?'<span style="color:var(--text3)">'+fecha+'</span>':''}
+        </div>
+        ${g.descripcion?`<div class="g-desc">${g.descripcion}</div>`:''}
+      </div>
+      <div class="g-actions">
+        <button class="btn btn-sm" onclick="event.stopPropagation();cycleGestion('${g.id}')"
+          style="font-size:10px;padding:2px 8px;background:${ec.bg};color:${ec.color};border-color:${ec.color}40">
+          ${G_ESTADOS_LIST[(G_ESTADOS_LIST.indexOf(g.estado)+1)%G_ESTADOS_LIST.length]||''}→
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+window.openNuevaGestion = function(){
+  _gestionModal(null);
+};
+window.openEditGestion = function(id){
+  const g=gestiones.find(x=>x.id===id); if(!g) return;
+  _gestionModal(g);
+};
+
+function _gestionModal(g){
+  const isEdit=!!g;
+  const clientOpts=['<option value="">Sin cliente</option>',...clients.map(c=>`<option value="${c.name}" ${g?.cliente===c.name?'selected':''}>${c.name}</option>`)].join('');
+  const respOpts=['<option value="">Sin asignar</option>',...technicians.map(t=>`<option value="${t.name}" ${g?.responsable===t.name?'selected':''}>${t.name}</option>`)].join('');
+  const tipoOpts=Object.keys(G_TIPOS).map(t=>`<option value="${t}" ${(g?.tipo||'Solicitud')===t?'selected':''}>${t}</option>`).join('');
+  const estOpts=G_ESTADOS_LIST.map(e=>`<option value="${e}" ${(g?.estado||'Pendiente')===e?'selected':''}>${e}</option>`).join('');
+  showModal(`<h3>${isEdit?'Editar':'Nueva'} gestión</h3>
+    <div class="form-group"><label>Título <span style="color:var(--accent)">*</span></label>
+      <input id="gf_titulo" value="${g?.titulo||''}" placeholder="Descripción breve">
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo</label><select id="gf_tipo">${tipoOpts}</select></div>
+      <div class="form-group"><label>Estado</label><select id="gf_estado">${estOpts}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cliente</label><select id="gf_cliente">${clientOpts}</select></div>
+      <div class="form-group"><label>Responsable</label><select id="gf_resp">${respOpts}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha vencimiento</label>
+        <input type="date" id="gf_venc" value="${g?.fechaVenc||''}">
+      </div>
+      <div class="form-group"><label>Prioridad</label>
+        <select id="gf_prior">
+          ${['Normal','Alta','Urgente'].map(p=>`<option ${(g?.prioridad||'Normal')===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Descripción / Detalle</label>
+      <textarea id="gf_desc" rows="4" style="width:100%;padding:8px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;resize:vertical"
+        placeholder="Descripción detallada, contexto, pasos a seguir…">${g?.descripcion||''}</textarea>
+    </div>
+    ${isEdit?`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Creado: ${g.createdAt?new Date(g.createdAt).toLocaleString('es-CL'):''}</div>`:''}
+    <div class="modal-footer">
+      ${isEdit?`<button class="btn btn-sm" style="color:#ef4444;border-color:#ef4444;margin-right:auto" onclick="eliminarGestion('${g.id}')">Eliminar</button>`:''}
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGestion(${isEdit?`'${g.id}'`:'null'})">💾 Guardar</button>
+    </div>`);
+}
+
+window.saveGestion = function(id){
+  const titulo=document.getElementById('gf_titulo')?.value.trim();
+  if(!titulo){showToast('Ingresa un título','error');return;}
+  const item={
+    id:          id||uid(),
+    titulo,
+    tipo:        document.getElementById('gf_tipo')?.value||'Solicitud',
+    estado:      document.getElementById('gf_estado')?.value||'Pendiente',
+    cliente:     document.getElementById('gf_cliente')?.value||'',
+    responsable: document.getElementById('gf_resp')?.value||'',
+    fechaVenc:   document.getElementById('gf_venc')?.value||'',
+    prioridad:   document.getElementById('gf_prior')?.value||'Normal',
+    descripcion: document.getElementById('gf_desc')?.value.trim()||'',
+    createdAt:   id?gestiones.find(g=>g.id===id)?.createdAt||Date.now():Date.now(),
+    updatedAt:   Date.now(),
+  };
+  if(id){ const i=gestiones.findIndex(g=>g.id===id); if(i>=0) gestiones[i]=item; else gestiones.push(item); }
+  else   { gestiones.push(item); }
+  saveData(); closeModal(); renderGestiones();
+  showToast(id?'Gestión actualizada':'Gestión creada','success');
+};
+
+window.cycleGestion = function(id){
+  const g=gestiones.find(x=>x.id===id); if(!g) return;
+  const i=G_ESTADOS_LIST.indexOf(g.estado);
+  g.estado=G_ESTADOS_LIST[(i+1)%G_ESTADOS_LIST.length];
+  g.updatedAt=Date.now();
+  saveData(); renderGestiones();
+};
+
+window.eliminarGestion = function(id){
+  if(!confirm('¿Eliminar esta gestión?')) return;
+  gestiones=gestiones.filter(g=>g.id!==id);
+  saveData(); closeModal(); renderGestiones();
+  showToast('Gestión eliminada','success');
+};
+
+window.exportarGestiones = function(){
+  if(typeof XLSX==='undefined'){showToast('SheetJS no disponible','error');return;}
+  const cols=['ID','Tipo','Estado','Título','Descripción','Cliente','Responsable','Prioridad','Fecha venc.','Creado','Actualizado'];
+  const rows=[cols,...gestiones.map(g=>[
+    g.id,g.tipo,g.estado,g.titulo,g.descripcion||'',g.cliente||'',g.responsable||'',
+    g.prioridad||'Normal',g.fechaVenc||'',
+    g.createdAt?new Date(g.createdAt).toLocaleDateString('es-CL'):'',
+    g.updatedAt?new Date(g.updatedAt).toLocaleDateString('es-CL'):'',
+  ])];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=cols.map((_,i)=>({wch:Math.max(...rows.map(r=>String(r[i]||'').length),12)}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Gestiones');
+  const f='Gestiones_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,f); showToast('Exportado: '+f,'success');
 };
 
 boot();
