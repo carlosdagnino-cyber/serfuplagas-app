@@ -678,7 +678,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0620 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0630 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -710,7 +710,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0620
+        v2026.04.18.0630
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -724,7 +724,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0620</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0630</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1421,7 +1421,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0620';
+const APP_VERSION = 'v2026.04.18.0630';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1905,7 +1905,7 @@ window.openEditSvcModal=function(id){
         <input id="f_phone" value="${getSvcClientField(s.client,'phone',s.phone)}" readonly style="background:none;border:none;color:var(--text);font-size:12px;width:100%;padding:0">
       </div>
       <div style="grid-column:1/-1"><span style="color:var(--text2);font-size:10px;display:block">👤 Persona de contacto</span>
-        <input id="f_contacto" value="${getSvcClientField(s.client,'contact',s.contacto)}" readonly style="background:none;border:none;color:var(--text);font-size:12px;width:100%;padding:0">
+        <input id="f_contacto" value="${getSvcClientField(s.client,'whatsappName',s.contacto)}" readonly style="background:none;border:none;color:var(--text);font-size:12px;width:100%;padding:0">
       </div>
     </div>
     <div class="form-row">
@@ -2020,7 +2020,7 @@ window.acSel=function(cid){
   document.getElementById('f_client').value=c.name;
   const fa=document.getElementById('f_address');if(fa)fa.value=c.address||'';
   const fp=document.getElementById('f_phone');if(fp)fp.value=c.phone||'';
-  const fc=document.getElementById('f_contacto');if(fc)fc.value=c.contact||'';
+  const fc=document.getElementById('f_contacto');if(fc)fc.value=c.whatsappName||c.contact||'';
   const fn=document.getElementById('f_notes');if(fn&&c.notes&&!fn.value)fn.value=c.notes;
   document.getElementById('ac_list').classList.remove('open');
 };
@@ -4303,7 +4303,7 @@ window._saveFormulario = function(idx){
 };
 
 
-window.getSvcClientField=function(clientName,field,fallback){ const c=clients.find(x=>x.name.toLowerCase()===clientName.toLowerCase()); return (c&&c[field])||fallback||''; };
+window.getSvcClientField=function(clientName,field,fallback){ const c=clients.find(x=>x.name.toLowerCase()===clientName.toLowerCase()); if(!c) return fallback||''; const val=c[field]||(field==='whatsappName'?c.contact:field==='contact'?c.whatsappName:''); return val||fallback||''; };
 
 window._initCycleDrag=function(container){
   let dragged=null;
