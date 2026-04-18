@@ -675,7 +675,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0320 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0325 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -702,7 +702,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0320
+        v2026.04.18.0325
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -716,7 +716,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0320</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0325</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -873,6 +873,22 @@ header {
         </div>
         <div id="statusConfigList"></div>
 
+        <!-- VISUALIZACIÓN CALENDARIO -->
+        <div style="margin-top:2rem">
+          <div class="section-header"><h2>Visualización del calendario</h2></div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:12px">
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">Estilo de tarjeta de servicio</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">Cómo se muestran los servicios en el calendario</div>
+            </div>
+            <select id="calBlockLayoutSelect" onchange="saveCalBlockLayout()"
+              style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;min-width:220px">
+              <option value="default">Por defecto — botones a la derecha</option>
+              <option value="compact">Compacto — hora derecha, botones abajo</option>
+            </select>
+          </div>
+        </div>
+
         <!-- GOOGLE MAPS -->
         <div style="margin-top:2rem">
           <div class="section-header"><h2>Google Maps API</h2></div>
@@ -1004,6 +1020,7 @@ let db=null, auth=null, fbOk=false, isOnline=navigator.onLine;
 let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], appUsers=[], mapsKey='';
 let defaultNewServiceStatus = '';
+let calBlockLayout = 'default';
 let statusColors={
   'Programado':        {bg:'rgba(79,142,247,0.15)',  bd:'#4f8ef7', tx:'#93b8fa'},
   'Pend. confirmación':{bg:'rgba(245,158,11,0.15)',  bd:'#f59e0b', tx:'#fcd34d'},
@@ -1256,6 +1273,7 @@ function startDataSync(){
     history     = d.history     ? Object.values(d.history).sort((a,b)=>b.ts.localeCompare(a.ts)) : [];
     statusColors= d.statusColors||statusColors;
     if(d.defaultNewServiceStatus) defaultNewServiceStatus=d.defaultNewServiceStatus;
+    if(d.calBlockLayout) calBlockLayout=d.calBlockLayout;
     if(d.maestroPlagas)       maestroPlagas       = Array.isArray(d.maestroPlagas)       ? d.maestroPlagas       : Object.values(d.maestroPlagas);
     if(d.maestroProductos)    maestroProductos    = Array.isArray(d.maestroProductos)    ? d.maestroProductos    : Object.values(d.maestroProductos);
     if(d.maestroRubros)       maestroRubros       = Array.isArray(d.maestroRubros)       ? d.maestroRubros       : Object.values(d.maestroRubros);
@@ -1280,7 +1298,7 @@ async function saveData(){
     technicians:Object.fromEntries(technicians.map(t=>[t.id,t])),
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    statusColors, mapsKey, defaultNewServiceStatus, svcMaestro:getSvcMaestro(),
+    statusColors, mapsKey, defaultNewServiceStatus, calBlockLayout, svcMaestro:getSvcMaestro(),
     maestroPlagas:      getMaestroPlagas(),
     maestroProductos:   getMaestroProductos(),
     maestroRubros:      getMaestroRubros(),
@@ -1376,7 +1394,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0320';
+const APP_VERSION = 'v2026.04.18.0325';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1624,18 +1642,30 @@ window.renderCalendar=function(){
       const timeLabel = hasDefinedTime
         ? fmtTime(svc.startH,svc.startM||0)
         : (svc.timeMode==='am' ? 'AM' : svc.timeMode==='pm' ? 'PM' : svc.timeMode==='dia' ? 'Todo el día' : '');
-      block.innerHTML=`
-        <div class="sb-left">
-          <div class="sb-client">${svc.client}</div>
-          ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
-        </div>
-        <div class="sb-actions">
-          ${svcContact?`<button class="sb-btn-contact" style="background:${contactBg}"
-            title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:''}
-          ${(()=>{ const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase()); return (_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo de confirmación" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:''; })()}
-          <button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}"
-            onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>
-        </div>`;
+      // Botones reutilizados en ambos layouts
+      const _c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase());
+      const _btnContact=svcContact?`<button class="sb-btn-contact" style="background:${contactBg}" title="${svcContact}" onclick="cycleContact(event,'${svc.id}')">${contactIcon(svcContact)}</button>`:'';
+      const _btnEmail=(_c?.emailTemplate||_c?.email)?`<button class="sb-btn-contact" style="background:#0078d4" title="Enviar correo" onclick="sendEmailFromCalendar(event,'${svc.id}')"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg></button>`:'';
+      const _btnStatus=`<button class="sb-btn-status" style="background:${btnSC.bg};color:${btnSC.tx}" onclick="cycleStatus(event,'${svc.id}')">${svcStatus}</button>`;
+      if(calBlockLayout==='compact'){
+        block.innerHTML=`
+          <div style="width:100%;min-width:0">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:4px">
+              <div class="sb-client" style="flex:1">${svc.client}</div>
+              ${timeLabel?`<div class="sb-time" style="flex-shrink:0">${timeLabel}</div>`:''}
+            </div>
+            <div class="sb-actions" style="margin-top:2px;justify-content:flex-start">
+              ${_btnContact}${_btnEmail}${_btnStatus}
+            </div>
+          </div>`;
+      } else {
+        block.innerHTML=`
+          <div class="sb-left">
+            <div class="sb-client">${svc.client}</div>
+            ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
+          </div>
+          <div class="sb-actions">${_btnContact}${_btnEmail}${_btnStatus}</div>`;
+      }
 
       let mouseDownX=0, mouseDownY=0, isDragging=false;
       block.addEventListener('mousedown', e=>{mouseDownX=e.clientX; mouseDownY=e.clientY; isDragging=false;});
@@ -3227,6 +3257,11 @@ window.renderGoogleMap=function(byTech,mapDiv){
 };
 
 /* ═══════════════ SETTINGS ═══════════════ */
+window.saveCalBlockLayout=function(){
+  const val=document.getElementById('calBlockLayoutSelect')?.value||'default';
+  calBlockLayout=val; saveData(); renderCalendar();
+  showToast('Estilo actualizado','success');
+};
 window.saveDefaultStatus=function(){
   const val=document.getElementById('defaultStatusSelect')?.value;
   if(val){defaultNewServiceStatus=val;saveData();showToast('Estado predeterminado: '+val,'success');}
@@ -3234,6 +3269,8 @@ window.saveDefaultStatus=function(){
 function renderStatusConfig(){
   // Renderizar en la nueva pestaña Personalización
   const el=document.getElementById('statusConfigList');if(!el)return;
+  const cls=document.getElementById('calBlockLayoutSelect');
+  if(cls){ cls.value=calBlockLayout||'default'; }
   const dsel=document.getElementById('defaultStatusSelect');
   if(dsel){const ss=getSvcStatuses();dsel.innerHTML=ss.map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join('');}
   const statuses=getSvcStatuses();
