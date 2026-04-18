@@ -55,7 +55,7 @@ const TENANT_ID = "serfuplagas";
   --purple:#a855f7; --purple-dim:rgba(168,85,247,0.14);
   --radius:10px; --radius-lg:16px; --radius-xl:22px;
   --font:'DM Sans',sans-serif; --mono:'DM Mono',monospace;
-  --header-h:56px; --tab-h:42px; --cell-h:32px;
+  --header-h:56px; --tab-h:42px; --cell-h:56px;
   --shadow:0 4px 24px rgba(0,0,0,0.4);
 }
 
@@ -249,7 +249,7 @@ header {
 
 /* ── SERVICE BLOCKS ── */
 .svc-block {
-  position:absolute; border-radius:6px; padding:3px 6px;
+  position:absolute; border-radius:6px; padding:2px 5px;
   border-left:3px solid; cursor:grab; z-index:5;
   overflow:hidden; transition:filter .1s; user-select:none;
   display:flex; align-items:center; gap:4px;
@@ -676,7 +676,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0352 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0354 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -703,7 +703,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0352
+        v2026.04.18.0354
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -717,7 +717,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0352</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0354</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1395,7 +1395,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0352';
+const APP_VERSION = 'v2026.04.18.0354';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1649,16 +1649,15 @@ window.renderCalendar=function(){
       if(!cell)return;
       const sc=getSC(svc.status||'Pendiente');
       const tech=getSvcMainTech(svc); // primer técnico para color
-      const topPx=((svc.startM||0)/60)*_cellPx;
+      const topPx=((svc.startM||0)/60)*56;
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
       // Para franja horaria sin hora exacta, altura fija compacta
-      const minH = calBlockLayout==='compact' ? 46 : 20;
+      const minH = calBlockLayout==='compact' ? 46 : 22;
       // Usar siempre startH/endH reales para calcular duración visual
       // independiente del timeMode — AM/PM también tienen startH/endH guardados
-      const _cellPx = calBlockLayout==='compact' ? 56 : 32;
       const minsReal = (svc.endH*60+(svc.endM||0)) - (svc.startH*60+(svc.startM||0));
       const hpx = minsReal > 0
-        ? Math.max(minsReal/60*_cellPx, minH)
+        ? Math.max(minsReal/60*56, minH)
         : minH;
       const {col,total}=layout[svc.id]||{col:0,total:1};
       const colW=100/total;
