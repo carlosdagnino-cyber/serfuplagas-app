@@ -211,7 +211,7 @@ header {
 .toolbar-left,.toolbar-right { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 
 /* ── CALENDAR ── */
-.calendar-wrap { flex:1; overflow:auto; padding:0 1rem .75rem; scroll-behavior:smooth; }
+.calendar-wrap { flex:1; overflow-y:auto; overflow-x:auto; padding:0 1rem .75rem; scroll-behavior:smooth; }
 .calendar-grid {
   display:grid; grid-template-columns:48px repeat(7,1fr);
   border:1px solid var(--border); border-radius:var(--radius-lg);
@@ -223,7 +223,7 @@ header {
   border-bottom:1px solid var(--border); border-right:1px solid var(--border);
   position:sticky; top:0; z-index:20;
 }
-.cal-corner { position:sticky; top:0; z-index:21; }
+.cal-corner { position:sticky; top:0; z-index:21; background:var(--bg3); }
 .col-head:last-child { border-right:none; }
 .col-head .dow { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:500; }
 .col-head .dom { font-size:17px; font-weight:600; margin-top:2px; }
@@ -678,7 +678,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0452 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.0457 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -710,7 +710,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0452
+        v2026.04.18.0457
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -724,7 +724,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0452</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.0457</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -746,11 +746,14 @@ header {
     <!-- ══ CALENDARIO ══ -->
     <div id="tab-calendar" class="section active">
       <!-- Navegación semanal centrada sobre la grilla -->
-      <div id="weekNavBar" style="display:none;justify-content:center;align-items:center;gap:6px;padding:6px 1rem;border-bottom:1px solid var(--border);background:var(--bg2)">
-        <button class="btn btn-sm" onclick="changeWeek(-1)">←</button>
+      <div id="weekNavBar" style="display:flex;justify-content:center;align-items:center;gap:6px;padding:6px 1rem;border-bottom:1px solid var(--border);background:var(--bg2)">
+        <button class="btn btn-sm" onclick="changeWeek(-1)" style="font-size:16px;padding:4px 10px">‹</button>
         <div class="week-label" id="weekLabel" style="font-size:13px;font-weight:600;min-width:160px;text-align:center">—</div>
-        <button class="btn btn-sm" onclick="changeWeek(1)">→</button>
-        <button class="btn btn-sm" onclick="goToday()" style="margin-left:4px">Hoy</button>
+        <button class="btn btn-sm" onclick="changeWeek(1)" style="font-size:16px;padding:4px 10px">›</button>
+        <input type="month" id="weekMonthPicker" class="btn btn-sm"
+          style="cursor:pointer;padding:4px 8px;font-size:12px"
+          onchange="goToMonth(this.value)" title="Ir a mes">
+        <button class="btn btn-sm" onclick="goToday()" style="margin-left:2px">Hoy</button>
       </div>
       <div class="toolbar">
         <div class="toolbar-left"></div>
@@ -1406,7 +1409,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0452';
+const APP_VERSION = 'v2026.04.18.0457';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1493,12 +1496,16 @@ function getDefaultTechs(){
 /* ═══════════════ CALENDAR ═══════════════ */
 function renderWeekLabel(){
   const d=getWeekDays(weekOffset);
+  // Sincronizar el month picker
+  const mp=document.getElementById('weekMonthPicker');
+  if(mp){ const y=d[0].getFullYear(),m=String(d[0].getMonth()+1).padStart(2,'0'); mp.value=y+'-'+m; }
   const fmt=x=>x.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
   document.getElementById('weekLabel').textContent=`${fmt(d[0])} – ${fmt(d[6])} ${d[6].getFullYear()}`;
 }
 
 function renderLegend(){
-  document.getElementById('legendBar').innerHTML=getSvcStatuses().map(s=>{
+  const _lb=document.getElementById('legendBar'); if(!_lb) return;
+  _lb.innerHTML=getSvcStatuses().map(s=>{
     const c=getSC(s);
     return`<div class="legend-item"><span class="legend-dot" style="background:${c.bd}"></span>${s}</div>`;
   }).join('');
@@ -4315,6 +4322,23 @@ window._saveCycleOrder=function(container){
   const order=[...container.querySelectorAll('.cycle-item')].map(el=>el.dataset.status);
   statusCycleOrder=order; saveData();
   showToast('Orden del ciclo actualizado','success');
+};
+
+window.goToMonth=function(ym){
+  if(!ym) return;
+  const [y,m]=ym.split('-').map(Number);
+  const target=new Date(y,m-1,1); // primer día del mes
+  const today=new Date();
+  const todayMon=new Date(today);
+  const dow=today.getDay();
+  todayMon.setDate(today.getDate()-(dow===0?6:dow-1));
+  todayMon.setHours(0,0,0,0);
+  const targetMon=new Date(target);
+  const tdow=target.getDay();
+  targetMon.setDate(target.getDate()-(tdow===0?6:tdow-1));
+  targetMon.setHours(0,0,0,0);
+  weekOffset=Math.round((targetMon-todayMon)/(7*24*3600*1000));
+  renderWeekLabel(); renderCalendar();
 };
 
 boot();
