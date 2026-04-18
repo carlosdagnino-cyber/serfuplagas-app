@@ -261,6 +261,9 @@ header {
 .svc-block.dragging { opacity:.2; cursor:grabbing; }
 .sb-left { flex:1; min-width:0; overflow:hidden; }
 .sb-client { font-size:10px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sb-client-wrap { font-size:10px; font-weight:600; white-space:normal; word-break:break-word; line-height:1.3; flex:1; min-width:0; }
+.sb-time-right { font-size:9px; font-family:var(--mono); opacity:.7; white-space:nowrap; flex-shrink:0; margin-left:4px; }
+.sb-top-row { display:flex; align-items:flex-start; justify-content:space-between; gap:2px; width:100%; }
 .sb-time   { font-size:9px; font-family:var(--mono); opacity:.7; white-space:nowrap; }
 .sb-actions { display:flex; gap:3px; align-items:center; flex-shrink:0; }
 .sb-btn-status {
@@ -678,7 +681,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.0709 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.1532 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -710,7 +713,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.0709
+        v2026.04.18.1532
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -724,7 +727,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.0709</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.1532</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1421,7 +1424,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.0709';
+const APP_VERSION = 'v2026.04.18.1532';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -1686,11 +1689,11 @@ window.renderCalendar=function(){
       const topPx=((svc.startM||0)/60)*56;
       const mins=(svc.endH-svc.startH)*60+((svc.endM||0)-(svc.startM||0));
       // Para franja horaria sin hora exacta, altura fija compacta
-      const minH = calBlockLayout==='compact' ? 46 : 22;
+      const minH = calBlockLayout==='compact' ? 46 : 20;
       // Usar siempre startH/endH reales para calcular duración visual
       // independiente del timeMode — AM/PM también tienen startH/endH guardados
       const minsReal = (svc.endH*60+(svc.endM||0)) - (svc.startH*60+(svc.startM||0));
-      // Default: caja ajustada al texto (no proporcional a duración)
+      // Default: altura mínima, crece con el contenido (nombre largo)
       // Compacto: altura proporcional a la duración real del servicio
       const hpx = calBlockLayout==='compact' && minsReal > 0
         ? Math.max(minsReal/60*56, minH)
@@ -1704,7 +1707,7 @@ window.renderCalendar=function(){
       block.className='svc-block'+(calBlockLayout==='compact'?' layout-compact':'');
       block.draggable=canEdit;
       block.dataset.id=svc.id;
-      block.style.cssText=`top:${topPx}px;height:${hpx}px;width:${w};left:${left};right:auto;background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}`;
+      block.style.cssText=`top:${topPx}px;${calBlockLayout==='compact'?'height:'+hpx+'px;':'min-height:'+hpx+'px;'}width:${w};left:${left};right:auto;background:${sc.bg};border-left-color:${sc.bd};color:${sc.tx}`;
       const svcStatus=svc.status||'Programado';
       const svcContact=getClientContact(svc.client);
       const btnSC=STATUS_BTN[svcStatus]||STATUS_BTN['Programado'];
@@ -1733,11 +1736,15 @@ window.renderCalendar=function(){
           </div>`;
       } else {
         block.innerHTML=`
-          <div class="sb-left">
-            <div class="sb-client">${svc.client}</div>
-            ${timeLabel?`<div class="sb-time">${timeLabel}</div>`:''}
-          </div>
-          <div class="sb-actions">${_btnContact}${_btnEmail}${_btnStatus}</div>`;
+          <div style="display:flex;width:100%;min-width:0;align-items:flex-start;gap:3px">
+            <div style="flex:1;min-width:0">
+              <div class="sb-top-row">
+                <div class="sb-client-wrap">${svc.client}</div>
+                ${timeLabel?`<div class="sb-time-right">${timeLabel}</div>`:''}
+              </div>
+            </div>
+            <div class="sb-actions" style="align-items:flex-start;margin-top:1px">${_btnContact}${_btnEmail}${_btnStatus}</div>
+          </div>`;
       }
 
       let mouseDownX=0, mouseDownY=0, isDragging=false;
