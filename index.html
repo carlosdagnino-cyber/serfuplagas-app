@@ -690,7 +690,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.1740 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.18.1745 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -723,7 +723,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.1740
+        v2026.04.18.1745
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -737,7 +737,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.1740</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.18.1745</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1511,7 +1511,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.1740';
+const APP_VERSION = 'v2026.04.18.1745';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -4852,73 +4852,69 @@ window.syncOutlookGestion = async function(manual=false){
   if(!outlookSyncEnabled && !manual) return;
   const statusEl = document.getElementById('outlookSyncStatus');
   if(statusEl) statusEl.textContent = '↻ Sincronizando…';
-
   try {
-    // Llamar a la API de Microsoft Graph via el proxy Anthropic
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        mcp_servers:[{type:'url',url:'https://microsoft365.mcp.claude.com/mcp',name:'m365'}],
-        messages:[{role:'user',content:`Busca los últimos 20 correos en la carpeta "Gestión APP" de Outlook. Devuelve SOLO un JSON array con esta estructura exacta, sin texto adicional:
-[{"id":"internetMessageId","subject":"asunto","sender":"email_remitente","senderName":"nombre_remitente","received":"fecha ISO","body":"primeros 300 chars del cuerpo"}]
-Si la carpeta no existe o está vacía devuelve [].`}]
-      })
-    });
-    const data = await resp.json();
-    const text = data.content?.filter(b=>b.type==='text').map(b=>b.text).join('');
-
-    // Parsear JSON
-    let emails = [];
-    try {
-      const match = text.match(/\[[\s\S]*\]/);
-      if(match) emails = JSON.parse(match[0]);
-    } catch(e){ console.warn('Outlook sync parse error:', e); }
-
-    // Importar correos nuevos
-    let nuevos = 0;
-    emails.forEach(em => {
-      if(!em.id || outlookSyncedIds.includes(em.id)) return;
-      const clienteDetectado = _detectarClienteDesdeEmail(em.sender);
-      const g = {
-        id:          uid(),
-        titulo:      em.subject || '(sin asunto)',
-        tipo:        'Solicitud',
-        estado:      'Pendiente',
-        cliente:     clienteDetectado,
-        responsable: outlookResponsable,
-        fechaVenc:   '',
-        prioridad:   'Normal',
-        descripcion: em.body||'',
-        origen:      'outlook',
-        origenEmail: em.sender,
-        origenNombre:em.senderName||em.sender,
-        origenFecha: em.received||'',
-        createdAt:   Date.now(),
-        updatedAt:   Date.now(),
-      };
-      gestiones.push(g);
-      outlookSyncedIds.push(em.id);
+    const token = await _getGraphToken();
+    // 1. Buscar carpeta "Gestión APP"
+    const fResp = await fetch('https://graph.microsoft.com/v1.0/me/mailFolders?$top=50',
+      {headers:{Authorization:'Bearer '+token}});
+    if(!fResp.ok) throw new Error('Sin acceso a Outlook ('+fResp.status+')');
+    const fData = await fResp.json();
+    const folder = (fData.value||[]).find(f=>f.displayName==='Gestión APP');
+    if(!folder){
+      if(statusEl) statusEl.textContent = '⚠ Crea la carpeta "Gestión APP" en Outlook';
+      return;
+    }
+    // 2. Leer correos
+    const mResp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/mailFolders/${folder.id}/messages?$top=20&$select=id,subject,sender,receivedDateTime,bodyPreview,internetMessageId&$orderby=receivedDateTime%20desc`,
+      {headers:{Authorization:'Bearer '+token}});
+    if(!mResp.ok) throw new Error('Error leyendo correos ('+mResp.status+')');
+    const mData = await mResp.json();
+    // 3. Importar nuevos
+    let nuevos=0;
+    (mData.value||[]).forEach(em=>{
+      const msgId=em.internetMessageId||em.id;
+      if(!msgId||outlookSyncedIds.includes(msgId)) return;
+      const senderEmail=em.sender?.emailAddress?.address||'';
+      const senderName=em.sender?.emailAddress?.name||senderEmail;
+      gestiones.push({
+        id:uid(), titulo:em.subject||'(sin asunto)', tipo:'Solicitud', estado:'Pendiente',
+        cliente:_detectarClienteDesdeEmail(senderEmail), responsable:outlookResponsable,
+        fechaVenc:'', prioridad:'Normal', descripcion:em.bodyPreview||'',
+        origen:'outlook', origenEmail:senderEmail, origenNombre:senderName,
+        origenFecha:em.receivedDateTime||'', createdAt:Date.now(), updatedAt:Date.now(),
+      });
+      outlookSyncedIds.push(msgId);
       nuevos++;
     });
-
-    if(nuevos > 0){
+    if(nuevos>0){
       saveData();
       if(document.getElementById('tab-gestiones')?.classList.contains('active')) renderGestiones();
-      showToast(`Outlook: ${nuevos} correo${nuevos>1?'s':''} importado${nuevos>1?'s':''}`, 'success');
+      showToast('Outlook: '+nuevos+' correo'+(nuevos>1?'s':'')+' importado'+(nuevos>1?'s':''),'success');
     }
-
-    outlookLastSync = Date.now();
-    const hora = new Date(outlookLastSync).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
-    if(statusEl) statusEl.textContent = `Última sync: ${hora}${nuevos?` · ${nuevos} nuevo${nuevos>1?'s':''}`:' · Sin cambios'}`;
-
+    outlookLastSync=Date.now();
+    const hora=new Date(outlookLastSync).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    if(statusEl) statusEl.textContent='Última sync: '+hora+(nuevos?' · '+nuevos+' nuevo'+(nuevos>1?'s':''):' · Sin cambios');
   } catch(err){
-    console.error('Outlook sync error:', err);
-    if(statusEl) statusEl.textContent = '✗ Error de conexión';
+    console.error('Outlook sync error:',err);
+    if(statusEl) statusEl.textContent='⚠ '+err.message;
   }
 };
+
+// Token Microsoft Graph — requiere que el usuario haya autorizado M365 en Claude
+async function _getGraphToken(){
+  // Intenta obtener token del endpoint OAuth de Microsoft via MSAL implícito
+  // La app usa el flujo PKCE de Microsoft identity platform
+  const tokenKey = Object.keys(sessionStorage).find(k=>k.includes('login.microsoftonline')&&k.includes('accesstoken'));
+  if(tokenKey){
+    try{
+      const t=JSON.parse(sessionStorage[tokenKey]);
+      if(t.secret && t.expiresOn > Date.now()/1000) return t.secret;
+    }catch(e){}
+  }
+  // Fallback: pedir al usuario que autorice
+  throw new Error('Autoriza Microsoft 365 en Personalización primero');
+}
 
 boot();
 startNotifChecker();
