@@ -556,6 +556,9 @@ header {
 }
 .tech-svc-body { padding:12px 14px; }
 .tech-svc-row  { display:flex; gap:8px; margin-bottom:8px; font-size:13px; }
+.route-draggable{transition:background .15s;border-radius:var(--radius);}
+.route-draggable.drag-over{background:rgba(79,142,247,0.15);border:1px dashed #4f8ef7;}
+.route-draggable.dragging{opacity:0.4;}
 .tech-svc-label{ color:var(--text2); width:70px; flex-shrink:0; font-size:12px; }
 .tech-svc-actions { display:flex; gap:8px; padding:0 14px 14px; }
 
@@ -690,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0422 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0434 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -723,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0422
+        v2026.04.20.0434
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -737,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0422</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0434</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1574,7 +1577,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0422';
+const APP_VERSION = 'v2026.04.20.0434';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3236,18 +3239,20 @@ window.generateRoutes=function(){
             <div class="stop-addr">${group.tech.homeAddress}</div>
           </div>
         </div>`:''}
-        ${group.svcs.map((s,i)=>`
-          <div class="route-stop">
+        ${'<div class="route-sortable">'+group.svcs.map((s,i)=>`
+          <div class="route-stop route-draggable" draggable="true" data-svc-id="${s.id}">
+            <div style="display:flex;align-items:center;gap:6px;width:100%">
+            <span style="cursor:grab;color:var(--text3);font-size:14px;flex-shrink:0">⠿</span>
             <div class="stop-num" style="background:${pal.av};color:${pal.bd}">${i+1}</div>
-            <div class="stop-info">
+            <div class="stop-info" style="flex:1">
               <div class="stop-client">${s.client}</div>
               <div class="stop-addr">${s.address||'Sin dirección'}</div>
               <div class="stop-time">${fmtTime(s.startH,s.startM||0)} – ${fmtTime(s.endH,s.endM||0)}</div>
               ${s.address?`<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.address)}" target="_blank"
                 style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:4px 10px;border-radius:6px;background:#1a73e8;color:#fff;font-size:11px;font-weight:600;text-decoration:none">
                 🧭 Abrir en Google Maps</a>`:''}
-            </div>
-          </div>`).join('')}
+            </div></div>
+          </div>`).join('')+'</div>'}
         ${extras.map(ex=>`
           <div class="route-stop" style="background:rgba(245,158,11,0.06);border-radius:6px">
             <div class="stop-num" style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:13px">📍</div>
@@ -3283,6 +3288,7 @@ window.generateRoutes=function(){
       </div>`;
   });
   document.getElementById('routesSidebar').innerHTML=sidebarHtml;
+  setTimeout(_initRouteDnD,50);
   if(mapsKey) loadGoogleMap(byTech,date);
   else document.getElementById('routes-map').innerHTML=`<div class="map-placeholder"><div style="font-size:32px">🗺️</div><div style="font-size:13px;font-weight:500">${daySvcs.length} servicios para ${date}</div><div style="font-size:12px;color:var(--text2)">Configura la API Key de Google Maps en ⚙️ Colores.</div></div>`;
 };
@@ -5537,6 +5543,7 @@ window.loadExcelPlanData=async function(){
         programar:prog==='sí'||prog==='si'||prog==='x',
       });
     }
+    window.excelPlanData=excelPlanData;
     _populatePlanMesFiltro();
     renderPlanMap();
   }catch(err){console.error('loadExcelPlanData:',err.message);}
@@ -5561,10 +5568,12 @@ function _getExcelClientesParaMapa(){
   if(progFiltro==='no')rows=rows.filter(r=>!r.programar);
   const mapa={};
   rows.forEach(r=>{
-    const key=r.idCliente||r.nombreCliente;
+    if(!r.idCliente) return;
+    const key=r.idCliente;
     if(!mapa[key]){
-      const cli=clients.find(c=>(r.idCliente&&c.codigo_cmip===r.idCliente)||c.name.toLowerCase()===r.nombreCliente.toLowerCase());
-      mapa[key]={idCliente:r.idCliente,nombreCliente:r.nombreCliente,cli,sinCodigo:!r.idCliente,rows:[],programados:0,total:0};
+      const cli=clients.find(c=>c.codigo_cmip&&c.codigo_cmip.trim()===r.idCliente.trim());
+      if(!cli||!cli.address) return;
+      mapa[key]={idCliente:r.idCliente,nombreCliente:cli.name,cli,sinCodigo:false,rows:[],programados:0,total:0};
     }
     mapa[key].rows.push(r);
     mapa[key].total++;
@@ -5636,6 +5645,38 @@ window.calendarizarDesdeExcel=async function(idCliente,nombreCliente,fecha,servi
   }
   closeModal();renderCalendar();renderPlanMap();
 };
+
+function _initRouteDnD(){
+  document.querySelectorAll('.route-sortable').forEach(container=>{
+    let dragSrc=null;
+    container.querySelectorAll('.route-draggable').forEach(item=>{
+      item.addEventListener('dragstart',e=>{
+        dragSrc=item; item.classList.add('dragging');
+        e.dataTransfer.effectAllowed='move';
+      });
+      item.addEventListener('dragend',()=>{
+        item.classList.remove('dragging');
+        container.querySelectorAll('.route-draggable').forEach(i=>i.classList.remove('drag-over'));
+      });
+      item.addEventListener('dragover',e=>{ e.preventDefault(); if(item!==dragSrc)item.classList.add('drag-over'); });
+      item.addEventListener('dragleave',()=>item.classList.remove('drag-over'));
+      item.addEventListener('drop',e=>{
+        e.preventDefault(); item.classList.remove('drag-over');
+        if(!dragSrc||dragSrc===item) return;
+        const items=[...container.querySelectorAll('.route-draggable')];
+        const fi=items.indexOf(dragSrc), ti=items.indexOf(item);
+        if(fi<ti) container.insertBefore(dragSrc,item.nextSibling);
+        else      container.insertBefore(dragSrc,item);
+        [...container.querySelectorAll('.route-draggable')].forEach((el,i)=>{
+          const svc=services.find(s=>s.id===el.dataset.svcId);
+          if(svc) svc.routeOrder=i;
+          const n=el.querySelector('.stop-num'); if(n) n.textContent=i+1;
+        });
+        saveData(); showToast('Orden actualizado','success'); renderCalendar();
+      });
+    });
+  });
+}
 
 boot();
 startNotifChecker();
