@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0434 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0439 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0434
+        v2026.04.20.0439
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0434</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0439</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1577,7 +1577,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0434';
+const APP_VERSION = 'v2026.04.20.0439';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -2836,11 +2836,14 @@ function readImportFile(file){
     const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
     if(!json.length){showToast('Archivo vacío','error');return;}
     const norm=s=>s.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-    const aliases={cliente:['cliente','client','nombre','name'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje'],recurrencia:['recurrencia','recurrence','patron'],dia_ref:['dia_referencia','dia_ref','dia'],margen:['margen_dias','margen','tolerancia'],horario_rec:['horario','horario_rec','franja']};
+    const aliases={cliente:['cliente','client','nombre','name','Nombre'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje'],recurrencia:['recurrencia','recurrence','patron'],dia_ref:['dia_referencia','dia_ref','dia'],margen:['margen_dias','margen','tolerancia'],horario_rec:['horario','horario_rec','franja']};
     const colMap={};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
-    if(!colMap.cliente){showToast('No encontré columna "cliente"','error');return;}
-    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:String(r[colMap.direccion]||'').trim(),phone:String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():'',recurrencia:colMap.recurrencia?String(r[colMap.recurrencia]||'').trim():'',diaRef:colMap.dia_ref?String(r[colMap.dia_ref]||'').trim():'',margen:colMap.margen?String(r[colMap.margen]||'').trim():'',horarioRec:colMap.horario_rec?String(r[colMap.horario_rec]||'').trim():''})).filter(r=>r.name);
+    // También mapear campos extras del export de clientes
+    const extraFields={codigo_cmip:['codigocmip','codigocliente','codigo','id_cliente','idcliente'],rut:['rut'],email:['correo','email','mail'],address:['direccion','address','dir'],phone:['celular','movil','phone','telefono','cel'],horario:['horario'],frecuencia:['frecuencia'],rubro:['rubro'],notas:['notas','notes','obs']};
+    Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(extraFields).forEach(f=>{ if(!colMap[f]&&extraFields[f].some(a=>norm(a)===n||n.includes(norm(a))||norm(a).includes(n))) colMap[f]=col; }); });
+    if(!colMap.cliente){showToast('No encontré columna "cliente" o "Nombre" en el Excel','error');return;}
+    importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:colMap.address?String(r[colMap.address]||'').trim():String(r[colMap.direccion]||'').trim(),phone:colMap.phone?String(r[colMap.phone]||'').trim():String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),codigo_cmip:colMap.codigo_cmip?String(r[colMap.codigo_cmip]||'').trim():'',rut:colMap.rut?String(r[colMap.rut]||'').trim():'',email:colMap.email?String(r[colMap.email]||'').trim():'',horario:colMap.horario?String(r[colMap.horario]||'').trim():'',frecuencia:colMap.frecuencia?String(r[colMap.frecuencia]||'').trim():'',rubro:colMap.rubro?String(r[colMap.rubro]||'').trim():'',notas_extra:colMap.notas?String(r[colMap.notas]||'').trim():'',fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():'',recurrencia:colMap.recurrencia?String(r[colMap.recurrencia]||'').trim():'',diaRef:colMap.dia_ref?String(r[colMap.dia_ref]||'').trim():'',margen:colMap.margen?String(r[colMap.margen]||'').trim():'',horarioRec:colMap.horario_rec?String(r[colMap.horario_rec]||'').trim():''})).filter(r=>r.name);
     document.getElementById('importPreview').innerHTML=`
       <p style="font-size:12px;color:var(--text2);margin:.75rem 0 .5rem">${importRows.length} filas · vista previa:</p>
       <div class="import-preview">
@@ -2862,6 +2865,8 @@ window.confirmImport=function(){
       const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
       const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
       cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,
+        codigo_cmip:row.codigo_cmip||'',rut:row.rut||'',email:row.email||'',
+        horario:row.horario||'',frecuencia:row.frecuencia||'',rubro:row.rubro||'',
         ...(emailTpl?{emailTemplate:emailTpl}:{}),
         ...(recPat?{recurrence:recPat}:{}),
         createdAt:Date.now()};
@@ -3345,18 +3350,14 @@ window.renderGoogleMap=function(byTech,mapDiv){
           const pos=results[0].geometry.location;
           bounds.extend(pos);
 
-          // Pin con número y color del técnico
+          // Pin con número — usar MarkerLabel sobre fondo coloreado
+          const svgPin=`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="16" fill="${color}" stroke="#fff" stroke-width="2.5"/>
+            <text x="18" y="23" text-anchor="middle" font-size="14" font-weight="bold" font-family="Google Sans,Roboto,sans-serif" fill="#fff">${i+1}</text>
+          </svg>`;
           const marker=new google.maps.Marker({
             position:pos, map,
-            label:{text:String(i+1),color:'#fff',fontSize:'13px',fontWeight:'bold'},
-            icon:{
-              path:google.maps.SymbolPath.CIRCLE,
-              scale:20,
-              fillColor:color,
-              fillOpacity:1,
-              strokeColor:'#fff',
-              strokeWeight:2.5
-            },
+            icon:{url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svgPin),scaledSize:new google.maps.Size(36,36),anchor:new google.maps.Point(18,18)},
             title:svc.client,
             zIndex:100+i,
           });
