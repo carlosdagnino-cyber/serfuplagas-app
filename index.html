@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0445 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0449 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0445
+        v2026.04.20.0449
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0445</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0449</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1577,7 +1577,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0445';
+const APP_VERSION = 'v2026.04.20.0449';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -2862,16 +2862,31 @@ window.confirmImport=function(){
   let nc=0,ns=0;
   importRows.forEach(row=>{
     let cli=clients.find(c=>(row.codigo_cmip&&c.codigo_cmip&&c.codigo_cmip.trim()===row.codigo_cmip.trim())||c.name.toLowerCase()===row.name.toLowerCase());
+    const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
+    const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
     if(!cli){
-      const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
-      const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
-      cli={id:uid(),name:row.name,address:row.address,phone:row.phone,notes:row.notes,
+      cli={id:uid(),name:row.name,address:row.address||'',phone:row.phone||'',notes:row.notes||'',
         codigo_cmip:row.codigo_cmip||'',rut:row.rut||'',email:row.email||'',
         horario:row.horario||'',frecuencia:row.frecuencia||'',rubro:row.rubro||'',
         ...(emailTpl?{emailTemplate:emailTpl}:{}),
         ...(recPat?{recurrence:recPat}:{}),
         createdAt:Date.now()};
-      clients.push(cli);nc++;
+      clients.push(cli); nc++;
+    } else {
+      // Actualizar campos no vacíos del Excel sobre el cliente existente
+      if(row.codigo_cmip) cli.codigo_cmip=row.codigo_cmip.trim();
+      if(row.address)     cli.address=row.address;
+      if(row.phone)       cli.phone=row.phone;
+      if(row.rut)         cli.rut=row.rut;
+      if(row.email)       cli.email=row.email;
+      if(row.horario)     cli.horario=row.horario;
+      if(row.frecuencia)  cli.frecuencia=row.frecuencia;
+      if(row.rubro)       cli.rubro=row.rubro;
+      if(row.notes)       cli.notes=row.notes;
+      if(emailTpl)        cli.emailTemplate=emailTpl;
+      if(recPat)          cli.recurrence=recPat;
+      cli.updatedAt=Date.now();
+      nc++; // contamos actualizaciones también
     }
     if(row.fecha&&row.hora){
       let dk='';
@@ -3304,7 +3319,8 @@ function loadGoogleMap(byTech, date){
 
   if(!window.google){
     const script=document.createElement('script');
-    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=initGoogleMap`;
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=initGoogleMap&loading=async`;
+    script.onerror=()=>{ const d=document.getElementById('routes-map'); if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">⚠️</div><div style="font-size:13px;color:#ef4444">Error: Verifica la API Key de Google Maps en Personalización.</div></div>'; };
     script.async=true;
     window.initGoogleMap=()=>renderGoogleMap(byTech,mapDiv);
     document.head.appendChild(script);
@@ -3707,7 +3723,8 @@ window.renderPlanMap=function(){
   }
   if(!window.google){
     const script=document.createElement('script');
-    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady`;
+    script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady&loading=async`;
+    script.onerror=()=>{ const d=document.getElementById('plan-map'); if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">⚠️</div><div style="font-size:13px;color:#ef4444">Error cargando Google Maps. Verifica la API Key en Personalización.</div></div>'; };
     script.async=true;
     window._planMapReady=()=>{ initPlanMap(); window.renderPlanMap(); };
     document.head.appendChild(script);
