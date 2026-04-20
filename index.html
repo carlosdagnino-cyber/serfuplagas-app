@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0439 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0445 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0439
+        v2026.04.20.0445
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0439</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0445</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1577,7 +1577,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0439';
+const APP_VERSION = 'v2026.04.20.0445';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -2836,13 +2836,14 @@ function readImportFile(file){
     const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
     if(!json.length){showToast('Archivo vacío','error');return;}
     const norm=s=>s.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-    const aliases={cliente:['cliente','client','nombre','name','Nombre'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje'],recurrencia:['recurrencia','recurrence','patron'],dia_ref:['dia_referencia','dia_ref','dia'],margen:['margen_dias','margen','tolerancia'],horario_rec:['horario','horario_rec','franja']};
+    const aliases={cliente:['cliente','client','nombre','name','Nombre','nombrecliente'],direccion:['direccion','address','dir'],telefono:['telefono','phone','tel','fono'],comentarios:['comentarios','notas','obs'],fecha:['fecha','date','dia'],hora:['hora','time','inicio'],correo_dest:['correo_destino','email_to','destinatario','correo_dest'],correo_cc:['correo_cc','cc','email_cc'],asunto:['asunto','subject','asunto_correo'],cuerpo:['cuerpo','body','cuerpo_correo','mensaje'],recurrencia:['recurrencia','recurrence','patron'],dia_ref:['dia_referencia','dia_ref','dia'],margen:['margen_dias','margen','tolerancia'],horario_rec:['horario','horario_rec','franja']};
     const colMap={};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(aliases).forEach(f=>{ if(!colMap[f]&&aliases[f].some(a=>norm(a)===n||n.startsWith(norm(a)))) colMap[f]=col; }); });
     // También mapear campos extras del export de clientes
-    const extraFields={codigo_cmip:['codigocmip','codigocliente','codigo','id_cliente','idcliente'],rut:['rut'],email:['correo','email','mail'],address:['direccion','address','dir'],phone:['celular','movil','phone','telefono','cel'],horario:['horario'],frecuencia:['frecuencia'],rubro:['rubro'],notas:['notas','notes','obs']};
+    const extraFields={codigo_cmip:['codigocmip','codigocliente','codigo','id_cliente','idcliente','codigocmip2','cmip'],rut:['rut'],email:['correo','email','mail'],address:['direccion','address','dir'],phone:['celular','movil','phone','telefono','cel'],horario:['horario'],frecuencia:['frecuencia'],rubro:['rubro'],notas:['notas','notes','obs']};
     Object.keys(json[0]).forEach(col=>{ const n=norm(col); Object.keys(extraFields).forEach(f=>{ if(!colMap[f]&&extraFields[f].some(a=>norm(a)===n||n.includes(norm(a))||norm(a).includes(n))) colMap[f]=col; }); });
-    if(!colMap.cliente){showToast('No encontré columna "cliente" o "Nombre" en el Excel','error');return;}
+    console.log('colMap detectado:',JSON.stringify(colMap)); console.log('headers:',Object.keys(json[0]));
+    if(!colMap.cliente){showToast('No encontré columna "cliente" o "Nombre". Ver consola para detalles.','error');return;}
     importRows=json.map(r=>({name:String(r[colMap.cliente]||'').trim(),address:colMap.address?String(r[colMap.address]||'').trim():String(r[colMap.direccion]||'').trim(),phone:colMap.phone?String(r[colMap.phone]||'').trim():String(r[colMap.telefono]||'').trim(),notes:String(r[colMap.comentarios]||'').trim(),codigo_cmip:colMap.codigo_cmip?String(r[colMap.codigo_cmip]||'').trim():'',rut:colMap.rut?String(r[colMap.rut]||'').trim():'',email:colMap.email?String(r[colMap.email]||'').trim():'',horario:colMap.horario?String(r[colMap.horario]||'').trim():'',frecuencia:colMap.frecuencia?String(r[colMap.frecuencia]||'').trim():'',rubro:colMap.rubro?String(r[colMap.rubro]||'').trim():'',notas_extra:colMap.notas?String(r[colMap.notas]||'').trim():'',fecha:colMap.fecha?String(r[colMap.fecha]||'').trim():'',hora:colMap.hora?String(r[colMap.hora]||'').trim():'',emailTo:colMap.correo_dest?String(r[colMap.correo_dest]||'').trim():'',emailCc:colMap.correo_cc?String(r[colMap.correo_cc]||'').trim():'',emailSubject:colMap.asunto?String(r[colMap.asunto]||'').trim():'',emailBody:colMap.cuerpo?String(r[colMap.cuerpo]||'').trim():'',recurrencia:colMap.recurrencia?String(r[colMap.recurrencia]||'').trim():'',diaRef:colMap.dia_ref?String(r[colMap.dia_ref]||'').trim():'',margen:colMap.margen?String(r[colMap.margen]||'').trim():'',horarioRec:colMap.horario_rec?String(r[colMap.horario_rec]||'').trim():''})).filter(r=>r.name);
     document.getElementById('importPreview').innerHTML=`
       <p style="font-size:12px;color:var(--text2);margin:.75rem 0 .5rem">${importRows.length} filas · vista previa:</p>
@@ -2860,7 +2861,7 @@ function readImportFile(file){
 window.confirmImport=function(){
   let nc=0,ns=0;
   importRows.forEach(row=>{
-    let cli=clients.find(c=>c.name.toLowerCase()===row.name.toLowerCase());
+    let cli=clients.find(c=>(row.codigo_cmip&&c.codigo_cmip&&c.codigo_cmip.trim()===row.codigo_cmip.trim())||c.name.toLowerCase()===row.name.toLowerCase());
     if(!cli){
       const emailTpl=row.emailTo?{to:row.emailTo,cc:row.emailCc||'',subject:row.emailSubject||'',body:row.emailBody||''}:undefined;
       const recPat=row.recurrencia?parseRecurrenciaImport(row.recurrencia,row.diaRef,row.margen,row.horarioRec):undefined;
@@ -5674,6 +5675,10 @@ function _initRouteDnD(){
           const n=el.querySelector('.stop-num'); if(n) n.textContent=i+1;
         });
         saveData(); showToast('Orden actualizado','success'); renderCalendar();
+        // Re-generar mapa de rutas con nuevo orden
+        const _rd=document.getElementById('routeDate')?.value||fmtKey(new Date());
+        const _rt=document.getElementById('routeTech')?.value||'all';
+        generateRoutes();
       });
     });
   });
