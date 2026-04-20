@@ -234,8 +234,8 @@ header {
 }
 .cal-corner { position:sticky; top:0; z-index:21; background:var(--bg3); box-shadow:0 1px 0 var(--border); }
 .col-head:last-child { border-right:none; }
-.col-head .dow { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:500; }
-.col-head .dom { font-size:17px; font-weight:600; margin-top:2px; }
+.col-head .dow { font-size:10px; color:#fff; text-transform:uppercase; letter-spacing:.07em; font-weight:600; }
+.col-head .dom { font-size:18px; font-weight:700; margin-top:2px; color:#fff; }
 .col-head.today .dom { color:var(--accent); }
 .col-head.today { background:rgba(79,142,247,.06); }
 .time-label {
@@ -690,7 +690,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0356 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0422 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -723,7 +723,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0356
+        v2026.04.20.0422
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -737,7 +737,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0356</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0422</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1081,6 +1081,8 @@ header {
           </div>
         </div>
         <div class="toolbar-right">
+          <select id="planFilterMes" class="btn btn-sm" onchange="onPlanFilterChange()" style="font-size:12px"><option value="">Todos los meses</option></select>
+          <select id="planFilterProgramar" class="btn btn-sm" onchange="onPlanFilterChange()" style="font-size:12px"><option value="">Todos</option><option value="no">Sin programar</option><option value="si">Programados</option></select>
           <select id="planFilterTech" class="btn btn-sm" onchange="renderPlanMap()">
             <option value="">Todos los técnicos</option>
           </select>
@@ -1161,6 +1163,7 @@ let services=[], technicians=[], clients=[], history=[], gestiones=[], appUsers=
 let defaultNewServiceStatus = '';
 let outlookSyncEnabled = false;       // activado por el usuario en Personalización
 let excelSyncEnabled  = false;
+let excelPlanData     = [];
 let lastBackupDate    = '';           // fecha del último backup YYYY-MM-DD        // sync Excel OneDrive
 let excelLastSync     = 0;            // timestamp último sync Excel
 let excelSyncedIds    = [];           // IDs de filas ya importadas (fecha+cliente+lugar)
@@ -1571,7 +1574,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0356';
+const APP_VERSION = 'v2026.04.20.0422';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -2603,12 +2606,23 @@ function clientModalHTML(c={}, isEdit=false){
       </div>
       <div class="form-group" style="margin:0">
         <label>Horario preferido</label>
-        <select id="fc_horario">
+        <select id="fc_horario" onchange="toggleHorarioFijo()">
           <option value="">Sin definir</option>
           <option value="am"${c.horario==='am'?' selected':''}>AM</option>
           <option value="pm"${c.horario==='pm'?' selected':''}>PM</option>
           <option value="dia"${c.horario==='dia'?' selected':''}>Todo el día</option>
+          <option value="fijo"${c.horario==='fijo'?' selected':''}>Hora fija</option>
         </select>
+      </div>
+      <div id="fc_horario_fijo_wrap" style="display:${c.horario==='fijo'?'flex':'none'};gap:8px;align-items:center;flex-wrap:wrap;margin-top:-4px">
+        <div class="form-group" style="margin:0;flex:1">
+          <label>Hora inicio</label>
+          <input type="time" id="fc_hora_inicio" value="${c.horaInicio||'08:00'}" style="padding:6px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;width:100%">
+        </div>
+        <div class="form-group" style="margin:0;flex:1">
+          <label>Hora término</label>
+          <input type="time" id="fc_hora_fin" value="${c.horaFin||'17:00'}" style="padding:6px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;width:100%">
+        </div>
       </div>
       <div class="form-group" style="margin:0">
         <label>¿Intranet?</label>
@@ -2678,6 +2692,8 @@ window.saveClient = function(id){
     gps:                  document.getElementById('fc_gps')?.value.trim()||'',
     frecuencia:           document.getElementById('fc_frecuencia')?.value||'',
     horario:              document.getElementById('fc_horario')?.value||'',
+    horaInicio:           document.getElementById('fc_hora_inicio')?.value||'',
+    horaFin:              document.getElementById('fc_hora_fin')?.value||'',
     intranet:             document.getElementById('fc_intranet')?.value||'No',
     notes:                document.getElementById('fc_notes')?.value.trim()||'',
   };
@@ -3593,6 +3609,7 @@ window.switchTab =function(tab){
   if(tab==='routes')   renderRouteSelects();
   if(tab==='maestros') renderMaestros();
   if(tab==='gestiones') renderGestiones();
+  if(tab==='plan') loadExcelPlanData();
   if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
 };
 
@@ -3697,7 +3714,17 @@ window.renderPlanMap=function(){
   const filterTech=document.getElementById('planFilterTech')?.value||'';
   const pt=document.getElementById('planFilterTech');
   if(pt){ const cur=pt.value; pt.innerHTML='<option value="">Todos los técnicos</option>'+technicians.map(t=>`<option value="${t.id}"${t.id===cur?' selected':''}>${t.name}</option>`).join(''); }
-  let clientsToShow=clients.filter(c=>c.address);
+  const excelGrupos=_getExcelClientesParaMapa();
+  let clientsToShow;
+  if(excelSyncEnabled&&excelPlanData.length>0){
+    clientsToShow=excelGrupos.map(g=>({
+      ...(g.cli||{name:g.nombreCliente,address:'',phone:''}),
+      _excelGrupo:g,sinCodigo:g.sinCodigo,_programados:g.programados,_total:g.total
+    })).filter(c=>c.address||(c._excelGrupo?.cli?.address));
+    clientsToShow.forEach(c=>{if(!c.address&&c._excelGrupo?.cli?.address)c.address=c._excelGrupo.cli.address;});
+  } else {
+    clientsToShow=clients.filter(c=>c.address);
+  }
   if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
   if(filterTech){ const names=services.filter(s=>(s.techIds||[s.techId]).includes(filterTech)).map(s=>s.client.toLowerCase()); clientsToShow=clientsToShow.filter(c=>names.includes(c.name.toLowerCase())); }
   if(!clientsToShow.length){
@@ -3708,14 +3735,16 @@ window.renderPlanMap=function(){
   const bounds=new google.maps.LatLngBounds();
   clientsToShow.forEach(client=>{
     const horario=getClientHorario(client);
-    const hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
+    let hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
+    if(client.sinCodigo) hc={bg:'#ef4444',border:'#b91c1c',label:'Sin código'};
+    const pinOpacity=(excelSyncEnabled&&client._total>0&&client._programados===client._total)?0.35:1;
     geocoder.geocode({address:client.address+', Santiago, Chile'},(res,st)=>{
       if(st!=='OK'||!res[0]) return;
       const pos=res[0].geometry.location;
       bounds.extend(pos);
       const marker=new google.maps.Marker({
         position:pos, map:planMap, draggable:false, zIndex:50,
-        icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:1,strokeColor:'#fff',strokeWeight:2},
+        icon:{path:google.maps.SymbolPath.CIRCLE,scale:14,fillColor:hc.bg,fillOpacity:pinOpacity,strokeColor:'#fff',strokeWeight:2},
         title:client.name
       });
       const overlay=new google.maps.OverlayView();
@@ -4609,7 +4638,7 @@ window.exportarClientes = function(){
     'Cartera','Rubro','Persona de contacto','RUT contacto',
     'Celular','Teléfono','Correo','Correo corporativo','Canal contacto',
     'Dirección','Región','Ciudad','Dirección tributaria','GPS',
-    'Frecuencia','Horario','Intranet','Notas'
+    'Frecuencia','Horario','Hora inicio','Hora fin','Intranet','Notas'
   ];
   const rows = [cols];
   clients.forEach(c => rows.push([
@@ -4635,6 +4664,8 @@ window.exportarClientes = function(){
     c.gps||'',
     c.frecuencia||'',
     c.horario||'',
+    c.horaInicio||'',
+    c.horaFin||'',
     c.intranet||'No',
     c.notes||'',
   ]));
@@ -5454,6 +5485,156 @@ window.deleteSvcMaestro = function(id){
   svcMaestro = getSvcMaestro().filter(s=>s.id!==id);
   saveData(); closeModal(); renderMaestros();
   showToast('Servicio eliminado','success');
+};
+
+window.toggleHorarioFijo = function(){
+  const sel = document.getElementById('fc_horario');
+  const wrap = document.getElementById('fc_horario_fijo_wrap');
+  if(wrap) wrap.style.display = sel?.value==='fijo' ? 'flex' : 'none';
+};
+
+window.loadExcelPlanData=async function(){
+  if(!excelSyncEnabled)return;
+  try{
+    const token=await _getGraphToken();
+    const url=`https://graph.microsoft.com/v1.0/drives/${EXCEL_DRIVE_ID}/items/${EXCEL_ITEM_ID}/workbook/worksheets('${encodeURIComponent(EXCEL_SHEET)}')/usedRange?$select=values`;
+    const resp=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    if(!resp.ok)return;
+    const data=await resp.json();
+    const rows=data.values||[];
+    let headerRow=-1,colMap={};
+    for(let i=0;i<Math.min(rows.length,5);i++){
+      const r=rows[i].map(v=>String(v||'').trim());
+      if(r.includes('Nombre Cliente')){headerRow=i;r.forEach((h,j)=>{colMap[h]=j;});break;}
+    }
+    if(headerRow<0)return;
+    const C_FECHA=colMap['Fecha']??1,C_MES=colMap['Mes']??3;
+    const C_ID=colMap['ID_Cliente']??9,C_NOMBRE=colMap['Nombre Cliente']??8;
+    const C_SERV=colMap['Servicio']??14,C_TIPO=colMap['Tipo servicio']??15;
+    const C_PRECIO=colMap['Precio']??16,C_PROG=colMap['Programar']??18;
+    excelPlanData=[];
+    for(let i=headerRow+1;i<rows.length;i++){
+      const row=rows[i];
+      if(!row||row.every(v=>!v))continue;
+      const idCliente=String(row[C_ID]||'').trim();
+      const nombreCliente=String(row[C_NOMBRE]||'').trim();
+      if(!nombreCliente&&!idCliente)continue;
+      let fecha='',mes=0,anio=0;
+      const rawFecha=row[C_FECHA];
+      if(rawFecha){
+        let d;
+        if(typeof rawFecha==='number')d=new Date(Math.round((rawFecha-25569)*86400*1000));
+        else d=new Date(String(rawFecha));
+        if(!isNaN(d)){fecha=d.toISOString().slice(0,10);mes=d.getMonth()+1;anio=d.getFullYear();}
+      }
+      if(!mes)mes=parseInt(row[C_MES])||0;
+      const prog=String(row[C_PROG]||'').trim().toLowerCase();
+      excelPlanData.push({
+        rowIdx:i,fecha,mes,anio,idCliente,nombreCliente,
+        servicio:String(row[C_SERV]||'').trim(),
+        tipo:String(row[C_TIPO]||'').trim(),
+        precio:Number(row[C_PRECIO]||0),
+        programar:prog==='sí'||prog==='si'||prog==='x',
+      });
+    }
+    _populatePlanMesFiltro();
+    renderPlanMap();
+  }catch(err){console.error('loadExcelPlanData:',err.message);}
+};
+
+function _populatePlanMesFiltro(){
+  const sel=document.getElementById('planFilterMes');if(!sel)return;
+  const cur=sel.value;
+  const meses=[...new Set(excelPlanData.map(r=>r.mes).filter(Boolean))].sort((a,b)=>a-b);
+  const MS=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  sel.innerHTML='<option value="">Todos los meses</option>'+meses.map(m=>`<option value="${m}"${String(m)===cur?'selected':''}>${MS[m]||m}</option>`).join('');
+}
+
+window.onPlanFilterChange=function(){renderPlanMap();};
+
+function _getExcelClientesParaMapa(){
+  const mesFiltro=parseInt(document.getElementById('planFilterMes')?.value)||0;
+  const progFiltro=document.getElementById('planFilterProgramar')?.value||'';
+  let rows=[...excelPlanData];
+  if(mesFiltro)rows=rows.filter(r=>r.mes===mesFiltro);
+  if(progFiltro==='si')rows=rows.filter(r=>r.programar);
+  if(progFiltro==='no')rows=rows.filter(r=>!r.programar);
+  const mapa={};
+  rows.forEach(r=>{
+    const key=r.idCliente||r.nombreCliente;
+    if(!mapa[key]){
+      const cli=clients.find(c=>(r.idCliente&&c.codigo_cmip===r.idCliente)||c.name.toLowerCase()===r.nombreCliente.toLowerCase());
+      mapa[key]={idCliente:r.idCliente,nombreCliente:r.nombreCliente,cli,sinCodigo:!r.idCliente,rows:[],programados:0,total:0};
+    }
+    mapa[key].rows.push(r);
+    mapa[key].total++;
+    if(r.programar)mapa[key].programados++;
+  });
+  return Object.values(mapa);
+}
+
+window.openCalendarizarModal=function(idCliente,nombreCliente,fecha,servicio,rowIdx){
+  const tOpts=technicians.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  showModal(`<h3>Calendarizar servicio</h3>
+    <p style="font-size:13px;margin-bottom:12px"><strong>${nombreCliente}</strong><br>
+    <span style="color:var(--text2);font-size:12px">${servicio||'Manejo Integrado de Plagas'}</span></p>
+    <div class="form-row">
+      <div class="form-group"><label>Fecha *</label>
+        <input type="date" id="cdx_fecha" value="${fecha||new Date().toISOString().slice(0,10)}">
+      </div>
+      <div class="form-group"><label>Técnico</label>
+        <select id="cdx_tech">${tOpts}</select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Hora inicio</label>
+        <input type="time" id="cdx_hi" value="08:00" style="padding:6px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;width:100%">
+      </div>
+      <div class="form-group"><label>Hora fin</label>
+        <input type="time" id="cdx_hf" value="13:00" style="padding:6px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;width:100%">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="
+        const f=document.getElementById('cdx_fecha').value;
+        const t=document.getElementById('cdx_tech').value;
+        const hi=document.getElementById('cdx_hi').value.split(':');
+        const hf=document.getElementById('cdx_hf').value.split(':');
+        if(!f){showToast('Selecciona una fecha','error');return;}
+        calendarizarDesdeExcel('${idCliente}','${nombreCliente.replace(/'/g,"\\'")}',f,'${servicio.replace(/'/g,"\\'")}',${rowIdx},t,parseInt(hi[0]),parseInt(hi[1]),parseInt(hf[0]),parseInt(hf[1]));
+      ">Calendarizar</button>
+    </div>`);
+};
+
+window.calendarizarDesdeExcel=async function(idCliente,nombreCliente,fecha,servicio,rowIdx,techId,sH,sM,eH,eM){
+  const cli=clients.find(c=>(idCliente&&c.codigo_cmip===idCliente)||c.name.toLowerCase()===nombreCliente.toLowerCase());
+  const matchSvc=getSvcNombres().find(s=>s.toLowerCase()===servicio.toLowerCase())||'Manejo Integrado de Plagas';
+  const newSvc={
+    id:uid(),client:cli?.name||nombreCliente,
+    address:cli?.address||'',phone:cli?.phone||'',
+    type:matchSvc,techId:techId||technicians[0]?.id||'',
+    techIds:[techId||technicians[0]?.id].filter(Boolean),
+    status:defaultNewServiceStatus||getSvcStatuses()[0]||'No enviado',
+    date:fecha,startH:sH||8,startM:sM||0,endH:eH||13,endM:eM||0,
+    timeMode:'defined',notes:'',origen:'excel',createdAt:Date.now(),updatedAt:Date.now(),
+  };
+  services.push(newSvc);
+  saveData();
+  // Marcar Programar=Sí en Excel
+  try{
+    const token=await _getGraphToken();
+    const excelRow=rowIdx+2; // +1 offset fila header, +1 Excel 1-based
+    const cellAddr='S'+excelRow;
+    const rangeUrl=`https://graph.microsoft.com/v1.0/drives/${EXCEL_DRIVE_ID}/items/${EXCEL_ITEM_ID}/workbook/worksheets('${encodeURIComponent(EXCEL_SHEET)}')/range(address='${cellAddr}')`;
+    await fetch(rangeUrl,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({values:[['Sí']]})});
+    const planRow=excelPlanData.find(r=>r.rowIdx===rowIdx);
+    if(planRow)planRow.programar=true;
+    showToast('Calendarizado y marcado en Excel','success');
+  }catch(err){
+    showToast('Calendarizado (Excel: '+err.message+')','success');
+  }
+  closeModal();renderCalendar();renderPlanMap();
 };
 
 boot();
