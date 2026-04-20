@@ -690,7 +690,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.18.1745 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0256 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -723,7 +723,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.18.1745
+        v2026.04.20.0256
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -737,7 +737,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.18.1745</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0256</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -912,6 +912,31 @@ header {
           </div>
         </div>
 
+        <!-- INTEGRACIÓN EXCEL ONEDRIVE -->
+        <div style="margin-top:2rem">
+          <div class="section-header"><h2>Planificación desde Excel</h2></div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+            Lee automáticamente <strong>PPTO 2026.xlsx</strong> desde OneDrive.<br>
+            Agrega en el Excel las columnas <strong>ID_Cliente</strong> (col J, junto al nombre) y <strong>Programar</strong> (col S, al final).<br>
+            Solo las filas con <code>Programar = Sí</code> y fecha futura se importan al calendario.
+          </p>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:12px">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="excelSyncChk" style="width:15px;height:15px"
+                onchange="saveExcelConfig()">
+              <div>
+                <div style="font-size:13px;font-weight:600">Sincronización automática activa</div>
+                <div style="font-size:11px;color:var(--text2)">Importar servicios planificados desde PPTO 2026.xlsx · cada 5 min</div>
+              </div>
+            </label>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn btn-sm" onclick="syncExcelPlanificacion(true)">↻ Sincronizar ahora</button>
+              <button class="btn btn-sm" onclick="resetExcelSyncedIds()">🔄 Reimportar todo</button>
+              <span id="excelSyncStatus" style="font-size:11px;color:var(--text3)"></span>
+            </div>
+          </div>
+        </div>
+
         <!-- INTEGRACIÓN OUTLOOK -->
         <div style="margin-top:2rem">
           <div class="section-header"><h2>Integración Outlook</h2></div>
@@ -938,6 +963,25 @@ header {
             <div style="display:flex;align-items:center;gap:10px">
               <button class="btn btn-sm" onclick="syncOutlookGestion(true)">↻ Sincronizar ahora</button>
               <span id="outlookSyncStatus" style="font-size:11px;color:var(--text3)"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BACKUP ONEDRIVE -->
+        <div style="margin-top:2rem">
+          <div class="section-header"><h2>Backup automático</h2></div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+            Guarda una copia de todos los datos en OneDrive diariamente.<br>
+            Carpeta: <code>CARPETA COMPARTIDA SERFUPLAGAS/App Serfuplagas/Backups/</code>
+          </p>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-sm" onclick="runBackupNow()">💾 Backup ahora</button>
+              <span id="backupStatus" style="font-size:11px;color:var(--text3)"></span>
+            </div>
+            <div style="font-size:11px;color:var(--text2)">
+              El backup automático se ejecuta una vez al día al abrir la app.
+              Incluye clientes, servicios, gestiones y configuración.
             </div>
           </div>
         </div>
@@ -1111,6 +1155,14 @@ let currentUser=null, currentTenantId=TENANT_ID;
 let services=[], technicians=[], clients=[], history=[], gestiones=[], appUsers=[], mapsKey='';
 let defaultNewServiceStatus = '';
 let outlookSyncEnabled = false;       // activado por el usuario en Personalización
+let excelSyncEnabled  = false;
+let lastBackupDate    = '';           // fecha del último backup YYYY-MM-DD        // sync Excel OneDrive
+let excelLastSync     = 0;            // timestamp último sync Excel
+let excelSyncedIds    = [];           // IDs de filas ya importadas (fecha+cliente+lugar)
+// IDs fijos del archivo en OneDrive (no cambian)
+const EXCEL_DRIVE_ID = 'b!ljbxsC-jv0CFdii5PZVyfyQ6aMOK_MJJmYw-5mpxNfq4dyWHup8VTKLqIFzUiNpk';
+const EXCEL_ITEM_ID  = '01UDR7OFDSTST35GB2EBE2WJ5BOK5FP27U';
+const EXCEL_SHEET    = 'Informe Diario 2026';
 let outlookLastSync    = 0;           // timestamp último sync
 let outlookSyncedIds   = [];          // internetMessageIds ya importados
 let outlookResponsable = '';          // responsable predefinido para correos
@@ -1389,6 +1441,9 @@ function startDataSync(){
     if(d.outlookSyncEnabled!==undefined) outlookSyncEnabled=d.outlookSyncEnabled;
     if(d.outlookSyncedIds)   outlookSyncedIds=d.outlookSyncedIds;
     if(d.outlookResponsable) outlookResponsable=d.outlookResponsable;
+    if(d.excelSyncEnabled!==undefined) excelSyncEnabled=d.excelSyncEnabled;
+    if(d.excelSyncedIds)   excelSyncedIds=d.excelSyncedIds;
+    if(d.lastBackupDate)   lastBackupDate=d.lastBackupDate;
     if(d.statusCycleOrder) statusCycleOrder=Array.isArray(d.statusCycleOrder)?d.statusCycleOrder:Object.values(d.statusCycleOrder);
     if(d.maestroPlagas)       maestroPlagas       = Array.isArray(d.maestroPlagas)       ? d.maestroPlagas       : Object.values(d.maestroPlagas);
     if(d.maestroProductos)    maestroProductos    = Array.isArray(d.maestroProductos)    ? d.maestroProductos    : Object.values(d.maestroProductos);
@@ -1415,7 +1470,7 @@ async function saveData(){
     clients:    Object.fromEntries(clients.map(c=>[c.id,c])),
     gestiones:  Object.fromEntries(gestiones.map(g=>[g.id,g])),
     history:    Object.fromEntries(history.slice(0,400).map(h=>[h.id,h])),
-    maestroEstados:getEstados(), mapsKey, defaultNewServiceStatus, calBlockLayout, statusCycleOrder:[], outlookSyncEnabled, outlookSyncedIds, outlookResponsable, svcMaestro:getSvcMaestro(),
+    maestroEstados:getEstados(), mapsKey, defaultNewServiceStatus, calBlockLayout, statusCycleOrder:[], outlookSyncEnabled, outlookSyncedIds, outlookResponsable, excelSyncEnabled, excelSyncedIds, lastBackupDate, svcMaestro:getSvcMaestro(),
     maestroPlagas:      getMaestroPlagas(),
     maestroProductos:   getMaestroProductos(),
     maestroRubros:      getMaestroRubros(),
@@ -1511,7 +1566,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.18.1745';
+const APP_VERSION = 'v2026.04.20.0256';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3458,6 +3513,9 @@ function renderStatusConfig(){
   const cls=document.getElementById('calBlockLayoutSelect');
   if(cls) cls.value=calBlockLayout||'default';
   _initOutlookSettings();
+  // Actualizar estado de backup
+  const bkpEl = document.getElementById('backupStatus');
+  if(bkpEl && lastBackupDate) bkpEl.textContent = 'Último backup: ' + lastBackupDate;
   const dsel=document.getElementById('defaultStatusSelect');
   if(dsel) dsel.innerHTML=getSvcStatuses().map(s=>`<option value="${s}" ${s===defaultNewServiceStatus?'selected':''}>${s}</option>`).join('');
   const estados=getEstados();
@@ -3862,7 +3920,9 @@ function renderNotifPanel(){
 function startNotifChecker(){
   updateNotifBadge();
   syncOutlookGestion();
-  setInterval(()=>{ updateNotifBadge(); syncOutlookGestion(); }, 5*60*1000);
+  syncExcelPlanificacion();
+  setTimeout(checkDailyBackup, 30000); // verificar backup 30s después de cargar
+  setInterval(()=>{ updateNotifBadge(); syncOutlookGestion(); syncExcelPlanificacion(); checkDailyBackup(); }, 5*60*1000);
 }
 
 /* ═══ SERVICIOS VINCULADOS ═══ */
@@ -4816,6 +4876,8 @@ function _initOutlookSettings(){
   const chk = document.getElementById('outlookSyncChk');
   const sel = document.getElementById('outlookRespSel');
   if(chk) chk.checked = outlookSyncEnabled;
+  const exChk = document.getElementById('excelSyncChk');
+  if(exChk) exChk.checked = excelSyncEnabled;
   if(sel){
     const cur = sel.value;
     sel.innerHTML = '<option value="">Sin asignar</option>' +
@@ -4915,6 +4977,268 @@ async function _getGraphToken(){
   // Fallback: pedir al usuario que autorice
   throw new Error('Autoriza Microsoft 365 en Personalización primero');
 }
+
+// ════════════════════════════════════════════════════
+// SINCRONIZACIÓN EXCEL ONEDRIVE → CALENDARIO
+// ════════════════════════════════════════════════════
+
+window.saveExcelConfig = function(){
+  excelSyncEnabled = document.getElementById('excelSyncChk')?.checked||false;
+  saveData();
+  showToast('Config Excel guardada','success');
+  if(excelSyncEnabled) syncExcelPlanificacion(true);
+};
+
+window.resetExcelSyncedIds = function(){
+  if(!confirm('¿Reimportar todos los servicios desde el Excel? Los servicios ya importados se duplicarán si los confirmas.')) return;
+  excelSyncedIds=[];
+  saveData();
+  syncExcelPlanificacion(true);
+};
+
+window.syncExcelPlanificacion = async function(manual=false){
+  if(!excelSyncEnabled && !manual) return;
+  const statusEl = document.getElementById('excelSyncStatus');
+  if(statusEl) statusEl.textContent = '↻ Leyendo Excel…';
+
+  try {
+    const token = await _getGraphToken();
+
+    // Leer hoja "Informe Diario 2026" via Graph API workbook
+    const url = `https://graph.microsoft.com/v1.0/drives/${EXCEL_DRIVE_ID}/items/${EXCEL_ITEM_ID}/workbook/worksheets('${encodeURIComponent(EXCEL_SHEET)}')/usedRange?$select=values`;
+    const resp = await fetch(url, { headers:{ Authorization:'Bearer '+token } });
+
+    if(!resp.ok) throw new Error('Error leyendo Excel ('+resp.status+')');
+    const data = await resp.json();
+    const rows = data.values||[];
+
+    if(rows.length < 2){ throw new Error('Excel sin datos'); }
+
+    // Detectar fila de headers (buscar "Nombre Cliente")
+    let headerRow = -1;
+    let colMap = {};
+    for(let i=0;i<Math.min(rows.length,5);i++){
+      const r = rows[i].map(v=>String(v||'').trim());
+      if(r.includes('Nombre Cliente')){
+        headerRow = i;
+        r.forEach((h,j)=>{ colMap[h]=j; });
+        break;
+      }
+    }
+    if(headerRow<0) throw new Error('No se encontró header en el Excel');
+
+    // Índices de columnas — nombres exactos en el Excel
+    // Columnas fijas que ya existen
+    const C_FECHA    = colMap['Fecha']          ?? 1;
+    const C_ANIO     = colMap['Año']            ?? 2;
+    const C_MES      = colMap['Mes']            ?? 3;
+    const C_DIA      = colMap['Dia']            ?? 4;
+    const C_NOMBRE   = colMap['Nombre Cliente'] ?? 8;  // col I
+    const C_SERVICIO = colMap['Servicio']       ?? 14; // col O
+    const C_TIPO     = colMap['Tipo servicio']  ?? 15; // col P
+    const C_PRECIO   = colMap['Precio']         ?? 16; // col Q
+    const C_LUGAR    = colMap['Lugar, comentario'] ?? 13; // col N
+    // Columnas nuevas que agregarás tú
+    const C_ID_CLI   = colMap['ID_Cliente']     ?? 9;  // col J (nueva)
+    const C_PROGRAMAR= colMap['Programar']      ?? 18; // col S (nueva)
+
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    let nuevos=0, omitidos=0;
+
+    for(let i=headerRow+1; i<rows.length; i++){
+      const row = rows[i];
+      if(!row || row.every(v=>!v)) continue;
+
+      // Filtrar: solo filas con Programar = "Sí" (cuando la columna existe)
+      const programar = String(row[C_PROGRAMAR]||'').trim().toLowerCase();
+      // Si la columna Programar aún no existe (vacía), importar igual en modo manual
+      if(colMap['Programar']!==undefined && programar !== 'sí' && programar !== 'si') { omitidos++; continue; }
+
+      // Parsear fecha
+      let fecha = '';
+      const rawFecha = row[C_FECHA];
+      if(rawFecha){
+        let d;
+        // Excel serial date o fecha ISO
+        if(typeof rawFecha === 'number'){
+          // Excel serial → JS date (Excel epoch = 1/1/1900, JS = 1/1/1970)
+          d = new Date(Math.round((rawFecha - 25569)*86400*1000));
+        } else {
+          d = new Date(String(rawFecha));
+        }
+        if(!isNaN(d)){
+          // Solo fechas futuras
+          if(d < hoy){ omitidos++; continue; }
+          fecha = d.toISOString().slice(0,10);
+        }
+      }
+      if(!fecha){ omitidos++; continue; }
+
+      const nombreCliente = String(row[C_NOMBRE]||'').trim();
+      const idCliente     = String(row[C_ID_CLI]||'').trim();
+      const lugar         = String(row[C_LUGAR]||'').trim();
+      const tipoServicio  = String(row[C_TIPO]||'').trim();
+      const servicio      = String(row[C_SERVICIO]||'').trim();
+      const precio        = Number(row[C_PRECIO]||0);
+
+      if(!nombreCliente && !idCliente){ omitidos++; continue; }
+
+      // ID único para evitar duplicados: fecha+idCliente+lugar
+      const rowKey = `${fecha}|${idCliente||nombreCliente}`;
+      if(excelSyncedIds.includes(rowKey)){ omitidos++; continue; }
+
+      // Match de cliente: por ID → por nombre parcial
+      let clienteMatch = null;
+      if(idCliente){
+        clienteMatch = clients.find(c=>(c.codigo_cmip||'').trim()===idCliente);
+      }
+      if(!clienteMatch && nombreCliente){
+        clienteMatch = clients.find(c=>
+          c.name.toLowerCase().includes(nombreCliente.toLowerCase()) ||
+          nombreCliente.toLowerCase().includes(c.name.toLowerCase())
+        );
+      }
+      const clienteName    = clienteMatch?.name || nombreCliente;
+      const clienteAddress = clienteMatch?.address || '';
+      const clientePhone   = clienteMatch?.phone || '';
+
+      // Determinar tipo de servicio desde maestro
+      const svcNombres = getSvcNombres();
+      let svcType = servicio || tipoServicio || svcNombres[0] || '';
+      // Si el servicio del Excel coincide con un nombre del maestro, usarlo
+      if(servicio){
+        const matchSvc = svcNombres.find(s=>s.toLowerCase()===servicio.toLowerCase());
+        if(matchSvc) svcType = matchSvc;
+      }
+
+      // Crear servicio
+      const newSvc = {
+        id:        uid(),
+        client:    clienteName,
+        address:   clienteAddress || lugar,
+        phone:     clientePhone,
+        type:      svcType,
+        techId:    technicians[0]?.id||'',
+        techIds:   technicians[0]?[technicians[0].id]:[],
+        status:    defaultNewServiceStatus||getSvcStatuses()[0]||'No enviado',
+        date:      fecha,
+        startH:    8, startM:0, endH:13, endM:0,
+        timeMode:  'am',
+        notes:     lugar+(precio?` · $${precio.toLocaleString('es-CL')}`:''),
+        origen:    'excel',
+        origenKey: rowKey,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      services.push(newSvc);
+      excelSyncedIds.push(rowKey);
+      nuevos++;
+    }
+
+    if(nuevos>0){
+      saveData();
+      if(document.getElementById('tab-calendar')?.classList.contains('active')) renderCalendar();
+      showToast('Excel: '+nuevos+' servicio'+(nuevos>1?'s':'')+' importado'+(nuevos>1?'s':''),'success');
+    }
+
+    excelLastSync = Date.now();
+    const hora = new Date(excelLastSync).toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    if(statusEl) statusEl.textContent = 'Última sync: '+hora+' · '+(nuevos?nuevos+' nuevo'+(nuevos>1?'s':''):'Sin cambios')+(omitidos?' ('+omitidos+' omitidos)':'');
+
+  } catch(err){
+    console.error('Excel sync error:',err);
+    if(statusEl) statusEl.textContent = '⚠ '+err.message;
+    if(manual) showToast('Error: '+err.message,'error');
+  }
+};
+
+// ════════════════════════════════════════════════════
+// BACKUP AUTOMÁTICO A ONEDRIVE
+// ════════════════════════════════════════════════════
+
+// Carpeta de backup en OneDrive — se crea automáticamente si no existe
+const BACKUP_FOLDER_PATH = 'CARPETA COMPARTIDA SERFUPLAGAS/App Serfuplagas/Backups';
+const BACKUP_DRIVE_ID    = 'b!ljbxsC-jv0CFdii5PZVyfyQ6aMOK_MJJmYw-5mpxNfq4dyWHup8VTKLqIFzUiNpk';
+
+// Verificar si corresponde hacer backup hoy
+window.checkDailyBackup = async function(){
+  const today = new Date().toISOString().slice(0,10);
+  if(lastBackupDate === today) return; // ya se hizo hoy
+  await runBackupNow(true); // silencioso
+};
+
+// Ejecutar backup
+window.runBackupNow = async function(silent=false){
+  const statusEl = document.getElementById('backupStatus');
+  if(statusEl) statusEl.textContent = '↻ Guardando backup…';
+
+  try {
+    const token = await _getGraphToken();
+    const today = new Date().toISOString().slice(0,10);
+
+    // Construir el objeto de backup completo
+    const backup = {
+      version:     '1.0',
+      tenant:      currentTenantId,
+      fecha:       today,
+      timestamp:   Date.now(),
+      totales: {
+        clientes:   clients.length,
+        servicios:  services.length,
+        gestiones:  gestiones.length,
+        tecnicos:   technicians.length,
+      },
+      datos: {
+        clients,
+        services,
+        gestiones,
+        technicians,
+        maestroEstados:    getEstados(),
+        maestroPlagas:     getMaestroPlagas(),
+        maestroProductos:  getMaestroProductos(),
+        maestroDispositivos: getMaestroDispositivos(),
+        maestroRubros:     getMaestroRubros(),
+        maestroFrecuencias:getMaestroFrecuencias(),
+        maestroFormularios:getMaestroFormularios(),
+        svcMaestro:        getSvcMaestro(),
+      }
+    };
+
+    const content = JSON.stringify(backup, null, 2);
+    const filename = `backup_${today}.json`;
+
+    // Subir a OneDrive via Graph API
+    // PUT /drives/{id}/root:/{path}/{filename}:/content
+    const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${BACKUP_DRIVE_ID}/root:/${encodeURIComponent(BACKUP_FOLDER_PATH)}/${filename}:/content`;
+
+    const uploadResp = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+      },
+      body: content,
+    });
+
+    if(!uploadResp.ok) throw new Error('Error subiendo backup ('+uploadResp.status+')');
+
+    // Registrar fecha del backup
+    lastBackupDate = today;
+    saveData();
+
+    const hora = new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    const msg  = `Backup guardado: ${filename} · ${(content.length/1024).toFixed(0)} KB`;
+    if(statusEl) statusEl.textContent = hora + ' · ' + msg;
+    if(!silent) showToast('💾 ' + msg, 'success');
+    console.log('Backup OK:', filename);
+
+  } catch(err){
+    console.error('Backup error:', err);
+    const msg = '⚠ ' + err.message;
+    if(statusEl) statusEl.textContent = msg;
+    if(!silent) showToast(msg, 'error');
+  }
+};
 
 boot();
 startNotifChecker();
