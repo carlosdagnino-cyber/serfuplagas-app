@@ -690,7 +690,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0256 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0328 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -723,7 +723,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0256
+        v2026.04.20.0328
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -737,7 +737,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0256</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0328</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -959,6 +959,10 @@ header {
                 style="padding:6px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
                 <option value="">Sin asignar</option>
               </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-sm" onclick="autorizarM365()" style="background:var(--accent);color:#fff;border-color:var(--accent)">🔑 Conectar con Microsoft 365</button>
+              <span id="m365Status" style="font-size:11px;color:var(--text3)"></span>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <button class="btn btn-sm" onclick="syncOutlookGestion(true)">↻ Sincronizar ahora</button>
@@ -1566,7 +1570,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0256';
+const APP_VERSION = 'v2026.04.20.0328';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -4915,10 +4919,8 @@ window.syncOutlookGestion = async function(manual=false){
   const statusEl = document.getElementById('outlookSyncStatus');
   if(statusEl) statusEl.textContent = '↻ Sincronizando…';
   try {
-    const token = await _getGraphToken();
-    // 1. Buscar carpeta "Gestión APP"
-    const fResp = await fetch('https://graph.microsoft.com/v1.0/me/mailFolders?$top=50',
-      {headers:{Authorization:'Bearer '+token}});
+    const fResp = await _graphFetch('https://graph.microsoft.com/v1.0/me/mailFolders?$top=50');
+    if(!fResp) return;
     if(!fResp.ok) throw new Error('Sin acceso a Outlook ('+fResp.status+')');
     const fData = await fResp.json();
     const folder = (fData.value||[]).find(f=>f.displayName==='Gestión APP');
@@ -4927,9 +4929,9 @@ window.syncOutlookGestion = async function(manual=false){
       return;
     }
     // 2. Leer correos
-    const mResp = await fetch(
-      `https://graph.microsoft.com/v1.0/me/mailFolders/${folder.id}/messages?$top=20&$select=id,subject,sender,receivedDateTime,bodyPreview,internetMessageId&$orderby=receivedDateTime%20desc`,
-      {headers:{Authorization:'Bearer '+token}});
+    const mResp = await _graphFetch(
+      `https://graph.microsoft.com/v1.0/me/mailFolders/${folder.id}/messages?$top=20&$select=id,subject,sender,receivedDateTime,bodyPreview,internetMessageId&$orderby=receivedDateTime%20desc`);
+    if(!mResp) return;
     if(!mResp.ok) throw new Error('Error leyendo correos ('+mResp.status+')');
     const mData = await mResp.json();
     // 3. Importar nuevos
@@ -4964,18 +4966,96 @@ window.syncOutlookGestion = async function(manual=false){
 };
 
 // Token Microsoft Graph — requiere que el usuario haya autorizado M365 en Claude
+// ── Microsoft Graph OAuth (PKCE) ──────────────────────────────────
+// Registrar app en: https://entra.microsoft.com → App registrations
+// Redirect URI: https://serfuplagas-app.vercel.app/auth.html (tipo SPA)
+// Permisos: Files.ReadWrite, Mail.Read, User.Read
+const MS_CLIENT_ID  = '412cfc5f-534b-47b3-ac54-752e3b3a2343';
+const MS_TENANT     = '7ca6654c-f632-4982-bb2a-9c29ef56aac7';
+const MS_SCOPES     = 'Files.ReadWrite Mail.Read User.Read';
+const MS_REDIRECT   = location.origin + '/';
+let _msToken = '';
+let _msTokenExp = 0;
+
 async function _getGraphToken(){
-  // Intenta obtener token del endpoint OAuth de Microsoft via MSAL implícito
-  // La app usa el flujo PKCE de Microsoft identity platform
-  const tokenKey = Object.keys(sessionStorage).find(k=>k.includes('login.microsoftonline')&&k.includes('accesstoken'));
-  if(tokenKey){
+  // 1. Token en memoria vigente
+  if(_msToken && Date.now() < _msTokenExp - 60000) return _msToken;
+
+  // 2. Token en sessionStorage
+  const stored = sessionStorage.getItem('ms_graph_token');
+  if(stored){
     try{
-      const t=JSON.parse(sessionStorage[tokenKey]);
-      if(t.secret && t.expiresOn > Date.now()/1000) return t.secret;
+      const t = JSON.parse(stored);
+      if(t.token && t.exp > Date.now()+60000){
+        _msToken = t.token; _msTokenExp = t.exp;
+        return _msToken;
+      }
     }catch(e){}
   }
-  // Fallback: pedir al usuario que autorice
-  throw new Error('Autoriza Microsoft 365 en Personalización primero');
+
+  // 3. Token en URL (retorno del popup OAuth)
+  const hash = location.hash;
+  if(hash.includes('access_token')){
+    const params = new URLSearchParams(hash.replace('#','?'));
+    const token  = params.get('access_token');
+    const expiresIn = parseInt(params.get('expires_in')||'3600');
+    if(token){
+      _msToken    = token;
+      _msTokenExp = Date.now() + expiresIn*1000;
+      sessionStorage.setItem('ms_graph_token', JSON.stringify({token:_msToken, exp:_msTokenExp}));
+      history.replaceState(null,'',location.pathname); // limpiar hash
+      return _msToken;
+    }
+  }
+
+  // 4. Sin token — lanzar popup de autorización
+  throw new Error('NO_TOKEN');
+}
+
+// Iniciar flujo OAuth Microsoft
+window.autorizarM365 = function(){
+  if(MS_CLIENT_ID === 'PENDIENTE'){
+    showModal(`<h3>Configuración requerida</h3>
+      <p style="font-size:13px;margin-bottom:12px">Para conectar con Microsoft 365 necesitas registrar la app en Azure:</p>
+      <ol style="font-size:12px;line-height:1.8;padding-left:1.2em">
+        <li>Ve a <a href="https://entra.microsoft.com" target="_blank" style="color:var(--accent)">entra.microsoft.com</a></li>
+        <li>App registrations → New registration</li>
+        <li>Name: <strong>Serfuplagas App</strong></li>
+        <li>Redirect URI: <strong>Single-page application (SPA)</strong><br><code style="font-size:11px">${location.origin}/</code></li>
+        <li>API permissions → Add: <strong>Files.ReadWrite, Mail.Read, User.Read</strong></li>
+        <li>Copia el <strong>Application (client) ID</strong> y compártelo para configurarlo</li>
+      </ol>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Entendido</button>
+      </div>`);
+    return;
+  }
+  const url = 'https://login.microsoftonline.com/'+MS_TENANT+'/oauth2/v2.0/authorize'
+    +'?client_id='+MS_CLIENT_ID
+    +'&response_type=token'
+    +'&redirect_uri='+encodeURIComponent(MS_REDIRECT)
+    +'&scope='+encodeURIComponent(MS_SCOPES)
+    +'&response_mode=fragment'
+    +'&prompt=select_account';
+  // Abrir en la misma ventana — regresa con token en el hash
+  location.href = url;
+};
+
+// Llamar a Graph con manejo automático de NO_TOKEN
+async function _graphFetch(url, opts={}){
+  let token;
+  try { token = await _getGraphToken(); }
+  catch(e){
+    if(e.message==='NO_TOKEN'){
+      // Mostrar botón de autorización
+      const statusEl = document.getElementById('m365Status');
+      if(statusEl) statusEl.textContent = '';
+      showToast('Conéctate a Microsoft 365 desde Personalización','error');
+      return null;
+    }
+    throw e;
+  }
+  return fetch(url, { ...opts, headers:{ Authorization:'Bearer '+token, ...(opts.headers||{}) } });
 }
 
 // ════════════════════════════════════════════════════
@@ -5002,12 +5082,10 @@ window.syncExcelPlanificacion = async function(manual=false){
   if(statusEl) statusEl.textContent = '↻ Leyendo Excel…';
 
   try {
-    const token = await _getGraphToken();
-
-    // Leer hoja "Informe Diario 2026" via Graph API workbook
-    const url = `https://graph.microsoft.com/v1.0/drives/${EXCEL_DRIVE_ID}/items/${EXCEL_ITEM_ID}/workbook/worksheets('${encodeURIComponent(EXCEL_SHEET)}')/usedRange?$select=values`;
-    const resp = await fetch(url, { headers:{ Authorization:'Bearer '+token } });
-
+    const resp = await _graphFetch(
+      `https://graph.microsoft.com/v1.0/drives/${EXCEL_DRIVE_ID}/items/${EXCEL_ITEM_ID}/workbook/worksheets('${encodeURIComponent(EXCEL_SHEET)}')/usedRange?$select=values`
+    );
+    if(!resp) return;
     if(!resp.ok) throw new Error('Error leyendo Excel ('+resp.status+')');
     const data = await resp.json();
     const rows = data.values||[];
@@ -5173,7 +5251,6 @@ window.runBackupNow = async function(silent=false){
   if(statusEl) statusEl.textContent = '↻ Guardando backup…';
 
   try {
-    const token = await _getGraphToken();
     const today = new Date().toISOString().slice(0,10);
 
     // Construir el objeto de backup completo
@@ -5211,14 +5288,12 @@ window.runBackupNow = async function(silent=false){
     // PUT /drives/{id}/root:/{path}/{filename}:/content
     const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${BACKUP_DRIVE_ID}/root:/${encodeURIComponent(BACKUP_FOLDER_PATH)}/${filename}:/content`;
 
-    const uploadResp = await fetch(uploadUrl, {
+    const uploadResp = await _graphFetch(uploadUrl, {
       method: 'PUT',
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: content,
     });
+    if(!uploadResp) return;
 
     if(!uploadResp.ok) throw new Error('Error subiendo backup ('+uploadResp.status+')');
 
@@ -5239,6 +5314,17 @@ window.runBackupNow = async function(silent=false){
     if(!silent) showToast(msg, 'error');
   }
 };
+
+// Verificar si hay token OAuth en el hash al cargar
+(async()=>{
+  try{
+    const t = await _getGraphToken();
+    if(t){
+      sessionStorage.setItem('ms_graph_token', JSON.stringify({token:t, exp:_msTokenExp}));
+      console.log('Token M365 restaurado');
+    }
+  }catch(e){ /* sin token, OK */ }
+})();
 
 boot();
 startNotifChecker();
