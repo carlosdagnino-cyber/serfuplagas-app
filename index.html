@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.1511 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.1520 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.1511
+        v2026.04.20.1520
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.1511</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.1520</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1581,7 +1581,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.1511';
+const APP_VERSION = 'v2026.04.20.1520';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3713,6 +3713,7 @@ window.initPlanMap=function initPlanMap(){
   const mapDiv=document.getElementById('plan-map');
   if(!mapDiv) return;
   mapDiv.innerHTML='';
+  _setPlanMapMsg(null); // esconder overlay
   planMap=new google.maps.Map(mapDiv,{
     zoom:11, center:{lat:-33.5928,lng:-70.7009}, mapTypeId:'roadmap',
     mapTypeControl:false, streetViewControl:false, fullscreenControl:true,
@@ -3729,7 +3730,7 @@ window.renderPlanMap=function(){
   if(!window.google){
     const script=document.createElement('script');
     script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady&loading=async`;
-    script.onerror=()=>{ const d=document.getElementById('plan-map'); if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">⚠️</div><div style="font-size:13px;color:#ef4444">Error cargando Google Maps. Verifica la API Key en Personalización.</div></div>'; };
+    script.onerror=()=>{ const d=document.getElementById('plan-map'); _setPlanMapMsg('<div class="map-placeholder" style="background:none"><div style="font-size:32px">⚠️</div><div style="font-size:13px;color:#ef4444">Error Google Maps. Verifica la API Key.</div></div>'); };
     script.async=true;
     window._planMapReady=()=>{ planMap=null; initPlanMap(); if(planMap) window.renderPlanMap(); else console.warn('planMap no se pudo crear'); };
     document.head.appendChild(script);
@@ -3749,7 +3750,7 @@ window.renderPlanMap=function(){
   // Usar datos del Excel — sin fallback a todos los clientes
   if(excelPlanData.length===0){
     const d=document.getElementById('plan-map');
-    if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">🔑</div><div style="font-size:13px">Conecta Microsoft 365 en Personalización para cargar el mapa de planificación</div><div style="margin-top:12px"><button class="btn btn-primary" onclick="autorizarM365()">🔑 Conectar Microsoft 365</button></div></div>';
+    _setPlanMapMsg('<div class="map-placeholder" style="background:none"><div style="font-size:32px">🔑</div><div style="font-size:13px">Conecta Microsoft 365 para cargar el mapa</div><div style="margin-top:12px"><button class="btn btn-primary" onclick="autorizarM365()">🔑 Conectar Microsoft 365</button></div></div>');
     return;
   }
   clientsToShow=excelGrupos.map(g=>({
@@ -3760,7 +3761,7 @@ window.renderPlanMap=function(){
     const mesFiltro=parseInt(document.getElementById('planFilterMes')?.value)||0;
     const d=document.getElementById('plan-map');
     const msg=mesFiltro?'No hay clientes con código asignado en el mes seleccionado':'No hay clientes con código asignado en el Excel. Agrega ID_Cliente en la columna J del PPTO 2026.xlsx';
-    if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">📌</div><div style="font-size:13px;max-width:300px">'+msg+'</div></div>';
+    _setPlanMapMsg('<div class="map-placeholder" style="background:none"><div style="font-size:32px">📌</div><div style="font-size:13px;max-width:300px">'+msg+'</div></div>');
     return;
   }
   if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
@@ -5770,6 +5771,30 @@ function geocodeClientCached(geocoder, client, onResult) {
 
     onResult({ lat, lng });
   });
+}
+
+
+// Helper para mostrar mensajes sobre el mapa sin destruirlo
+function _setPlanMapMsg(html){
+  let overlay = document.getElementById('plan-map-msg');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'plan-map-msg';
+    overlay.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(15,22,36,0.92);z-index:10;pointer-events:auto;border-radius:8px';
+    const parent = document.getElementById('plan-map');
+    if(parent){
+      parent.style.position = 'relative';
+      parent.appendChild(overlay);
+    }
+  }
+  if(html === null){
+    overlay.style.display = 'none';
+    overlay.style.pointerEvents = 'none';
+  } else {
+    overlay.style.display = 'flex';
+    overlay.style.pointerEvents = 'auto';
+    overlay.innerHTML = html;
+  }
 }
 
 
