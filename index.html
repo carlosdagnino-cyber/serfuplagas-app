@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.0515 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.0520 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.0515
+        v2026.04.20.0520
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.0515</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.0520</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1577,7 +1577,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.0515';
+const APP_VERSION = 'v2026.04.20.0520';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3741,21 +3741,23 @@ window.renderPlanMap=function(){
   if(pt){ const cur=pt.value; pt.innerHTML='<option value="">Todos los técnicos</option>'+technicians.map(t=>`<option value="${t.id}"${t.id===cur?' selected':''}>${t.name}</option>`).join(''); }
   const excelGrupos=_getExcelClientesParaMapa();
   let clientsToShow;
-  // Siempre usar datos del Excel — nunca mostrar todos los clientes como fallback
-  if(!excelSyncEnabled){
-    const d=document.getElementById('plan-map');
-    if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">📊</div><div style="font-size:13px">Activa la sincronización con Excel en Personalización → Planificación desde Excel</div></div>';
-    return;
-  }
+  // Usar datos del Excel — sin fallback a todos los clientes
   if(excelPlanData.length===0){
     const d=document.getElementById('plan-map');
-    if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">⏳</div><div style="font-size:13px">Cargando datos del Excel… Verifica que hayas conectado Microsoft 365</div></div>';
+    if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">🔑</div><div style="font-size:13px">Conecta Microsoft 365 en Personalización para cargar el mapa de planificación</div><div style="margin-top:12px"><button class="btn btn-primary" onclick="autorizarM365()">🔑 Conectar Microsoft 365</button></div></div>';
     return;
   }
   clientsToShow=excelGrupos.map(g=>({
     ...g.cli,
     _excelGrupo:g,sinCodigo:g.sinCodigo,_programados:g.programados,_total:g.total
   })).filter(c=>c?.address);
+  if(!clientsToShow.length){
+    const mesFiltro=parseInt(document.getElementById('planFilterMes')?.value)||0;
+    const d=document.getElementById('plan-map');
+    const msg=mesFiltro?'No hay clientes con código asignado en el mes seleccionado':'No hay clientes con código asignado en el Excel. Agrega ID_Cliente en la columna J del PPTO 2026.xlsx';
+    if(d)d.innerHTML='<div class="map-placeholder"><div style="font-size:32px">📌</div><div style="font-size:13px;max-width:300px">'+msg+'</div></div>';
+    return;
+  }
   if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
   if(filterTech){ const names=services.filter(s=>(s.techIds||[s.techId]).includes(filterTech)).map(s=>s.client.toLowerCase()); clientsToShow=clientsToShow.filter(c=>names.includes(c.name.toLowerCase())); }
   if(!clientsToShow.length){
@@ -5532,7 +5534,7 @@ window.toggleHorarioFijo = function(){
 };
 
 window.loadExcelPlanData=async function(forzar){
-  if(!excelSyncEnabled&&!forzar)return;
+  if(!excelSyncEnabled&&!forzar&&!window.excelPlanData?.length)return;
   // Verificar token antes de intentar
   try { await _getGraphToken(); } catch(e){
     const d=document.getElementById('plan-map');
