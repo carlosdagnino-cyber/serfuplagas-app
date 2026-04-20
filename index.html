@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.1505 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.1511 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.1505
+        v2026.04.20.1511
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.1505</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.1511</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1581,7 +1581,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.1505';
+const APP_VERSION = 'v2026.04.20.1511';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3637,7 +3637,7 @@ window.switchTab =function(tab){
   if(tab==='routes')   renderRouteSelects();
   if(tab==='maestros') renderMaestros();
   if(tab==='gestiones') renderGestiones();
-  if(tab==='plan') loadExcelPlanData(true);
+  if(tab==='plan'){ loadExcelPlanData(true).then(()=>{ setTimeout(()=>{ if(!planMap) window.initPlanMap?.(); renderPlanMap(); }, 500); }); }
   if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
 };
 
@@ -3708,7 +3708,7 @@ function getClientHorario(c){
   if(lastSvc?.timeMode) return lastSvc.timeMode;
   return 'none';
 }
-function initPlanMap(){
+window.initPlanMap=function initPlanMap(){
   if(!window.google||!mapsKey||planMap) return;
   const mapDiv=document.getElementById('plan-map');
   if(!mapDiv) return;
@@ -3776,9 +3776,8 @@ window.renderPlanMap=function(){
     let hc=HORARIO_COLORS[horario]||HORARIO_COLORS.none;
     if(client.sinCodigo) hc={bg:'#ef4444',border:'#b91c1c',label:'Sin código'};
     const pinOpacity=(excelSyncEnabled&&client._total>0&&client._programados===client._total)?0.35:1;
-    geocoder.geocode({address:client.address+', Santiago, Chile'},(res,st)=>{
-      if(st!=='OK'||!res[0]) return;
-      const pos=res[0].geometry.location;
+    geocodeClientCached(geocoder, client, ({lat,lng})=>{
+      const pos=new google.maps.LatLng(lat,lng);
       bounds.extend(pos);
       const marker=new google.maps.Marker({
         position:pos, map:planMap, draggable:false, zIndex:50,
@@ -5726,6 +5725,53 @@ function _initRouteDnD(){
     });
   });
 }
+
+// ═══════════════════════════════════════════════════════
+// GEOCODIFICACIÓN CON CACHÉ EN CLIENTE (Firebase)
+// Guarda lat/lng/geocodedAt/geocodedAddress en el cliente
+// Solo re-geocodifica si la dirección cambió
+// ═══════════════════════════════════════════════════════
+const _geocodeCache = {}; // caché en memoria para esta sesión
+
+function geocodeClientCached(geocoder, client, onResult) {
+  const addr = (client.address || '').trim();
+  if (!addr) return; // sin dirección, nada que hacer
+
+  // 1. Si el cliente ya tiene coords Y la dirección no cambió → usar directamente
+  if (client.lat && client.lng && client.geocodedAddress === addr) {
+    _geocodeCache[addr] = { lat: client.lat, lng: client.lng };
+    onResult({ lat: client.lat, lng: client.lng });
+    return;
+  }
+
+  // 2. Caché en memoria (misma sesión, misma dirección)
+  if (_geocodeCache[addr]) {
+    onResult(_geocodeCache[addr]);
+    return;
+  }
+
+  // 3. Llamar Google Maps Geocoding API
+  geocoder.geocode({ address: addr + ', Santiago, Chile' }, (results, status) => {
+    if (status !== 'OK' || !results[0]) return;
+    const pos = results[0].geometry.location;
+    const lat = pos.lat();
+    const lng = pos.lng();
+
+    // Guardar en caché de sesión
+    _geocodeCache[addr] = { lat, lng };
+
+    // Persistir en Firebase si el cliente tiene ID
+    if (client.id) {
+      const updates = { lat, lng, geocodedAt: Date.now(), geocodedAddress: addr };
+      Object.assign(client, updates);
+      // Guardar en Firebase via saveData (throttled)
+      if (typeof saveData === 'function') saveData();
+    }
+
+    onResult({ lat, lng });
+  });
+}
+
 
 boot();
 startNotifChecker();
