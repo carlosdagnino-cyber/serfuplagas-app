@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.1530 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.1540 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.1530
+        v2026.04.20.1540
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.1530</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.1540</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1581,7 +1581,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.1530';
+const APP_VERSION = 'v2026.04.20.1540';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -2786,7 +2786,7 @@ function buildEmail(clientId, svcId){
   };
 }
 
-window.sendEmailFromCalendar=function(e,svcId){
+window.sendEmailFromCalendar=async function(e,svcId){
   e.stopPropagation();
   const svc=services.find(x=>x.id===svcId);if(!svc)return;
   const c=clients.find(x=>x.name.toLowerCase()===svc.client.toLowerCase());
@@ -2794,11 +2794,50 @@ window.sendEmailFromCalendar=function(e,svcId){
   if(!c.emailTemplate&&!c.email){ showToast('Configura la plantilla del cliente primero','error'); return; }
   const email=buildEmail(c.id,svcId);
   if(!email||!email.to){ showToast('El cliente no tiene correo configurado','error'); return; }
-  const mailto=`mailto:${email.to}`
-    +(email.cc?`?cc=${encodeURIComponent(email.cc)}&`:'?')
-    +`subject=${encodeURIComponent(email.subject)}`
-    +`&body=${encodeURIComponent(email.body)}`;
-  window.open(mailto,'_blank');
+
+  // Intentar enviar via Graph API (sale desde el usuario M365 autenticado)
+  let token=null;
+  try{ token=await _getGraphToken(); }catch(ex){ token=null; }
+
+  if(token){
+    // Envío directo via Microsoft Graph — sale desde quien tenga sesión M365 activa
+    showToast('Enviando correo…');
+    try{
+      const body={
+        message:{
+          subject: email.subject,
+          body:{ contentType:'Text', content:email.body },
+          toRecipients:[{emailAddress:{address:email.to}}],
+          ...(email.cc?{ccRecipients:[{emailAddress:{address:email.cc}}]}:{})
+        },
+        saveToSentItems:true
+      };
+      const resp=await fetch('https://graph.microsoft.com/v1.0/me/sendMail',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+      if(resp.ok||resp.status===202){
+        showToast('✓ Correo enviado a '+email.to,'success');
+        addHistory('Correo enviado',`${svc.client} — ${email.to}`);
+        saveData();
+      } else {
+        const err=await resp.json().catch(()=>({}));
+        throw new Error(err?.error?.message||'Error '+resp.status);
+      }
+    } catch(ex){
+      console.error('Graph sendMail error:',ex);
+      // Fallback a mailto si Graph falla
+      showToast('Error Graph: '+ex.message+' — abriendo cliente de correo','error');
+      const mailto=`mailto:${email.to}`+(email.cc?`?cc=${encodeURIComponent(email.cc)}&`:'?')+`subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
+      window.open(mailto,'_blank');
+    }
+  } else {
+    // Sin token M365 — fallback a mailto
+    showToast('Sin sesión M365 — conecta en Personalización para envío directo','error');
+    const mailto=`mailto:${email.to}`+(email.cc?`?cc=${encodeURIComponent(email.cc)}&`:'?')+`subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
+    window.open(mailto,'_blank');
+  }
 };
 
 window.deleteClient=function(id){
