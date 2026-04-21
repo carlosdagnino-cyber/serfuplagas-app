@@ -693,7 +693,7 @@ header {
     </div>
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
-    <p class="login-footer">v2026.04.20.1520 · 17/04/2026 15:48</p>
+    <p class="login-footer">v2026.04.20.1530 · 17/04/2026 15:48</p>
   </div>
 </div>
 
@@ -726,7 +726,7 @@ header {
                background:var(--bg3);border:1px solid var(--border);
                border-radius:6px;padding:3px 7px;cursor:default;
                white-space:nowrap">
-        v2026.04.20.1520
+        v2026.04.20.1530
       </div>
       <div style="position:relative">
         <button id="notifBell" onclick="toggleNotifPanel()" title="Notificaciones" style="position:relative;cursor:pointer;padding:4px 8px;border-radius:6px;font-size:18px;line-height:1;background:none;border:none;color:var(--text)">🔔<span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:9px;font-weight:700;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center">0</span></button>
@@ -740,7 +740,7 @@ header {
         <div class="dropdown-header">Sesión activa</div>
         <div class="dropdown-item" id="ddUserInfo" style="cursor:default;opacity:.7"></div>
         <div style="padding:2px 12px 6px;font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;justify-content:space-between">
-          <span>v2026.04.20.1520</span><span>17/04/2026 15:48</span>
+          <span>v2026.04.20.1530</span><span>17/04/2026 15:48</span>
         </div>
         <div class="dropdown-divider"></div>
         <div class="dropdown-item" onclick="switchTab('users');closeUserMenu()">👥 Usuarios y roles</div>
@@ -1581,7 +1581,7 @@ function showApp(){
 }
 
 let _techPreviewActive = false;
-const APP_VERSION = 'v2026.04.20.1520';
+const APP_VERSION = 'v2026.04.20.1530';
 const APP_BUILD  = '16/04/2026 22:20';
 
 function updateUserUI(){
@@ -3637,8 +3637,14 @@ window.switchTab =function(tab){
   if(tab==='routes')   renderRouteSelects();
   if(tab==='maestros') renderMaestros();
   if(tab==='gestiones') renderGestiones();
-  if(tab==='plan'){ loadExcelPlanData(true).then(()=>{ setTimeout(()=>{ if(!planMap) window.initPlanMap?.(); renderPlanMap(); }, 500); }); }
-  if(tab==='plan'){ renderPlanMap(); renderPlanMiniCal(); }
+  if(tab==='plan'){
+    // FIX v1530: renovar token M365 silenciosamente al entrar a Planificar
+    _getGraphToken().then(()=>{
+      loadExcelPlanData(true).then(()=>{ renderPlanMap(); renderPlanMiniCal(); });
+    }).catch(()=>{
+      renderPlanMap(); renderPlanMiniCal();
+    });
+  }
 };
 
 /* ═══════════════ KEYBOARD ═══════════════ */
@@ -3721,12 +3727,13 @@ window.initPlanMap=function initPlanMap(){
   });
 }
 window.renderPlanMap=function(){
-  if(!planMap) initPlanMap();
+  // FIX v1530: verificar mapsKey ANTES de initPlanMap
   if(!mapsKey){
     const d=document.getElementById('plan-map');
     if(d)d.innerHTML=`<div class="map-placeholder"><div style="font-size:32px">📌</div><div style="font-size:13px">Configura la API Key de Google Maps en ⚙️ Personalización</div></div>`;
     return;
   }
+  if(!planMap) initPlanMap();
   if(!window.google){
     const script=document.createElement('script');
     script.src=`https://maps.googleapis.com/maps/api/js?key=${mapsKey}&callback=_planMapReady&loading=async`;
@@ -3760,8 +3767,15 @@ window.renderPlanMap=function(){
   if(!clientsToShow.length){
     const mesFiltro=parseInt(document.getElementById('planFilterMes')?.value)||0;
     const d=document.getElementById('plan-map');
-    const msg=mesFiltro?'No hay clientes con código asignado en el mes seleccionado':'No hay clientes con código asignado en el Excel. Agrega ID_Cliente en la columna J del PPTO 2026.xlsx';
-    _setPlanMapMsg('<div class="map-placeholder" style="background:none"><div style="font-size:32px">📌</div><div style="font-size:13px;max-width:300px">'+msg+'</div></div>');
+    // FIX v1530: mensaje descriptivo según causa real
+    const totalConId=excelPlanData.filter(r=>r.idCliente).length;
+    const matchados=clients.filter(c=>c.codigo_cmip).length;
+    let msg;
+    if(mesFiltro) msg='No hay clientes con código asignado en el mes seleccionado';
+    else if(totalConId===0) msg='El Excel no tiene columna ID_Cliente (col J) o está vacía. Agrega los códigos C0001, C0002, etc.';
+    else if(matchados===0) msg='El Excel tiene '+totalConId+' filas con ID pero ningún cliente tiene código asignado en Firebase. Ve a Clientes → Editar → campo Código.';
+    else msg='Sin clientes con dirección para mostrar en el mapa.';
+    _setPlanMapMsg('<div class="map-placeholder" style="background:none"><div style="font-size:32px">📌</div><div style="font-size:13px;max-width:320px;text-align:center">'+msg+'</div></div>');
     return;
   }
   if(filterHorario) clientsToShow=clientsToShow.filter(c=>getClientHorario(c)===filterHorario);
